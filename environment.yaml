@@ -1,0 +1,10 @@
+name: declarative-regridding
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - esmpy
+  - pydantic
+  - typer
+  - hydra-core
+  - pytest
