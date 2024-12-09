@@ -41,3 +41,4 @@ def init_logging() -> logging.Logger:
 
 
 LOGGER = init_logging()
+LOGGER.info(ENV)

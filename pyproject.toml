@@ -4,7 +4,7 @@ markers = [
     "slow: these tests take FOREVER",
     "mpi: these tests are mpi-enabled"
 ]
-addopts = "-s"
+#addopts = "-s"
 
 [tool.mypy]
 disallow_untyped_defs = true

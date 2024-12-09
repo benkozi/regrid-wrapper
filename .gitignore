@@ -1,3 +1,5 @@
 .idea
 *.ESMF_LogFile
 *Declarative-Regridding-*.log
+/.env
+/logs/

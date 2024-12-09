@@ -3,9 +3,8 @@ from pathlib import Path
 import pytest
 
 from dec_regridding.context.comm import COMM
-from dec_regridding.context.env import ENV
 from dec_regridding.context.logging import init_logging
-from test.conftest import TEST_LOGGER, custom_env
+from test.conftest import custom_env
 
 
 @pytest.mark.mpi

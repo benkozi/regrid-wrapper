@@ -1,15 +1,21 @@
 import logging
 import os
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 from mpi4py import MPI
+
+from dec_regridding.context.common import PathType
+
+
+load_dotenv()
 
 
 class Environment(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DECLARATIVE_REGRIDDING_")
 
-    LOG_DIR: Path = Path(os.getcwd())
+    LOG_DIR: PathType
     LOG_PREFIX: str = "Declarative-Regridding"
     LOG_LEVEL: int = logging.DEBUG
 
