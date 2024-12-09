@@ -12,3 +12,5 @@ dependencies:
   - mpi4py
   - numpy
   - netcdf4
+  - matplotlib
+  - pydantic-settings
