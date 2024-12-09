@@ -3,8 +3,12 @@ channels:
   - conda-forge
 dependencies:
   - python
-  - esmpy
+  - esmpy=*=mpi_mpich*
   - pydantic
   - typer
   - hydra-core
   - pytest
+  - xarray
+  - mpi4py
+  - numpy
+  - netcdf4
