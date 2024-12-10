@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-#sbatch --job-name=hera-hello-world
+#SBATCH --job-name=hera-hello-world
 #SBATCH --account=epic
 #SBATCH --qos=batch
 #SBATCH --partition=bigmem
