@@ -94,7 +94,7 @@ def main() -> None:
     spec = GenerateWeightFileSpec(
         src_path="/scratch1/BMC/acomp/Johana/input_files/fix_files_Feb23/CONUS/grid_in.nc",
         dst_path="/scratch1/BMC/acomp/Johana/input_files/fix_files_Feb23/CONUS/ds_out_base.nc",
-        output_weight_file="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RAVE.to.RRFS_3km.nc",
+        output_weight_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RAVE.to.RRFS_3km.nc",
         esmpy_debug=True,
         name="RAVE.to.RRFS_3km",
     )
