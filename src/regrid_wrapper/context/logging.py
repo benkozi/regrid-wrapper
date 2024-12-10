@@ -1,12 +1,12 @@
 import logging
 import logging.config
 
-from dec_regridding.context.env import ENV
-from dec_regridding.context.comm import COMM
+from regrid_wrapper.context.env import ENV
+from regrid_wrapper.context.comm import COMM
 
 
 def init_logging() -> logging.Logger:
-    project_name = "declarative-regridding"
+    project_name = "regrid-wrapper"
     logging_config: dict = {
         "version": 1,
         "disable_existing_loggers": True,

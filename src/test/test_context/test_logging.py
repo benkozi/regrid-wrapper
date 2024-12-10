@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from dec_regridding.context.comm import COMM
-from dec_regridding.context.logging import init_logging
+from regrid_wrapper.context.comm import COMM
+from regrid_wrapper.context.logging import init_logging
 from test.conftest import custom_env
 
 

@@ -1,8 +1,8 @@
-name: declarative-regridding
+name: regrid-wrapper
 channels:
   - conda-forge
 dependencies:
-  - python
+  - python=3.11
   - esmpy=*=mpi_mpich*
   - pydantic
   - typer

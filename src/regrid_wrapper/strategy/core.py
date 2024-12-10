@@ -1,4 +1,4 @@
-from dec_regridding.model.regrid_operation import AbstractRegridOperation
+from regrid_wrapper.model.regrid_operation import AbstractRegridOperation
 
 
 class RegridProcessor:

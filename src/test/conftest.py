@@ -5,10 +5,10 @@ from typing import Any, Iterator, Sequence
 import pytest
 from pydantic import BaseModel
 
-from dec_regridding.context.comm import COMM
-from dec_regridding.context.env import ENV
-from dec_regridding.context.logging import LOGGER
-from dec_regridding.model.regrid_operation import (
+from regrid_wrapper.context.comm import COMM
+from regrid_wrapper.context.env import ENV
+from regrid_wrapper.context.logging import LOGGER
+from regrid_wrapper.model.regrid_operation import (
     AbstractRegridSpec,
     GenerateWeightFileSpec,
 )

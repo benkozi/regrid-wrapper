@@ -6,8 +6,8 @@ from typing import List
 import esmpy
 from pydantic import BaseModel, model_validator
 
-from dec_regridding.context.common import PathType
-from dec_regridding.context.logging import LOGGER
+from regrid_wrapper.context.common import PathType
+from regrid_wrapper.context.logging import LOGGER
 
 
 class AbstractRegridSpec(BaseModel, abc.ABC):

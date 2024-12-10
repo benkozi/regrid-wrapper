@@ -1,5 +1,5 @@
 .idea
 *.ESMF_LogFile
-*Declarative-Regridding-*.log
+*Regrid-Wrapper*.log
 /.env
 /logs/

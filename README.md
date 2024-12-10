@@ -1,3 +1,3 @@
 mypy src
 
-* Add `DECLARATIVE_REGRIDDING_LOG_DIR` location to environment or `.env`.
+* Add `REGRID_WRAPPER_LOG_DIR` location to environment or `.env`.
