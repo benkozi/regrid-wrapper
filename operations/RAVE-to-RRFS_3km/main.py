@@ -84,7 +84,7 @@ class RaveToRRFS(AbstractRegridOperation):
             srcfield,
             tgtfield,
             regrid_method=regrid_method,
-            filename=self._spec.output_weight_filename,
+            filename=str(self._spec.output_weight_filename),
             unmapped_action=esmpy.UnmappedAction.IGNORE,
             ignore_degenerate=True,
         )
