@@ -80,23 +80,23 @@ class RaveToRRFS(AbstractRegridOperation):
 
         self._logger.info("starting weight file generation")
         regrid_method = esmpy.RegridMethod.NEAREST_DTOS
-        # regridder = esmpy.Regrid(
-        #     srcfield,
-        #     tgtfield,
-        #     regrid_method=regrid_method,
-        #     filename=self._spec.output_weight_filename,
-        #     unmapped_action=esmpy.UnmappedAction.IGNORE,
-        #     ignore_degenerate=True,
-        # )
+        regridder = esmpy.Regrid(
+            srcfield,
+            tgtfield,
+            regrid_method=regrid_method,
+            filename=self._spec.output_weight_filename,
+            unmapped_action=esmpy.UnmappedAction.IGNORE,
+            ignore_degenerate=True,
+        )
 
 
 def main() -> None:
     spec = GenerateWeightFileSpec(
         src_path="/scratch1/BMC/acomp/Johana/input_files/fix_files_Feb23/CONUS/grid_in.nc",
         dst_path="/scratch1/BMC/acomp/Johana/input_files/fix_files_Feb23/CONUS/ds_out_base.nc",
-        output_weight_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RAVE.to.RRFS_3km.nc",
+        output_weight_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RAVE-to-RRFS_3km.nc",
         esmpy_debug=True,
-        name="RAVE.to.RRFS_3km",
+        name="RAVE-to-RRFS_3km",
     )
     op = RaveToRRFS(spec=spec)
     processor = RegridProcessor(operation=op)
