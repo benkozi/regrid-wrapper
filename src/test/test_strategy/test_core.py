@@ -16,7 +16,6 @@ class TestRegridProcessor:
     def test_happy_path_mock(
         self, fake_spec: GenerateWeightFileSpec, mocker: MockerFixture
     ) -> None:
-        print(type(mocker))
         spies = [
             mocker.spy(MockRegridOperation, ii)
             for ii in ["initialize", "run", "finalize"]
