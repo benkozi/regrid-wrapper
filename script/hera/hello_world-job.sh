@@ -20,5 +20,5 @@ export PATH=${CONDAENV}/bin:${PATH}
 export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
 export PYTHONPATH=${DIR}/src:${PYTHONPATH}
 
-cd ${DIR}
-mpirun -np 24 python ./script/hera/hello_world.py
+cd ${DIR}/logs
+mpirun -np 24 python ../script/hera/hello_world.py
