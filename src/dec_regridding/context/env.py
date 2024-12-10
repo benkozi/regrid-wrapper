@@ -28,4 +28,4 @@ class Environment(BaseSettings):
         )
 
 
-ENV = Environment()
+ENV = Environment()  # type: ignore[call-arg]

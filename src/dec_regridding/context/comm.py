@@ -6,7 +6,7 @@ from mpi4py import MPI
 class Comm:
     MPI = MPI
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._comm = MPI.COMM_WORLD
 
     @property
@@ -20,7 +20,7 @@ class Comm:
     def barrier(self) -> None:
         self._comm.barrier()
 
-    def bcast(self, value: dict, root: int = 0) -> Any:
+    def bcast(self, value: dict, root: int = 0) -> dict:
         return self._comm.bcast(value, root=root)
 
 

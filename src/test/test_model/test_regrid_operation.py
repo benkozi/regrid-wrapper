@@ -14,9 +14,9 @@ class TestGenerateWeightFileSpec:
         with pytest.raises(IOError):
             spec = GenerateWeightFileSpec(
                 name="name",
-                src_path="foo.nc",
-                dst_path="bar.nc",
-                output_weight_filename="baz.nc",
+                src_path=Path("foo.nc"),
+                dst_path=Path("bar.nc"),
+                output_weight_filename=Path("baz.nc"),
             )
 
     def test_happy_path(

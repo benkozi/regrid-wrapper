@@ -7,10 +7,13 @@ dependencies:
   - pydantic
   - typer
   - hydra-core
-  - pytest
   - xarray
   - mpi4py
   - numpy
   - netcdf4
   - matplotlib
   - pydantic-settings
+  - mypy #dev
+  - black #dev
+  - pytest #dev
+  - pytest-mock #dev

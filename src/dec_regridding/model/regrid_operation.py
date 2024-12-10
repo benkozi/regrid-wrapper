@@ -12,6 +12,8 @@ from dec_regridding.context.logging import LOGGER
 
 class AbstractRegridSpec(BaseModel, abc.ABC):
     name: str
+    nproc: int = 1
+    esmpy_debug: bool = False
 
 
 class GenerateWeightFileSpec(AbstractRegridSpec):
@@ -64,7 +66,7 @@ class AbstractRegridOperation(abc.ABC):
 
     def initialize(self) -> None:
         self._logger.info(f"initializing regrid operation: {self._spec.name}")
-        self._esmf_manager = esmpy.Manager(debug=True)
+        self._esmf_manager = esmpy.Manager(debug=self._spec.esmpy_debug)
 
     @abc.abstractmethod
     def run(self) -> None: ...
