@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.context.env import ENV
 from regrid_wrapper.context.logging import LOGGER
-from regrid_wrapper.model.regrid_operation import (
+from regrid_wrapper.model.spec import (
     AbstractRegridSpec,
     GenerateWeightFileSpec,
 )

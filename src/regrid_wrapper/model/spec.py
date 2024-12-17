@@ -1,9 +1,8 @@
 import abc
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Literal
 
-import esmpy
 from pydantic import BaseModel, model_validator
 
 from regrid_wrapper.context.common import PathType
@@ -12,6 +11,7 @@ from regrid_wrapper.context.logging import LOGGER
 
 class AbstractRegridSpec(BaseModel, abc.ABC):
     name: str
+    machine: Literal["hera"]
     nproc: int = 1
     esmpy_debug: bool = False
 
@@ -55,21 +55,3 @@ class GenerateWeightFileSpec(AbstractRegridSpec):
         if not os.access(parent, os.W_OK):
             errors.append(f"parent directory is not writable: {path.parent}")
         return errors
-
-
-class AbstractRegridOperation(abc.ABC):
-
-    def __init__(self, spec: AbstractRegridSpec) -> None:
-        self._spec = spec
-        self._logger = LOGGER.getChild("operation").getChild(spec.name)
-        self._esmf_manager: None | esmpy.Manager = None
-
-    def initialize(self) -> None:
-        self._logger.info(f"initializing regrid operation: {self._spec.name}")
-        self._esmf_manager = esmpy.Manager(debug=self._spec.esmpy_debug)
-
-    @abc.abstractmethod
-    def run(self) -> None: ...
-
-    def finalize(self) -> None:
-        self._logger.info(f"finalizing regrid operation: {self._spec.name}")

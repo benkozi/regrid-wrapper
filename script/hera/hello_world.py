@@ -1,7 +1,7 @@
-from regrid_wrapper.model.regrid_operation import (
-    AbstractRegridOperation,
+from regrid_wrapper.model.spec import (
     AbstractRegridSpec,
 )
+from regrid_wrapper.strategy.operation import AbstractRegridOperation
 from regrid_wrapper.strategy.core import RegridProcessor
 
 

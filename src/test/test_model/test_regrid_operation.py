@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from regrid_wrapper.model.regrid_operation import (
+from regrid_wrapper.model.spec import (
     GenerateWeightFileSpec,
     AbstractRegridSpec,
 )

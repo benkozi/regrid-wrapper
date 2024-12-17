@@ -1,7 +1,7 @@
-from regrid_wrapper.model.regrid_operation import (
-    AbstractRegridOperation,
+from regrid_wrapper.model.spec import (
     GenerateWeightFileSpec,
 )
+from regrid_wrapper.strategy.operation import AbstractRegridOperation
 from regrid_wrapper.strategy.core import RegridProcessor
 from pytest_mock import MockerFixture
 

@@ -1,5 +1,5 @@
 from regrid_wrapper.context.logging import LOGGER
-from regrid_wrapper.model.regrid_operation import AbstractRegridOperation
+from regrid_wrapper.strategy.operation import AbstractRegridOperation
 
 
 class RegridProcessor:
