@@ -16,12 +16,12 @@ set -e
 
 DIR=/scratch2/NAGAPE/epic/Ben.Koziol/sandbox/regrid-wrapper
 CONDAENV=/scratch2/NAGAPE/epic/Ben.Koziol/miniconda/envs/regrid-wrapper
+LOGDIR=${DIR}/logs/RAVE-to-RRFS_3km
 
 export PATH=${CONDAENV}/bin:${PATH}
 export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
 export PYTHONPATH=${DIR}/src:${PYTHONPATH}
-
-LOGDIR=${DIR}/logs/RAVE-to-RRFS_3km
+export REGRID_WRAPPER_LOG_DIR=${LOGDIR}
 
 mkdir -p ${LOGDIR}
 cd ${LOGDIR}
