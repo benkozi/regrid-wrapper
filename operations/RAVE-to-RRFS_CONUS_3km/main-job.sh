@@ -25,4 +25,4 @@ LOGDIR=${DIR}/logs/RAVE-to-RRFS_3km
 
 mkdir -p ${LOGDIR}
 cd ${LOGDIR}
-mpirun -np 360 python ../operations/RAVE-to-RRFS_CONUS_3km/main.py
+mpirun -np 360 python ${DIR}/operations/RAVE-to-RRFS_CONUS_3km/main.py
