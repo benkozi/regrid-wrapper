@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-#SBATCH --job-name=RAVE-to-RRFS_3km
+#SBATCH --job-name=RAVE-to-RRFS_CONUS_3km
 #SBATCH --account=epic
 #SBATCH --qos=batch
 #_SBATCH --partition=bigmem
@@ -22,4 +22,4 @@ export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
 export PYTHONPATH=${DIR}/src:${PYTHONPATH}
 
 cd ${DIR}/logs
-mpirun -np 360 python ../operations/RAVE-to-RRFS_3km/main.py
+mpirun -np 360 python ../operations/RAVE-to-RRFS_CONUS_3km/main.py

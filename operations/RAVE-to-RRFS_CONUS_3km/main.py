@@ -10,7 +10,7 @@ import xarray as xr
 from regrid_wrapper.strategy.core import RegridProcessor
 
 
-class RaveToRRFS(AbstractRegridOperation):
+class RaveToRrrfsConus3km(AbstractRegridOperation):
     def run(self) -> None:
         assert isinstance(self._spec, GenerateWeightFileSpec)
 
@@ -94,11 +94,11 @@ def main() -> None:
     spec = GenerateWeightFileSpec(
         src_path="/scratch1/BMC/acomp/Johana/input_files/fix_files_Feb23/CONUS/grid_in.nc",
         dst_path="/scratch1/BMC/acomp/Johana/input_files/fix_files_Feb23/CONUS/ds_out_base.nc",
-        output_weight_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RAVE-to-RRFS_3km.nc",
+        output_weight_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RAVE-to-RRFS_CONUS_3km.nc",
         esmpy_debug=True,
-        name="RAVE-to-RRFS_3km",
+        name="weights-RAVE-to-RRFS_CONUS_3km",
     )
-    op = RaveToRRFS(spec=spec)
+    op = RaveToRrrfsConus3km(spec=spec)
     processor = RegridProcessor(operation=op)
     processor.execute()
 
