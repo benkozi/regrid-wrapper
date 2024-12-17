@@ -21,5 +21,8 @@ export PATH=${CONDAENV}/bin:${PATH}
 export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
 export PYTHONPATH=${DIR}/src:${PYTHONPATH}
 
-cd ${DIR}/logs
+LOGDIR=${DIR}/logs/RAVE-to-RRFS_3km
+
+mkdir -p ${LOGDIR}
+cd ${LOGDIR}
 mpirun -np 360 python ../operations/RAVE-to-RRFS_CONUS_3km/main.py
