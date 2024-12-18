@@ -21,7 +21,6 @@ class Environment(BaseSettings):
 
     def create_log_file_path(self) -> Path:
         comm = MPI.COMM_WORLD
-        print(self)
         return (
             Path(self.LOG_DIR)
             / f"{self.LOG_PREFIX}-{str(comm.Get_rank()).zfill(4)}.log"

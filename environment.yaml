@@ -10,7 +10,7 @@ dependencies:
   - xarray
   - mpi4py
   - numpy
-  - netcdf4
+  - netcdf4=*=mpi_mpich*
   - matplotlib
   - pydantic-settings
   - mypy #dev
