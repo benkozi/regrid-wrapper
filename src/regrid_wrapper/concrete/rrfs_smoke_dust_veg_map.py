@@ -134,14 +134,14 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
 
         self._logger.info("starting weight file generation")
         regrid_method = esmpy.RegridMethod.BILINEAR
-        # regridder = esmpy.Regrid(
-        #     srcfield,
-        #     tgtfield,
-        #     regrid_method=regrid_method,
-        #     filename=str(self._spec.output_weight_filename),
-        #     unmapped_action=esmpy.UnmappedAction.IGNORE,
-        #     ignore_degenerate=True,
-        # )
+        regridder = esmpy.Regrid(
+            srcfield,
+            tgtfield,
+            regrid_method=regrid_method,
+            filename=str(self._spec.output_weight_filename),
+            unmapped_action=esmpy.UnmappedAction.IGNORE,
+            ignore_degenerate=True,
+        )
 
         emiss_factor[tgt_y_lb:tgt_y_ub, tgt_x_lb:tgt_x_ub] = tgtfield.data
         ds.close()
