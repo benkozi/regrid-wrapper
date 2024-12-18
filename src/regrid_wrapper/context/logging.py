@@ -25,13 +25,13 @@ def init_logging() -> logging.Logger:
             "file": {
                 "formatter": "plain",
                 "class": "logging.FileHandler",
-                "filename": str(ENV.create_log_file_path()),
+                "filename": ENV.create_log_file_path(),
                 "mode": "w",
             },
         },
         "loggers": {
             project_name: {
-                "handlers": ["default"],  # "file"],
+                "handlers": ["default", "file"],
                 "level": ENV.LOG_LEVEL,
             },
         },

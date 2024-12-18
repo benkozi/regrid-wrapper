@@ -90,6 +90,7 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
             comm=MPI.COMM_WORLD,
             info=MPI.Info(),
         )
+        ds.setncatts(ds_in.attrs)
         dlat = ds.createDimension("lat", ds_out.sizes["grid_yt"])
         dlon = ds.createDimension("lon", ds_out.sizes["grid_xt"])
         dgeolat = ds.createDimension("geolat", ds_out.sizes["grid_yt"])
