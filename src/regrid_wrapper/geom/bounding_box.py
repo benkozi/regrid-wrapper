@@ -10,7 +10,7 @@ class BoundingBox(BaseModel):
     max_lon: float
     min_lat: float
     max_lat: float
-    plot_spec: PlotSpec
+    plot_spec: PlotSpec = PlotSpec()
 
     @property
     def width(self) -> float:
