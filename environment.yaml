@@ -13,6 +13,7 @@ dependencies:
   - netcdf4=*=mpi_mpich*
   - matplotlib
   - pydantic-settings
+  - cartopy
   - mypy #dev
   - black #dev
   - pytest #dev

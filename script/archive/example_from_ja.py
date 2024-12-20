@@ -3,6 +3,8 @@ import numpy as np
 import xarray as xr
 from mpi4py import MPI
 
+import regrid_wrapper.geom.grid
+
 # File paths for input data
 source_grid_spec = (
     "/scratch1/BMC/acomp/Johana/input_files/fix_files_Feb23/CONUS/grid_in.nc"
@@ -39,12 +41,12 @@ src_lont2 = np.where(src_lont > 0, src_lont, src_lont + 360)
 # Create ESMF Grids
 src_shape = src_latt.shape
 tgt_shape = tgt_latt.shape
-src_grid = ESMF.Grid(
+src_grid = regrid_wrapper.geom.grid.Grid(
     np.array(src_shape),
     staggerloc=ESMF.StaggerLoc.CENTER,
     coord_sys=ESMF.CoordSys.SPH_DEG,
 )
-tgt_grid = ESMF.Grid(
+tgt_grid = regrid_wrapper.geom.grid.Grid(
     np.array(tgt_shape),
     staggerloc=ESMF.StaggerLoc.CENTER,
     coord_sys=ESMF.CoordSys.SPH_DEG,
