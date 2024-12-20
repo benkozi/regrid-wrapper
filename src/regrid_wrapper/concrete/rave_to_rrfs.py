@@ -19,8 +19,8 @@ class RaveToRrfs(AbstractRegridOperation):
         tgt_latt = np.swapaxes(ds_out["grid_latt"].values, 0, 1)
         tgt_lont = np.swapaxes(ds_out["grid_lont"].values, 0, 1)
 
-        self._logger.info("unwrap coordinates if necessary")
-        src_lont2 = np.where(src_lont > 0, src_lont, src_lont + 360)
+        # self._logger.info("unwrap coordinates if necessary")
+        # src_lont2 = np.where(src_lont > 0, src_lont, src_lont + 360)
 
         self._logger.info("create esmf grids")
         x, y = 0, 1
@@ -60,7 +60,7 @@ class RaveToRrfs(AbstractRegridOperation):
         self._logger.info("set coordinates within the local extents of each grid")
         src_cen_lon = src_grid.get_coords(x)
         src_cen_lat = src_grid.get_coords(y)
-        src_cen_lon[:] = src_lont2[src_x_lb:src_x_ub, src_y_lb:src_y_ub]
+        src_cen_lon[:] = src_lont[src_x_lb:src_x_ub, src_y_lb:src_y_ub]
         src_cen_lat[:] = src_latt[src_x_lb:src_x_ub, src_y_lb:src_y_ub]
 
         tgt_cen_lon = tgt_grid.get_coords(x)
