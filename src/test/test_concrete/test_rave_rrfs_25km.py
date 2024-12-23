@@ -37,6 +37,7 @@ def test(tmp_path_shared: Path) -> None:
     if COMM.rank == 0:
         _ = create_rrfs_grid_file(src_grid)
         _ = create_rrfs_grid_file(dst_grid)
+    COMM.barrier()
 
     spec = GenerateWeightFileSpec(
         src_path=src_grid,
