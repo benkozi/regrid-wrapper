@@ -1,122 +1,132 @@
+from pathlib import Path
+from typing import Tuple
+
 import esmpy
 import numpy as np
 import xarray as xr
+from pydantic import BaseModel
 
-from regrid_wrapper.model.spec import GenerateWeightFileSpec
+from regrid_wrapper.model.spec import GenerateWeightFileSpec, AbstractRegridSpec
 from regrid_wrapper.strategy.operation import AbstractRegridOperation
 
 
+class AxisOrder(BaseModel):
+    x: int = 1
+    y: int = 0
+
+
+class Bounds(BaseModel):
+    lower: int
+    upper: int
+    staggerloc: int
+    dim: int
+
+
+class DatasetToGrid(BaseModel):
+    path: Path
+    x_center: str
+    y_center: str
+    x_corner: str
+    y_corner: str
+    axis_order: AxisOrder = AxisOrder()
+
+    def _fill_array_(
+        self, target: np.ndarray, source: np.ndarray, x_bounds: Bounds, y_bounds: Bounds
+    ) -> None:
+        if self.axis_order.x == 0:
+            first = x_bounds
+            second = y_bounds
+        else:
+            first = y_bounds
+            second = x_bounds
+
+        target[:] = source[first.lower : first.upper, second.lower : second.upper]
+
+    def _fill_grid_coords_(
+        self, grid: esmpy.Grid, dim: int, staggerloc: int, data: np.ndarray
+    ) -> None:
+        target = grid.get_coords(dim, staggerloc=staggerloc)
+        x_bounds = self._get_bounds_(grid, staggerloc, self.axis_order.x)
+        y_bounds = self._get_bounds_(grid, staggerloc, self.axis_order.y)
+        self._fill_array_(target, data, x_bounds, y_bounds)
+
+    @staticmethod
+    def _get_bounds_(grid: esmpy.Grid, staggerloc: int, dim: int) -> Bounds:
+        return Bounds(
+            lower=grid.lower_bounds[staggerloc][dim],
+            upper=grid.upper_bounds[staggerloc][dim],
+            staggerloc=staggerloc,
+            dim=dim,
+        )
+
+    def _get_coordinates_(self, ds: xr.Dataset, name: str) -> np.ndarray:
+        data = ds[name].values
+        if self.axis_order.x == 0:
+            return np.swapaxes(data, 0, 1)
+        return data
+
+    def create_esmpy_grid(self) -> esmpy.Grid:
+        ds = xr.open_dataset(self.path)
+        x_center_data = self._get_coordinates_(ds, self.x_center)
+        y_center_data = self._get_coordinates_(ds, self.y_center)
+        x_corner_data = self._get_coordinates_(ds, self.x_corner)
+        y_corner_data = self._get_coordinates_(ds, self.y_corner)
+        ds.close()
+
+        grid = esmpy.Grid(
+            np.array(x_center_data.shape),
+            staggerloc=esmpy.StaggerLoc.CENTER,
+            coord_sys=esmpy.CoordSys.SPH_DEG,
+        )
+        grid.add_coords([esmpy.StaggerLoc.CORNER])
+
+        self._fill_grid_coords_(
+            grid, self.axis_order.x, esmpy.StaggerLoc.CENTER, x_center_data
+        )
+        self._fill_grid_coords_(
+            grid, self.axis_order.y, esmpy.StaggerLoc.CENTER, y_center_data
+        )
+        self._fill_grid_coords_(
+            grid, self.axis_order.x, esmpy.StaggerLoc.CORNER, x_corner_data
+        )
+        self._fill_grid_coords_(
+            grid, self.axis_order.y, esmpy.StaggerLoc.CORNER, y_corner_data
+        )
+
+        return grid
+
+
 class RaveToRrfs(AbstractRegridOperation):
+
     def run(self) -> None:
         assert isinstance(self._spec, GenerateWeightFileSpec)
 
-        ds_in = xr.open_dataset(self._spec.src_path)
-        ds_out = xr.open_dataset(self._spec.dst_path)
-
-        self._logger.info("extract coordinate data")
-        src_latt = np.swapaxes(ds_in["grid_latt"].values, 0, 1)
-        src_lont = np.swapaxes(ds_in["grid_lont"].values, 0, 1)
-        tgt_latt = np.swapaxes(ds_out["grid_latt"].values, 0, 1)
-        tgt_lont = np.swapaxes(ds_out["grid_lont"].values, 0, 1)
-
-        # self._logger.info("unwrap coordinates if necessary")
-        # src_lont2 = np.where(src_lont > 0, src_lont, src_lont + 360)
-
-        self._logger.info("create esmf grids")
-        x, y = 0, 1
-        src_shape = src_latt.shape
-        tgt_shape = tgt_latt.shape
-        src_grid = esmpy.Grid(
-            np.array(src_shape),
-            staggerloc=esmpy.StaggerLoc.CENTER,
-            coord_sys=esmpy.CoordSys.SPH_DEG,
+        src_grid_def = DatasetToGrid(
+            path=self._spec.src_path,
+            x_center="grid_lont",
+            y_center="grid_latt",
+            x_corner="grid_lon",
+            y_corner="grid_lat",
         )
-        src_grid.add_coords([esmpy.StaggerLoc.CORNER])
-        tgt_grid = esmpy.Grid(
-            np.array(tgt_shape),
-            staggerloc=esmpy.StaggerLoc.CENTER,
-            coord_sys=esmpy.CoordSys.SPH_DEG,
-        )
-        tgt_grid.add_coords([esmpy.StaggerLoc.CORNER])
+        src_grid = src_grid_def.create_esmpy_grid()
 
-        self._logger.info("get local bounds for setting coordinates")
-        src_x_lb, src_x_ub = (
-            src_grid.lower_bounds[esmpy.StaggerLoc.CENTER][x],
-            src_grid.upper_bounds[esmpy.StaggerLoc.CENTER][x],
+        dst_grid_def = DatasetToGrid(
+            path=self._spec.dst_path,
+            x_center="grid_lont",
+            y_center="grid_latt",
+            x_corner="grid_lon",
+            y_corner="grid_lat",
         )
-        src_y_lb, src_y_ub = (
-            src_grid.lower_bounds[esmpy.StaggerLoc.CENTER][y],
-            src_grid.upper_bounds[esmpy.StaggerLoc.CENTER][y],
-        )
-        tgt_x_lb, tgt_x_ub = (
-            tgt_grid.lower_bounds[esmpy.StaggerLoc.CENTER][x],
-            tgt_grid.upper_bounds[esmpy.StaggerLoc.CENTER][x],
-        )
-        tgt_y_lb, tgt_y_ub = (
-            tgt_grid.lower_bounds[esmpy.StaggerLoc.CENTER][y],
-            tgt_grid.upper_bounds[esmpy.StaggerLoc.CENTER][y],
-        )
+        dst_grid = dst_grid_def.create_esmpy_grid()
 
-        self._logger.info("set coordinates within the local extents of each grid")
-        src_cen_lon = src_grid.get_coords(x)
-        src_cen_lat = src_grid.get_coords(y)
-        src_cen_lon[:] = src_lont[src_x_lb:src_x_ub, src_y_lb:src_y_ub]
-        src_cen_lat[:] = src_latt[src_x_lb:src_x_ub, src_y_lb:src_y_ub]
-
-        tgt_cen_lon = tgt_grid.get_coords(x)
-        tgt_cen_lat = tgt_grid.get_coords(y)
-        tgt_cen_lon[:] = tgt_lont[tgt_x_lb:tgt_x_ub, tgt_y_lb:tgt_y_ub]
-        tgt_cen_lat[:] = tgt_latt[
-            tgt_x_lb:tgt_x_ub,
-            tgt_y_lb:tgt_y_ub,
-        ]
-
-        self._logger.info("set corner coordinates")
-        src_x_lb_c, src_x_ub_c = (
-            src_grid.lower_bounds[esmpy.StaggerLoc.CORNER][x],
-            src_grid.upper_bounds[esmpy.StaggerLoc.CORNER][x],
-        )
-        src_y_lb_c, src_y_ub_c = (
-            src_grid.lower_bounds[esmpy.StaggerLoc.CORNER][y],
-            src_grid.upper_bounds[esmpy.StaggerLoc.CORNER][y],
-        )
-        tgt_x_lb_c, tgt_x_ub_c = (
-            tgt_grid.lower_bounds[esmpy.StaggerLoc.CORNER][x],
-            tgt_grid.upper_bounds[esmpy.StaggerLoc.CORNER][x],
-        )
-        tgt_y_lb_c, tgt_y_ub_c = (
-            tgt_grid.lower_bounds[esmpy.StaggerLoc.CORNER][y],
-            tgt_grid.upper_bounds[esmpy.StaggerLoc.CORNER][y],
-        )
-
-        src_cen_lon_c = src_grid.get_coords(x, staggerloc=esmpy.StaggerLoc.CORNER)
-        src_cen_lat_c = src_grid.get_coords(y, staggerloc=esmpy.StaggerLoc.CORNER)
-        src_lon_c = np.swapaxes(ds_in["grid_lon"].values, 0, 1)
-        src_lat_c = np.swapaxes(ds_in["grid_lat"].values, 0, 1)
-        src_cen_lon_c[:] = src_lon_c[src_x_lb_c:src_x_ub_c, src_y_lb_c:src_y_ub_c]
-        src_cen_lat_c[:] = src_lat_c[src_x_lb_c:src_x_ub_c, src_y_lb_c:src_y_ub_c]
-
-        tgt_cen_lon_c = tgt_grid.get_coords(x, staggerloc=esmpy.StaggerLoc.CORNER)
-        tgt_cen_lat_c = tgt_grid.get_coords(y, staggerloc=esmpy.StaggerLoc.CORNER)
-        tgt_lon_c = np.swapaxes(ds_out["grid_lon"].values, 0, 1)
-        tgt_lat_c = np.swapaxes(ds_out["grid_lat"].values, 0, 1)
-        tgt_cen_lon_c[:] = tgt_lon_c[tgt_x_lb_c:tgt_x_ub_c, tgt_y_lb_c:tgt_y_ub_c]
-        tgt_cen_lat_c[:] = tgt_lat_c[tgt_x_lb_c:tgt_x_ub_c, tgt_y_lb_c:tgt_y_ub_c]
-
-        self._logger.info("prepare fields on the grids")
-        # area = ds_in["area"]
-        srcfield = esmpy.Field(src_grid, name="src")
-        # srcfield.data[...] = area[:, :][src_y_lb:src_y_ub, src_x_lb:src_x_ub]
-        tgtfield = esmpy.Field(tgt_grid, name="dst")
-
-        ds_in.close()
-        ds_out.close()
+        src_field = esmpy.Field(src_grid, name="src")
+        dst_field = esmpy.Field(dst_grid, name="dst")
 
         self._logger.info("starting weight file generation")
         regrid_method = esmpy.RegridMethod.CONSERVE
         regridder = esmpy.Regrid(
-            srcfield,
-            tgtfield,
+            src_field,
+            dst_field,
             regrid_method=regrid_method,
             filename=str(self._spec.output_weight_filename),
             unmapped_action=esmpy.UnmappedAction.IGNORE,
