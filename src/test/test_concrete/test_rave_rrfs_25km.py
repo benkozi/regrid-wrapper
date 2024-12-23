@@ -1,8 +1,6 @@
 from pathlib import Path
 
-import numpy as np
 import pytest
-from pip._internal import resolution
 
 from regrid_wrapper.concrete.rave_to_rrfs import RaveToRrfs
 from regrid_wrapper.context.comm import COMM
@@ -11,7 +9,8 @@ from regrid_wrapper.model.spec import (
 )
 
 from regrid_wrapper.strategy.core import RegridProcessor
-import xarray as xr
+
+from test.conftest import create_rrfs_grid_file
 
 
 @pytest.mark.skip("dev only")
@@ -36,22 +35,8 @@ def test(tmp_path_shared: Path) -> None:
     weights = tmp_path_shared / "weights.nc"
 
     if COMM.rank == 0:
-        lon = np.linspace(230, 300, 71)
-        lonc = np.hstack((lon - 0.5, [lon[-1] + 0.5]))
-        lat = np.linspace(25, 50, 26)
-        latc = np.hstack((lat - 0.5, [lat[-1] + 0.5]))
-
-        lon, lat = np.meshgrid(lon, lat)
-        lonc, latc = np.meshgrid(lonc, latc)
-
-        ds = xr.Dataset()
-        ds["grid_lont"] = xr.DataArray(lon, dims=["lat", "lon"])
-        ds["grid_latt"] = xr.DataArray(lat, dims=["lat", "lon"])
-        ds["grid_lon"] = xr.DataArray(lonc, dims=["latc", "lonc"])
-        ds["grid_lat"] = xr.DataArray(latc, dims=["latc", "lonc"])
-
-        ds.to_netcdf(src_grid)
-        ds.to_netcdf(dst_grid)
+        _ = create_rrfs_grid_file(src_grid)
+        _ = create_rrfs_grid_file(dst_grid)
 
     spec = GenerateWeightFileSpec(
         src_path=src_grid,
