@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Iterator
 
 import esmpy
 import numpy as np
@@ -23,35 +23,45 @@ class Bounds(BaseModel):
 
 
 class DatasetToGrid(BaseModel):
+    # tdk: move to common location
+    # tdk: rename to DatasetToEsmpy
     path: Path
     x_center: str
     y_center: str
-    x_corner: str
-    y_corner: str
+    x_corner: str | None = None
+    y_corner: str | None = None
+    fields: Tuple[str, ...] | None = None
     axis_order: AxisOrder = AxisOrder()
 
-    def _fill_array_(
-        self, target: np.ndarray, source: np.ndarray, x_bounds: Bounds, y_bounds: Bounds
+    @property
+    def has_corners(self) -> bool:
+        return self.x_corner is not None
+
+    def fill_array(
+        self,
+        grid,
+        target: np.ndarray,
+        source: np.ndarray,
+        staggerloc: int = esmpy.StaggerLoc.CENTER,
     ) -> None:
+        x_bounds = self.get_bounds(grid, staggerloc, self.axis_order.x)
+        y_bounds = self.get_bounds(grid, staggerloc, self.axis_order.y)
         if self.axis_order.x == 0:
             first = x_bounds
             second = y_bounds
         else:
             first = y_bounds
             second = x_bounds
-
         target[:] = source[first.lower : first.upper, second.lower : second.upper]
 
     def _fill_grid_coords_(
         self, grid: esmpy.Grid, dim: int, staggerloc: int, data: np.ndarray
     ) -> None:
         target = grid.get_coords(dim, staggerloc=staggerloc)
-        x_bounds = self._get_bounds_(grid, staggerloc, self.axis_order.x)
-        y_bounds = self._get_bounds_(grid, staggerloc, self.axis_order.y)
-        self._fill_array_(target, data, x_bounds, y_bounds)
+        self.fill_array(grid, target, data, staggerloc=staggerloc)
 
     @staticmethod
-    def _get_bounds_(grid: esmpy.Grid, staggerloc: int, dim: int) -> Bounds:
+    def get_bounds(grid: esmpy.Grid, staggerloc: int, dim: int) -> Bounds:
         return Bounds(
             lower=grid.lower_bounds[staggerloc][dim],
             upper=grid.upper_bounds[staggerloc][dim],
@@ -69,8 +79,9 @@ class DatasetToGrid(BaseModel):
         ds = xr.open_dataset(self.path)
         x_center_data = self._get_coordinates_(ds, self.x_center)
         y_center_data = self._get_coordinates_(ds, self.y_center)
-        x_corner_data = self._get_coordinates_(ds, self.x_corner)
-        y_corner_data = self._get_coordinates_(ds, self.y_corner)
+        if self.has_corners:
+            x_corner_data = self._get_coordinates_(ds, self.x_corner)
+            y_corner_data = self._get_coordinates_(ds, self.y_corner)
         ds.close()
 
         grid = esmpy.Grid(
@@ -86,14 +97,29 @@ class DatasetToGrid(BaseModel):
         self._fill_grid_coords_(
             grid, self.axis_order.y, esmpy.StaggerLoc.CENTER, y_center_data
         )
-        self._fill_grid_coords_(
-            grid, self.axis_order.x, esmpy.StaggerLoc.CORNER, x_corner_data
-        )
-        self._fill_grid_coords_(
-            grid, self.axis_order.y, esmpy.StaggerLoc.CORNER, y_corner_data
-        )
+        if self.has_corners:
+            self._fill_grid_coords_(
+                grid, self.axis_order.x, esmpy.StaggerLoc.CORNER, x_corner_data
+            )
+            self._fill_grid_coords_(
+                grid, self.axis_order.y, esmpy.StaggerLoc.CORNER, y_corner_data
+            )
 
         return grid
+
+    def iter_esmpy_fields(self, grid: esmpy.Grid) -> Iterator[esmpy.Field]:
+        with xr.open_dataset(self.path) as ds:
+            for field in self.fields:
+                data = ds[field].values
+                esmpy_field = self.create_empty_esmpy_field(grid, field)
+                self.fill_array(
+                    grid, esmpy_field.data, data, staggerloc=esmpy.StaggerLoc.CENTER
+                )
+                yield esmpy_field
+
+    @staticmethod
+    def create_empty_esmpy_field(grid: esmpy.Grid, name: str) -> esmpy.Field:
+        return esmpy.Field(grid, name=name)
 
 
 class RaveToRrfs(AbstractRegridOperation):

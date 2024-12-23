@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator, Sequence
+from typing import Any, Iterator, Sequence, List
 
 import numpy as np
 import pytest
@@ -70,27 +70,54 @@ def custom_env(**kwargs: Any) -> Iterator[None]:
                 setattr(ENV, k, v)
 
 
-def create_rrfs_grid_file(path: Path, with_corners: bool = True) -> xr.Dataset:
+def create_analytic_data_array(
+    dims: List[str], lon_mesh: np.ndarray, lat_mesh: np.ndarray
+) -> xr.DataArray:
+    deg_to_rad = 3.141592653589793 / 180.0
+    return xr.DataArray(
+        2.0
+        + np.cos(deg_to_rad * lon_mesh) ** 2
+        * np.cos(2.0 * deg_to_rad * (90.0 - lat_mesh)),
+        dims=dims,
+    )
+
+
+def create_rrfs_grid_file(
+    path: Path, with_corners: bool = True, fields: List[str] | None = None
+) -> xr.Dataset:
     if path.exists():
         raise ValueError(f"path exists: {path}")
     lon = np.linspace(230, 300, 71)
     lat = np.linspace(25, 50, 26)
     lon_mesh, lat_mesh = np.meshgrid(lon, lat)
     ds = xr.Dataset()
-    ds["grid_lont"] = xr.DataArray(lon_mesh, dims=["lat", "lon"])
-    ds["grid_latt"] = xr.DataArray(lat_mesh, dims=["lat", "lon"])
+    dims = ["grid_yt", "grid_xt"]
+    ds["grid_lont"] = xr.DataArray(lon_mesh, dims=dims)
+    ds["grid_latt"] = xr.DataArray(lat_mesh, dims=dims)
     if with_corners:
         lonc = np.hstack((lon - 0.5, [lon[-1] + 0.5]))
         latc = np.hstack((lat - 0.5, [lat[-1] + 0.5]))
         lonc_mesh, latc_mesh = np.meshgrid(lonc, latc)
-        ds["grid_lon"] = xr.DataArray(lonc_mesh, dims=["latc", "lonc"])
-        ds["grid_lat"] = xr.DataArray(latc_mesh, dims=["latc", "lonc"])
-    deg_to_rad = 3.141592653589793 / 180.0
-    ds["analytic_field"] = xr.DataArray(
-        2.0
-        + np.cos(deg_to_rad * lon_mesh) ** 2
-        * np.cos(2.0 * deg_to_rad * (90.0 - lat_mesh)),
-        dims=["lat", "lon"],
-    )
+        ds["grid_lon"] = xr.DataArray(lonc_mesh, dims=["grid_y", "grid_x"])
+        ds["grid_lat"] = xr.DataArray(latc_mesh, dims=["grid_y", "grid_x"])
+    if fields is not None:
+        for field in fields:
+            ds[field] = create_analytic_data_array(dims, lon_mesh, lat_mesh)
+    ds.to_netcdf(path)
+    return ds
+
+
+def create_smoke_dust_grid_file(path: Path, field_names: List[str]) -> xr.Dataset:
+    if path.exists():
+        raise ValueError(f"path exists: {path}")
+    lon = np.linspace(230, 300, 71)
+    lat = np.linspace(25, 50, 26)
+    lon_mesh, lat_mesh = np.meshgrid(lon, lat)
+    ds = xr.Dataset()
+    dims = ["geolat", "geolon"]
+    ds["geolat"] = xr.DataArray(lon_mesh, dims=dims)
+    ds["geolon"] = xr.DataArray(lat_mesh, dims=dims)
+    for field_name in field_names:
+        ds[field_name] = create_analytic_data_array(dims, lon_mesh, lat_mesh)
     ds.to_netcdf(path)
     return ds
