@@ -4,10 +4,7 @@ import xarray as xr
 from netCDF4 import Dataset
 
 from regrid_wrapper.concrete.rave_to_rrfs import DatasetToGrid
-from regrid_wrapper.model.spec import (
-    GenerateWeightFileSpec,
-    GenerateWeightFileAndRegridFields,
-)
+from regrid_wrapper.model.spec import GenerateWeightFileAndRegridFields
 from regrid_wrapper.strategy.operation import AbstractRegridOperation
 from mpi4py import MPI
 
@@ -15,13 +12,15 @@ from mpi4py import MPI
 class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
 
     def run(self) -> None:
+        assert isinstance(self._spec, GenerateWeightFileAndRegridFields)
+
         src_grid_def = DatasetToGrid(
             path=self._spec.src_path,
             x_center="geolat",
             y_center="geolon",
             x_corner=None,
             y_corner=None,
-            fields=["emiss_factor"],
+            fields=("emiss_factor",),
         )
         src_grid = src_grid_def.create_esmpy_grid()
 

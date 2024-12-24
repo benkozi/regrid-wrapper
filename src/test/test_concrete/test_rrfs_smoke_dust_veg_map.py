@@ -46,7 +46,7 @@ def test(tmp_path_shared: Path) -> None:
         dst_path=dst_grid,
         output_weight_filename=weights,
         output_filename=veg_map,
-        fields=["emiss_factor"],
+        fields=("emiss_factor",),
         esmpy_debug=True,
         name="veg_map-3km-to-25km",
     )
