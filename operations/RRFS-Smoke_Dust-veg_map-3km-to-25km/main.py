@@ -18,7 +18,6 @@ def main() -> None:
         fields=["emiss_factor"],
         esmpy_debug=True,
         name=weight_filename,
-        machine="hera",
     )
     op = RrfsSmokeDustVegetationMap(spec=spec)
     processor = RegridProcessor(operation=op)

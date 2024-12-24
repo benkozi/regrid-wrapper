@@ -9,7 +9,7 @@ from regrid_wrapper.strategy.core import RegridProcessor
 import pytest
 
 import xarray as xr
-from test.conftest import create_smoke_dust_grid_file, create_rrfs_grid_file
+from test.conftest import create_smoke_dust_grid_file, create_rrfs_grid_file, ncdump
 
 
 @pytest.mark.skip("dev only")
@@ -23,7 +23,6 @@ def test_dev(bin_dir: Path, tmp_path_shared: Path) -> None:
         fields=["emiss_factor"],
         esmpy_debug=True,
         name=weight_filename,
-        machine="hera",
     )
     op = RrfsSmokeDustVegetationMap(spec=spec)
     processor = RegridProcessor(operation=op)
@@ -50,7 +49,6 @@ def test(tmp_path_shared: Path) -> None:
         fields=["emiss_factor"],
         esmpy_debug=True,
         name="veg_map-3km-to-25km",
-        machine="hera",
     )
     op = RrfsSmokeDustVegetationMap(spec=spec)
     processor = RegridProcessor(operation=op)
@@ -62,8 +60,9 @@ def test(tmp_path_shared: Path) -> None:
     if COMM.rank == 0:
         with xr.open_dataset(src_grid) as ds:
             expected = ds["emiss_factor"]
-        with xr.open_dataset(dst_grid) as ds:
+        with xr.open_dataset(veg_map) as ds:
             actual = ds["emiss_factor"]
         diff = expected.values - actual.values
         assert np.max(diff) == 0.0
         assert expected.attrs == actual.attrs
+        ncdump(veg_map)

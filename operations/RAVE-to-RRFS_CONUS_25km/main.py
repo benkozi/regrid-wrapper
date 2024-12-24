@@ -13,7 +13,6 @@ def main() -> None:
         output_weight_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/out-weights.nc",
         esmpy_debug=True,
         name="weights-RAVE-to-RRFS_CONUS_25km",
-        machine="hera",
     )
     op = RaveToRrfs(spec=spec)
     processor = RegridProcessor(operation=op)

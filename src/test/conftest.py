@@ -1,3 +1,5 @@
+import random
+import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Sequence, List
@@ -119,5 +121,10 @@ def create_smoke_dust_grid_file(path: Path, field_names: List[str]) -> xr.Datase
     ds["geolon"] = xr.DataArray(lat_mesh, dims=dims)
     for field_name in field_names:
         ds[field_name] = create_analytic_data_array(dims, lon_mesh, lat_mesh)
+        ds[field_name].attrs["foo"] = random.random()
     ds.to_netcdf(path)
     return ds
+
+
+def ncdump(path: Path) -> None:
+    subprocess.check_call(["ncdump", "-h", str(path)])

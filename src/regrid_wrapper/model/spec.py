@@ -12,7 +12,6 @@ import xarray as xr
 
 class AbstractRegridSpec(BaseModel, abc.ABC):
     name: str
-    machine: Literal["hera"]
     nproc: int = 1
     esmpy_debug: bool = False
 

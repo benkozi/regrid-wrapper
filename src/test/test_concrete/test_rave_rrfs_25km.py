@@ -21,7 +21,6 @@ def test_dev(bin_dir: Path, tmp_path_shared: Path) -> None:
         output_weight_filename=tmp_path_shared / "weights.nc",
         esmpy_debug=True,
         name="tester",
-        machine="hera",
     )
     op = RaveToRrfs(spec=spec)
     processor = RegridProcessor(operation=op)
@@ -45,7 +44,6 @@ def test(tmp_path_shared: Path) -> None:
         output_weight_filename=weights,
         esmpy_debug=True,
         name="tester",
-        machine="hera",
     )
     op = RaveToRrfs(spec=spec)
     processor = RegridProcessor(operation=op)
