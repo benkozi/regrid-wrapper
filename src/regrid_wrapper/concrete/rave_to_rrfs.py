@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, Iterator
+from typing import Tuple, Iterator, Literal
 
 import esmpy
 import numpy as np
@@ -43,6 +43,7 @@ class DatasetToGrid(BaseModel):
         target: np.ndarray,
         source: np.ndarray,
         staggerloc: int = esmpy.StaggerLoc.CENTER,
+        slice_side: Literal["lhs", "rhs"] = "rhs",
     ) -> None:
         x_bounds = self.get_bounds(grid, staggerloc, self.axis_order.x)
         y_bounds = self.get_bounds(grid, staggerloc, self.axis_order.y)
@@ -52,7 +53,11 @@ class DatasetToGrid(BaseModel):
         else:
             first = y_bounds
             second = x_bounds
-        target[:] = source[first.lower : first.upper, second.lower : second.upper]
+
+        if slice_side == "rhs":
+            target[:] = source[first.lower : first.upper, second.lower : second.upper]
+        elif slice_side == "lhs":
+            target[first.lower : first.upper, second.lower : second.upper] = source
 
     def _fill_grid_coords_(
         self, grid: esmpy.Grid, dim: int, staggerloc: int, data: np.ndarray
