@@ -20,7 +20,7 @@ def test_dev(bin_dir: Path, tmp_path_shared: Path) -> None:
         dst_path=bin_dir / "RRFS_CONUS_25km/ds_out_base.nc",
         output_weight_filename=tmp_path_shared / weight_filename,
         output_filename=tmp_path_shared / "veg_map.nc",
-        fields=["emiss_factor"],
+        fields=("emiss_factor",),
         esmpy_debug=True,
         name=weight_filename,
     )

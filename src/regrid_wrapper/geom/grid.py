@@ -25,10 +25,10 @@ class Grid(BaseModel):
             lat = ds[self.lat_name]
             lon = ds[self.lon_name]
             return BoundingBox(
-                min_lat=lat.min(),
-                max_lat=lat.max(),
-                min_lon=lon.min(),
-                max_lon=lon.max(),
+                min_lat=float(lat.min()),
+                max_lat=float(lat.max()),
+                min_lon=float(lon.min()),
+                max_lon=float(lon.max()),
                 plot_spec=self.plot_spec,
             )
 

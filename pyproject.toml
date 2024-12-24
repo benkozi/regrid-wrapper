@@ -8,4 +8,5 @@ markers = [
 
 [tool.mypy]
 disallow_untyped_defs = true
+install_types = true
 #ignore_missing_imports = true

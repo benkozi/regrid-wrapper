@@ -15,23 +15,23 @@ def test_xy_ordering_behavior() -> None:
     lat = [33, 44, 55]
     lon = [-104, -80, -60]  # tdk: test with unwrapped
 
-    lon, lat = np.meshgrid(lon, lat)
+    lon_mesh, lat_mesh = np.meshgrid(lon, lat)
 
     grid = esmpy.Grid(
-        np.array(lat.shape),
+        np.array(lat_mesh.shape),
         coord_sys=esmpy.CoordSys.SPH_DEG,
         staggerloc=[esmpy.StaggerLoc.CENTER],
     )
 
     x_coords = grid.get_coords(x, staggerloc=esmpy.StaggerLoc.CENTER)
-    x_coords[:] = lon
+    x_coords[:] = lon_mesh
 
     y_coords = grid.get_coords(y, staggerloc=esmpy.StaggerLoc.CENTER)
-    y_coords[:] = lat
+    y_coords[:] = lat_mesh
 
     src_field = esmpy.Field(grid, name="src")
-    src_field.data[:] = 2.0 + np.cos(DEG2RAD * lon) ** 2 * np.cos(
-        2.0 * DEG2RAD * (90.0 - lat)
+    src_field.data[:] = 2.0 + np.cos(DEG2RAD * lon_mesh) ** 2 * np.cos(
+        2.0 * DEG2RAD * (90.0 - lat_mesh)
     )
 
     dst_field = esmpy.Field(grid, name="dst")
