@@ -16,8 +16,8 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
 
         src_grid_def = DatasetToGrid(
             path=self._spec.src_path,
-            x_center="geolat",
-            y_center="geolon",
+            x_center="geolon",
+            y_center="geolat",
             x_corner=None,
             y_corner=None,
             fields=("emiss_factor",),
@@ -34,9 +34,6 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
         src_field = list(src_grid_def.iter_esmpy_fields(src_grid))[0]
         dst_field = dst_grid_def.create_empty_esmpy_field(dst_grid, "emiss_factor")
 
-        ds_in = xr.open_dataset(self._spec.src_path)
-        ds_out = xr.open_dataset(self._spec.dst_path)
-
         self._logger.info("starting weight file generation")
         regrid_method = esmpy.RegridMethod.BILINEAR
         regridder = esmpy.Regrid(
@@ -49,6 +46,9 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
         )
 
         self._logger.info("filling destination array")
+        ds_in = xr.open_dataset(self._spec.src_path)
+        ds_out = xr.open_dataset(self._spec.dst_path)
+
         ds = Dataset(
             self._spec.output_filename,
             mode="w",

@@ -109,7 +109,8 @@ class DatasetToGrid(BaseModel):
             staggerloc=esmpy.StaggerLoc.CENTER,
             coord_sys=esmpy.CoordSys.SPH_DEG,
         )
-        grid.add_coords([esmpy.StaggerLoc.CORNER])
+        if self.has_corners:
+            grid.add_coords([esmpy.StaggerLoc.CORNER])
 
         self._fill_grid_coords_(
             grid, self.axis_order.x, esmpy.StaggerLoc.CENTER, x_center_data
