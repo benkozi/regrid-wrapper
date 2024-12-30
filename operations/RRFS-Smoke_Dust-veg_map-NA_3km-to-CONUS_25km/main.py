@@ -13,8 +13,8 @@ def main() -> None:
     spec = GenerateWeightFileAndRegridFields(
         src_path="/scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/veg_map.nc",
         dst_path="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_25km.nc",
-        output_weight_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/weights-veg_map-NA_3km-to-CONUS_25km.nc",
-        output_filename="/scratch2/NAGAPE/epic/Ben.Koziol/output-data/veg_map-RRFS_25km.nc",
+        output_weight_filename="/home/Benjamin.Koziol/htmp/rrfs-25km-test/weights-veg_map-NA_3km-to-CONUS_25km.nc",
+        output_filename="/home/Benjamin.Koziol/htmp/rrfs-25km-test/veg_map-RRFS_25km.nc",
         fields=["emiss_factor"],
         esmpy_debug=True,
         name=weight_filename,
