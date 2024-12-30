@@ -117,8 +117,8 @@ def create_smoke_dust_grid_file(path: Path, field_names: List[str]) -> xr.Datase
     lon_mesh, lat_mesh = np.meshgrid(lon, lat)
     ds = xr.Dataset()
     dims = ["geolat", "geolon"]
-    ds["geolat"] = xr.DataArray(lon_mesh, dims=dims)
-    ds["geolon"] = xr.DataArray(lat_mesh, dims=dims)
+    ds["geolat"] = xr.DataArray(lat_mesh, dims=dims)
+    ds["geolon"] = xr.DataArray(lon_mesh, dims=dims)
     for field_name in field_names:
         ds[field_name] = create_analytic_data_array(dims, lon_mesh, lat_mesh)
         ds[field_name].attrs["foo"] = random.random()
