@@ -10,21 +10,31 @@ def main() -> None:
     # Hera
     # ncdump - h / scratch1 / BMC / acomp / Johana / rrfs - sd_v1 / AGU2024_2019_persistance / stmp / 2019080100 / fcst_fv3lam / grid_spec.nc
     grids = [
+        # Grid(
+        #     path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_CONUS_3km\ds_out_base.nc",
+        #     lat_name="grid_latt",
+        #     lon_name="grid_lont",
+        # ),
+        # Grid(
+        #     path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_CONUS_3km\C3359_oro_data_ls.tile7.halo0.nc",
+        #     lat_name="geolat",
+        #     lon_name="geolon",
+        #     plot_spec=PlotSpec(edgecolor="blue", linewidth=1),
+        # ),
+        # Grid(
+        #     path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_CONUS_3km\grid_in.nc",
+        #     lat_name="grid_latt",
+        #     lon_name="grid_lont",
+        # ),
+        # Grid(
+        #     path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_CONUS_13km\ds_out_base.nc",
+        #     lat_name="grid_latt",
+        #     lon_name="grid_lont",
+        # ),
         Grid(
-            path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_CONUS_3km\ds_out_base.nc",
-            lat_name="grid_latt",
-            lon_name="grid_lont",
-        ),
-        Grid(
-            path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_CONUS_3km\C3359_oro_data_ls.tile7.halo0.nc",
+            path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_NA_3km\veg_map.nc",
             lat_name="geolat",
             lon_name="geolon",
-            plot_spec=PlotSpec(edgecolor="blue", linewidth=1),
-        ),
-        Grid(
-            path=r"C:\Users\bkozi\sandbox\BenKoziol-NOAA\data-root\RRFS_CONUS_3km\grid_in.nc",
-            lat_name="grid_latt",
-            lon_name="grid_lont",
         ),
     ]
     bboxes = []

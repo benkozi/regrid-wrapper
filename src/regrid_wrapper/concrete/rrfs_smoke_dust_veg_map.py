@@ -37,6 +37,18 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
         ds_in = xr.open_dataset(self._spec.src_path)
         ds_out = xr.open_dataset(self._spec.dst_path)
 
+        self._logger.info("starting weight file generation")
+        regrid_method = esmpy.RegridMethod.BILINEAR
+        regridder = esmpy.Regrid(
+            src_field,
+            dst_field,
+            regrid_method=regrid_method,
+            filename=str(self._spec.output_weight_filename),
+            unmapped_action=esmpy.UnmappedAction.ERROR,
+            # ignore_degenerate=True,
+        )
+
+        self._logger.info("filling destination array")
         ds = Dataset(
             self._spec.output_filename,
             mode="w",
@@ -62,17 +74,6 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
 
         ds_in.close()
         ds_out.close()
-
-        self._logger.info("starting weight file generation")
-        regrid_method = esmpy.RegridMethod.BILINEAR
-        regridder = esmpy.Regrid(
-            src_field,
-            dst_field,
-            regrid_method=regrid_method,
-            filename=str(self._spec.output_weight_filename),
-            unmapped_action=esmpy.UnmappedAction.IGNORE,
-            ignore_degenerate=True,
-        )
 
         dst_grid_def.fill_array(
             dst_grid, emiss_factor, dst_field.data, slice_side="lhs"
