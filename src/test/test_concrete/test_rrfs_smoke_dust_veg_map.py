@@ -9,7 +9,12 @@ from regrid_wrapper.strategy.core import RegridProcessor
 import pytest
 
 import xarray as xr
-from test.conftest import create_smoke_dust_grid_file, create_rrfs_grid_file, ncdump
+from test.conftest import (
+    create_smoke_dust_grid_file,
+    create_rrfs_grid_file,
+    ncdump,
+    TEST_LOGGER,
+)
 
 
 @pytest.mark.skip("dev only")
@@ -60,9 +65,16 @@ def test(tmp_path_shared: Path) -> None:
     if COMM.rank == 0:
         with xr.open_dataset(src_grid) as ds:
             expected = ds["emiss_factor"]
+            # TEST_LOGGER.debug(expected.to_dataframe().describe())
         with xr.open_dataset(veg_map) as ds:
             actual = ds["emiss_factor"]
+            # TEST_LOGGER.debug(actual.to_dataframe().describe())
         diff = expected.values - actual.values
         assert np.max(diff) == 0.0
         assert expected.attrs == actual.attrs
         ncdump(veg_map)
+
+        with xr.open_dataset(weights) as ds:
+            n_s = ds.sizes["n_s"]
+            assert n_s > 0
+            # TEST_LOGGER.debug(f"n_s={n_s}")
