@@ -1,12 +1,23 @@
+from typing import Tuple
+
 import esmpy
 import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
+from pydantic import BaseModel, ConfigDict
 
 from regrid_wrapper.concrete.rave_to_rrfs import DatasetToGrid
 from regrid_wrapper.model.spec import GenerateWeightFileAndRegridFields
 from regrid_wrapper.strategy.operation import AbstractRegridOperation
 from mpi4py import MPI
+
+
+class RrfsDustDataEnv(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    fields: Tuple[str, ...] = ["uthr", "sand", "clay", "rdrag", "ssm"]
+
+
+RRFS_DUST_DATA_ENV = RrfsDustDataEnv()
 
 
 class RrfsDustData(AbstractRegridOperation):
@@ -20,7 +31,7 @@ class RrfsDustData(AbstractRegridOperation):
             y_center="geolat",
             x_corner=None,
             y_corner=None,
-            fields=("emiss_factor",),
+            fields=RRFS_DUST_DATA_ENV.fields,
         )
         src_grid = src_grid_def.create_esmpy_grid()
 

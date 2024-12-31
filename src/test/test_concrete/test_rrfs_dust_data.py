@@ -1,8 +1,12 @@
 from pathlib import Path
-
+import random
 import numpy as np
 
-from regrid_wrapper.concrete.rrfs_dust_data import RrfsDustData
+from regrid_wrapper.concrete.rrfs_dust_data import (
+    RrfsDustData,
+    RrfsDustDataEnv,
+    RRFS_DUST_DATA_ENV,
+)
 from regrid_wrapper.concrete.rrfs_smoke_dust_veg_map import RrfsSmokeDustVegetationMap
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.model.spec import GenerateWeightFileAndRegridFields
@@ -15,6 +19,7 @@ from test.conftest import (
     create_rrfs_grid_file,
     ncdump,
     TEST_LOGGER,
+    create_analytic_data_array,
 )
 
 
@@ -36,33 +41,59 @@ from test.conftest import (
 #     processor.execute()
 
 
+def create_dust_data_file(path: Path) -> xr.Dataset:
+    if path.exists():
+        raise ValueError(f"path exists: {path}")
+
+    lon = np.linspace(230, 300, 71)
+    lat = np.linspace(25, 50, 26)
+    lon_mesh, lat_mesh = np.meshgrid(lon, lat)
+    ds = xr.Dataset()
+    dims = ["lat", "lon"]
+    ds["geolat"] = xr.DataArray(lat_mesh, dims=dims)
+    ds["geolon"] = xr.DataArray(lon_mesh, dims=dims)
+
+    ds["time"] = xr.DataArray(np.arange(12, dtype=np.double), dims=["time"])
+
+    for coord_name in ["time", "geolat", "geolon"]:
+        ds[coord_name].attrs["foo"] = random.random()
+
+    for field_name in RRFS_DUST_DATA_ENV.fields:
+        ds[field_name] = create_analytic_data_array(
+            ["time", "lat", "lon"], lon_mesh, lat_mesh, ntime=12
+        )
+        ds[field_name].attrs["foo"] = random.random()
+    ds.attrs["foo"] = random.random()
+    ds.to_netcdf(path)
+    return ds
+
+
 @pytest.mark.mpi
 def test(tmp_path_shared: Path) -> None:
     src_grid = tmp_path_shared / "src_grid.nc"
     dst_grid = tmp_path_shared / "dst_grid.nc"
     weights = tmp_path_shared / "weights.nc"
-    veg_map = tmp_path_shared / "veg_map.nc"
+    dust_data = tmp_path_shared / "dust.nc"
 
     if COMM.rank == 0:
-        _ = create_smoke_dust_grid_file(src_grid, ["emiss_factor"], ntime=12)
-        _ = create_rrfs_grid_file(dst_grid, fields=["emiss_factor"])
+        _ = create_dust_data_file(src_grid)
+        _ = create_rrfs_grid_file(dst_grid)
     COMM.barrier()
 
     spec = GenerateWeightFileAndRegridFields(
         src_path=src_grid,
         dst_path=dst_grid,
         output_weight_filename=weights,
-        output_filename=veg_map,
-        fields=("emiss_factor",),
+        output_filename=dust_data,
         esmpy_debug=True,
-        name="veg_map-3km-to-25km",
+        name="dust-data",
     )
     op = RrfsDustData(spec=spec)
     processor = RegridProcessor(operation=op)
     processor.execute()
 
     assert weights.exists()
-    assert veg_map.exists()
+    assert dust_data.exists()
 
     if COMM.rank == 0:
         with xr.open_dataset(src_grid) as ds:

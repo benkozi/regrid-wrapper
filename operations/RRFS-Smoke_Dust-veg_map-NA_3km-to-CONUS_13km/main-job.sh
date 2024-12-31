@@ -5,12 +5,12 @@
 #SBATCH --qos=batch
 #_SBATCH --partition=bigmem
 #SBATCH --partition=hera
-#SBATCH -t 04:00:00
+#SBATCH -t 8:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
-#SBATCH --nodes=15
+#SBATCH --nodes=30
 #SBATCH --ntasks-per-node=24  # Assuming 24 cores per node, utilize them fully
-#SBATCH --ntasks=360 # Total tasks should be nodes * tasks-per-node
+#SBATCH --ntasks=720 # Total tasks should be nodes * tasks-per-node
 
 set -e
 
@@ -25,4 +25,4 @@ export REGRID_WRAPPER_LOG_DIR=${LOGDIR}
 
 mkdir -p ${LOGDIR}
 cd ${LOGDIR}
-mpirun -np 360 python ${DIR}/operations/RRFS-Smoke_Dust-veg_map-NA_3km-to-CONUS_13km/main.py
+mpirun -np 720 python ${DIR}/operations/RRFS-Smoke_Dust-veg_map-NA_3km-to-CONUS_13km/main.py
