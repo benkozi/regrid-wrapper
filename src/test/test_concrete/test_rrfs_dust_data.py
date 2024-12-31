@@ -1,13 +1,9 @@
 from pathlib import Path
-import random
 import numpy as np
 
 from regrid_wrapper.concrete.rrfs_dust_data import (
     RrfsDustData,
-    RrfsDustDataEnv,
-    RRFS_DUST_DATA_ENV,
 )
-from regrid_wrapper.concrete.rrfs_smoke_dust_veg_map import RrfsSmokeDustVegetationMap
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.model.spec import GenerateWeightFileAndRegridFields
 from regrid_wrapper.strategy.core import RegridProcessor
@@ -15,11 +11,9 @@ import pytest
 
 import xarray as xr
 from test.conftest import (
-    create_smoke_dust_grid_file,
     create_rrfs_grid_file,
     ncdump,
-    TEST_LOGGER,
-    create_analytic_data_array,
+    create_dust_data_file,
 )
 
 
@@ -39,33 +33,6 @@ from test.conftest import (
 #     op = RrfsSmokeDustVegetationMap(spec=spec)
 #     processor = RegridProcessor(operation=op)
 #     processor.execute()
-
-
-def create_dust_data_file(path: Path) -> xr.Dataset:
-    if path.exists():
-        raise ValueError(f"path exists: {path}")
-
-    lon = np.linspace(230, 300, 71)
-    lat = np.linspace(25, 50, 26)
-    lon_mesh, lat_mesh = np.meshgrid(lon, lat)
-    ds = xr.Dataset()
-    dims = ["lat", "lon"]
-    ds["geolat"] = xr.DataArray(lat_mesh, dims=dims)
-    ds["geolon"] = xr.DataArray(lon_mesh, dims=dims)
-
-    ds["time"] = xr.DataArray(np.arange(12, dtype=np.double), dims=["time"])
-
-    for coord_name in ["time", "geolat", "geolon"]:
-        ds[coord_name].attrs["foo"] = random.random()
-
-    for field_name in RRFS_DUST_DATA_ENV.fields:
-        ds[field_name] = create_analytic_data_array(
-            ["time", "lat", "lon"], lon_mesh, lat_mesh, ntime=12
-        )
-        ds[field_name].attrs["foo"] = random.random()
-    ds.attrs["foo"] = random.random()
-    ds.to_netcdf(path)
-    return ds
 
 
 @pytest.mark.mpi

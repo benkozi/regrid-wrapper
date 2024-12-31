@@ -9,6 +9,7 @@ import pytest
 import xarray as xr
 from pydantic import BaseModel
 
+from regrid_wrapper.concrete.rrfs_dust_data import RRFS_DUST_DATA_ENV
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.context.env import ENV
 from regrid_wrapper.context.logging import LOGGER
@@ -137,3 +138,30 @@ def create_smoke_dust_grid_file(path: Path, field_names: List[str]) -> xr.Datase
 
 def ncdump(path: Path) -> None:
     subprocess.check_call(["ncdump", "-h", str(path)])
+
+
+def create_dust_data_file(path: Path) -> xr.Dataset:
+    if path.exists():
+        raise ValueError(f"path exists: {path}")
+
+    lon = np.linspace(230, 300, 71)
+    lat = np.linspace(25, 50, 26)
+    lon_mesh, lat_mesh = np.meshgrid(lon, lat)
+    ds = xr.Dataset()
+    dims = ["lat", "lon"]
+    ds["geolat"] = xr.DataArray(lat_mesh, dims=dims)
+    ds["geolon"] = xr.DataArray(lon_mesh, dims=dims)
+
+    ds["time"] = xr.DataArray(np.arange(12, dtype=np.double), dims=["time"])
+
+    for coord_name in ["time", "geolat", "geolon"]:
+        ds[coord_name].attrs["foo"] = random.random()
+
+    for field_name in RRFS_DUST_DATA_ENV.fields:
+        ds[field_name] = create_analytic_data_array(
+            ["time", "lat", "lon"], lon_mesh, lat_mesh, ntime=12
+        )
+        ds[field_name].attrs["foo"] = random.random()
+    ds.attrs["foo"] = random.random()
+    ds.to_netcdf(path)
+    return ds
