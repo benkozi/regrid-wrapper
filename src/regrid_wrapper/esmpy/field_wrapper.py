@@ -1,9 +1,10 @@
+import abc
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Tuple, Literal
 
 import numpy as np
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 import esmpy
 import xarray as xr
 import netCDF4 as nc
@@ -44,13 +45,30 @@ class DimensionCollection(BaseModel):
         raise ValueError
 
 
-class GridWrapper(BaseModel):
+def load_variable_data(
+    var: nc.Variable, target_dims: DimensionCollection
+) -> np.ndarray:
+    slices = [
+        slice(target_dims.get(ii).lower, target_dims.get(ii).upper)
+        for ii in var.dimensions
+    ]
+    raw_data = var[*slices]
+    dim_map = {dim: ii for ii, dim in enumerate(var.dimensions)}
+    axes = [dim_map[ii.name] for ii in target_dims.value]
+    transposed_data = raw_data.transpose(axes)
+    return transposed_data
+
+
+class AbstractWrapper(abc.ABC, BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    grid: esmpy.Grid
     dims: DimensionCollection
 
 
-class NcDatasetToGrid(BaseModel):
+class GridWrapper(AbstractWrapper):
+    value: esmpy.Grid
+
+
+class NcToGrid(BaseModel):
     path: Path
     x_center: str
     y_center: str
@@ -73,7 +91,7 @@ class NcDatasetToGrid(BaseModel):
             raise ValueError
         return self.y_corner
 
-    def create(self) -> GridWrapper:
+    def create_grid_wrapper(self) -> GridWrapper:
         x, y = 0, 1
         with open_nc(self.path, "r") as ds:
             grid_shape = np.array(
@@ -105,62 +123,54 @@ class NcDatasetToGrid(BaseModel):
             grid_x_center_coords = grid.get_coords(
                 x, staggerloc=esmpy.StaggerLoc.CENTER
             )
-            grid_x_center_coords[:] = self.load_variable_data(
+            grid_x_center_coords[:] = load_variable_data(
                 ds.variables[self.x_center], dims
             )
             grid_y_center_coords = grid.get_coords(
                 y, staggerloc=esmpy.StaggerLoc.CENTER
             )
-            grid_y_center_coords[:] = self.load_variable_data(
+            grid_y_center_coords[:] = load_variable_data(
                 ds.variables[self.y_center], dims
             )
 
-            gwrap = GridWrapper(grid=grid, dims=dims)
+            gwrap = GridWrapper(value=grid, dims=dims)
             return gwrap
 
-    @staticmethod
-    def load_variable_data(
-        var: nc.Variable, target_dims: DimensionCollection
-    ) -> np.ndarray:
-        slices = [
-            slice(target_dims.get(ii).lower, target_dims.get(ii).upper)
-            for ii in var.dimensions
-        ]
-        raw_data = var[*slices]
-        dim_map = {dim: ii for ii, dim in enumerate(var.dimensions)}
-        axes = [dim_map[ii.name] for ii in target_dims.value]
-        transposed_data = raw_data.transpose(axes)
-        return transposed_data
+
+class FieldWrapper(AbstractWrapper):
+    value: esmpy.Field
 
 
-class FieldWrapper(BaseModel):
+class NcToField(BaseModel):
     path: Path
     name: str
-    grid_w: GridWrapper
+    gwrap: GridWrapper
     dim_time: str | None = None
     staggerloc: int = esmpy.StaggerLoc.CENTER
 
-    def get_dims_esmpy(self) -> Tuple[str, ...]:
-        if self.dim_time is None:
-            return self.dims_esmpy_grid
-        else:
-            return tuple(list(self.dims_esmpy_grid) + [self.dim_time])
-
-    def create_esmpy_field(self):
-        with xr.open_dataset(self.path) as ds:
-            da = ds[self.name]
-            da = da.transpose(*self.get_dims_esmpy())
+    def create_field_wrapper(self) -> FieldWrapper:
+        with open_nc(self.path, "r") as ds:
             if self.dim_time is None:
                 ndbounds = None
+                target_dims = self.gwrap.dims
             else:
-                ndbounds = (ds.sizes[self.dim_time],)
-            return esmpy.Field(
-                self.grid, name=self.name, ndbounds=ndbounds, staggerloc=self.staggerloc
+                ndbounds = (ds.dimensions[self.dim_time].size,)
+                time_dim = Dimension(
+                    name=self.dim_time,
+                    size=ndbounds[0],
+                    lower=0,
+                    upper=ndbounds[0],
+                    coordinate_type="time",
+                )
+                target_dims = DimensionCollection(
+                    value=list(self.gwrap.dims.value) + [time_dim]
+                )
+            field = esmpy.Field(
+                self.gwrap.value,
+                name=self.name,
+                ndbounds=ndbounds,
+                staggerloc=self.staggerloc,
             )
-
-    @staticmethod
-    def create_empty_esmpy_field(
-        grid: esmpy.Grid, name: str, ndbounds: Tuple[int, ...] | None = None
-    ) -> esmpy.Field:
-        ret = esmpy.Field(grid, name=name, ndbounds=ndbounds)
-        return ret
+            field.data[:] = load_variable_data(ds.variables[self.name], target_dims)
+            fwrap = FieldWrapper(value=field, dims=target_dims)
+            return fwrap
