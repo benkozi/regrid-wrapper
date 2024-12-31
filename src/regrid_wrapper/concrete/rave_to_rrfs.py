@@ -128,19 +128,32 @@ class DatasetToGrid(BaseModel):
 
         return grid
 
-    def iter_esmpy_fields(self, grid: esmpy.Grid) -> Iterator[esmpy.Field]:
+    def iter_esmpy_fields(
+        self,
+        grid: esmpy.Grid,
+        ndbounds: Tuple[int, ...] | None = None,
+        esmpy_dims: Tuple[str, ...] | None = None,
+    ) -> Iterator[esmpy.Field]:
         with xr.open_dataset(self.path) as ds:
             for field in self.get_fields():
-                data = ds[field].values
-                esmpy_field = self.create_empty_esmpy_field(grid, field)
+                if esmpy_dims is not None:
+                    data = ds[field].transpose(*esmpy_dims).values
+                else:
+                    data = ds[field].values
+                esmpy_field = self.create_empty_esmpy_field(
+                    grid, field, ndbounds=ndbounds
+                )
                 self.fill_array(
                     grid, esmpy_field.data, data, staggerloc=esmpy.StaggerLoc.CENTER
                 )
                 yield esmpy_field
 
     @staticmethod
-    def create_empty_esmpy_field(grid: esmpy.Grid, name: str) -> esmpy.Field:
-        return esmpy.Field(grid, name=name)
+    def create_empty_esmpy_field(
+        grid: esmpy.Grid, name: str, ndbounds: Tuple[int, ...] | None = None
+    ) -> esmpy.Field:
+        ret = esmpy.Field(grid, name=name, ndbounds=ndbounds)
+        return ret
 
 
 class RaveToRrfs(AbstractRegridOperation):

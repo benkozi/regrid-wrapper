@@ -73,13 +73,22 @@ def custom_env(**kwargs: Any) -> Iterator[None]:
 
 
 def create_analytic_data_array(
-    dims: List[str], lon_mesh: np.ndarray, lat_mesh: np.ndarray
+    dims: List[str],
+    lon_mesh: np.ndarray,
+    lat_mesh: np.ndarray,
+    ntime: int | None = None,
 ) -> xr.DataArray:
     deg_to_rad = 3.141592653589793 / 180.0
+    analytic_data = 2.0 + np.cos(deg_to_rad * lon_mesh) ** 2 * np.cos(
+        2.0 * deg_to_rad * (90.0 - lat_mesh)
+    )
+    if ntime is not None:
+        time_modifier = np.arange(1, ntime + 1).reshape(ntime, 1, 1)
+        analytic_data = analytic_data.reshape([1] + list(analytic_data.shape))
+        analytic_data = np.repeat(analytic_data, ntime, axis=0)
+        analytic_data = time_modifier * analytic_data
     return xr.DataArray(
-        2.0
-        + np.cos(deg_to_rad * lon_mesh) ** 2
-        * np.cos(2.0 * deg_to_rad * (90.0 - lat_mesh)),
+        analytic_data,
         dims=dims,
     )
 
