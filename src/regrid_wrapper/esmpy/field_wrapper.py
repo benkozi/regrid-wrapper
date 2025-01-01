@@ -1,7 +1,7 @@
 import abc
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Tuple, Literal
+from typing import Tuple, Literal, Dict
 
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
@@ -13,11 +13,14 @@ from mpi4py import MPI
 
 
 @contextmanager
-def open_nc(path: Path, mode: Literal["r", "w"] = "r"):
+def open_nc(
+    path: Path, mode: Literal["r", "w"] = "r", clobber: bool = False
+) -> nc.Dataset:
     ds = nc.Dataset(
         path,
         mode=mode,
         parallel=True,
+        clobber=clobber,
         comm=MPI.COMM_WORLD,
         info=MPI.Info(),
     )
@@ -25,6 +28,29 @@ def open_nc(path: Path, mode: Literal["r", "w"] = "r"):
         yield ds
     finally:
         ds.close()
+
+
+def copy_nc_attrs(src: nc.Dataset | nc.Variable, dst: nc.Dataset | nc.Variable) -> None:
+    for attr in src.ncattrs():
+        if attr.startswith("_"):
+            continue
+        setattr(dst, attr, getattr(src, attr))
+
+
+def resize_nc(src_path: Path, dst_path: Path, new_sizes: Dict[str, int]) -> None:
+    with open_nc(src_path, mode="r") as src:
+        with open_nc(dst_path, mode="w") as dst:
+            copy_nc_attrs(src, dst)
+            for dim in src.dimensions:
+                dst.createDimension(dim, size=new_sizes[dim])
+            for varname, var in src.variables.items():
+                fill_value = (
+                    getattr(var, "_FillValue") if hasattr(var, "_FillValue") else None
+                )
+                new_var = dst.createVariable(
+                    varname, var.dtype, var.dimensions, fill_value=fill_value
+                )
+                copy_nc_attrs(var, new_var)
 
 
 class Dimension(BaseModel):
