@@ -41,7 +41,7 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
             dst_field,
             regrid_method=regrid_method,
             filename=str(self._spec.output_weight_filename),
-            unmapped_action=esmpy.UnmappedAction.ERROR,
+            unmapped_action=esmpy.UnmappedAction.IGNORE,
             # ignore_degenerate=True,
         )
 
