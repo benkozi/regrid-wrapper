@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Tuple, Literal
 
 import numpy as np
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 import esmpy
 import xarray as xr
 import netCDF4 as nc
@@ -174,3 +174,16 @@ class NcToField(BaseModel):
             field.data[:] = load_variable_data(ds.variables[self.name], target_dims)
             fwrap = FieldWrapper(value=field, dims=target_dims)
             return fwrap
+
+
+class FieldWrapperCollection(BaseModel):
+    value: Tuple[FieldWrapper, ...]
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _validate_value_(
+        cls, value: Tuple[FieldWrapper, ...]
+    ) -> Tuple[FieldWrapper, ...]:
+        if len(set([id(ii.value.grid) for ii in value])) != 1:
+            raise ValueError("all fields must share the same grid")
+        return value
