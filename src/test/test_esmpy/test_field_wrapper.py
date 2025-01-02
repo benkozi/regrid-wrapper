@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import esmpy
 import numpy as np
 
 from regrid_wrapper.concrete.rrfs_dust_data import RRFS_DUST_DATA_ENV
@@ -45,8 +46,33 @@ def fake_field_wrapper_collection(tmp_path_shared: Path) -> FieldWrapperCollecti
     return FieldWrapperCollection(value=fwraps)
 
 
+class TestGridWrapper:
+
+    @pytest.mark.mpi
+    def test_fill_nc_variables(
+        self,
+        tmp_path_shared: Path,
+        fake_field_wrapper_collection: FieldWrapperCollection,
+    ):
+        gwrap = fake_field_wrapper_collection.value[0].gwrap
+        expected = COMM.rank + 1
+        staggerloc = esmpy.StaggerLoc.CENTER
+        gwrap.spec.get_x_data(gwrap.value, staggerloc)[:] = expected
+        gwrap.spec.get_y_data(gwrap.value, staggerloc)[:] = expected
+
+        path = tmp_path_shared / DUST_FILENAME
+        gwrap.fill_nc_variables(path)
+
+        with open_nc(path) as ds:
+            for varname in [gwrap.spec.x_center, gwrap.spec.y_center]:
+                var = ds.variables[varname]
+                actual = load_variable_data(var, gwrap.dims)
+                assert (expected - actual).sum() == 0
+
+
 class TestFieldWrapper:
 
+    @pytest.mark.mpi
     def test_fill_nc_variable(
         self,
         tmp_path_shared: Path,
@@ -61,13 +87,12 @@ class TestFieldWrapper:
         with open_nc(path, "r") as ds:
             var = ds.variables[fwrap.value.name]
             actual = load_variable_data(var, fwrap.dims)
-            assert actual.min() == expected
-            assert actual.max() == expected
-            assert actual.mean() == expected
+            assert (actual - expected).sum() == 0
 
 
 class TestFieldWrapperCollection:
 
+    @pytest.mark.mpi
     def test(self, fake_field_wrapper_collection: FieldWrapperCollection) -> None:
         assert len(fake_field_wrapper_collection.value) > 1
         for fwrap in fake_field_wrapper_collection.value:

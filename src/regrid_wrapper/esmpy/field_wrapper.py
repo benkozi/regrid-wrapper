@@ -58,6 +58,7 @@ class Dimension(BaseModel):
     size: int
     lower: int
     upper: int
+    staggerloc: int
     coordinate_type: Literal["y", "x", "time"]
 
 
@@ -111,11 +112,8 @@ class GridSpec(BaseModel):
     y_dim: str
     x_corner: str | None = None
     y_corner: str | None = None
-
-
-class GridWrapper(AbstractWrapper):
-    value: esmpy.Grid
-    spec: GridSpec
+    x_index: int = 0
+    y_index: int = 1
 
     @property
     def has_corners(self) -> bool:
@@ -131,13 +129,62 @@ class GridWrapper(AbstractWrapper):
             raise ValueError
         return self.y_corner
 
+    def get_x_data(self, grid: esmpy.Grid, staggerloc: esmpy.StaggerLoc) -> np.ndarray:
+        return grid.get_coords(self.x_index, staggerloc=staggerloc)
+
+    def get_y_data(self, grid: esmpy.Grid, staggerloc: esmpy.StaggerLoc) -> np.ndarray:
+        return grid.get_coords(self.y_index, staggerloc=staggerloc)
+
+    def create_grid_dims(
+        self, grid: esmpy.Grid, staggerloc: esmpy.StaggerLoc
+    ) -> DimensionCollection:
+        grid_shape = grid.size[staggerloc]
+        dims = DimensionCollection(
+            value=[
+                Dimension(
+                    name=self.x_dim,
+                    size=grid_shape[0],
+                    lower=grid.lower_bounds[staggerloc][self.x_index],
+                    upper=grid.upper_bounds[staggerloc][self.x_index],
+                    staggerloc=staggerloc,
+                    coordinate_type="x",
+                ),
+                Dimension(
+                    name=self.y_dim,
+                    size=grid_shape[1],
+                    lower=grid.lower_bounds[staggerloc][self.y_index],
+                    upper=grid.upper_bounds[staggerloc][self.y_index],
+                    staggerloc=staggerloc,
+                    coordinate_type="y",
+                ),
+            ]
+        )
+        return dims
+
+
+class GridWrapper(AbstractWrapper):
+    value: esmpy.Grid
+    spec: GridSpec
+
+    def fill_nc_variables(self, path: Path):
+        # tdk: needs to work with corners
+        with open_nc(path, "a") as ds:
+            staggerloc = esmpy.StaggerLoc.CENTER
+            x_center_data = self.spec.get_x_data(self.value, staggerloc)
+            set_variable_data(
+                ds.variables[self.spec.x_center], self.dims, x_center_data
+            )
+            y_center_data = self.spec.get_y_data(self.value, staggerloc)
+            set_variable_data(
+                ds.variables[self.spec.y_center], self.dims, y_center_data
+            )
+
 
 class NcToGrid(BaseModel):
     path: Path
     spec: GridSpec
 
     def create_grid_wrapper(self) -> GridWrapper:
-        x, y = 0, 1
         with open_nc(self.path, "r") as ds:
             grid_shape = np.array(
                 [
@@ -145,41 +192,22 @@ class NcToGrid(BaseModel):
                     ds.dimensions[self.spec.y_dim].size,
                 ]
             )
+            staggerloc = esmpy.StaggerLoc.CENTER
             grid = esmpy.Grid(
                 grid_shape,
-                staggerloc=esmpy.StaggerLoc.CENTER,
+                staggerloc=staggerloc,
                 coord_sys=esmpy.CoordSys.SPH_DEG,
             )
-            dims = DimensionCollection(
-                value=[
-                    Dimension(
-                        name=self.spec.x_dim,
-                        size=grid_shape[0],
-                        lower=grid.lower_bounds[esmpy.StaggerLoc.CENTER][x],
-                        upper=grid.upper_bounds[esmpy.StaggerLoc.CENTER][x],
-                        coordinate_type="x",
-                    ),
-                    Dimension(
-                        name=self.spec.y_dim,
-                        size=grid_shape[1],
-                        lower=grid.lower_bounds[esmpy.StaggerLoc.CENTER][y],
-                        upper=grid.upper_bounds[esmpy.StaggerLoc.CENTER][y],
-                        coordinate_type="y",
-                    ),
-                ]
-            )
-            grid_x_center_coords = grid.get_coords(
-                x, staggerloc=esmpy.StaggerLoc.CENTER
-            )
+            dims = self.spec.create_grid_dims(grid, staggerloc)
+            grid_x_center_coords = self.spec.get_x_data(grid, staggerloc)
             grid_x_center_coords[:] = load_variable_data(
                 ds.variables[self.spec.x_center], dims
             )
-            grid_y_center_coords = grid.get_coords(
-                y, staggerloc=esmpy.StaggerLoc.CENTER
-            )
+            grid_y_center_coords = self.spec.get_y_data(grid, staggerloc)
             grid_y_center_coords[:] = load_variable_data(
                 ds.variables[self.spec.y_center], dims
             )
+            # tdk: needs to work with corners
 
             gwrap = GridWrapper(value=grid, dims=dims, spec=self.spec)
             return gwrap
@@ -187,6 +215,7 @@ class NcToGrid(BaseModel):
 
 class FieldWrapper(AbstractWrapper):
     value: esmpy.Field
+    gwrap: GridWrapper
 
     def fill_nc_variable(self, path: Path):
         with open_nc(path, "a") as ds:
@@ -213,6 +242,7 @@ class NcToField(BaseModel):
                     size=ndbounds[0],
                     lower=0,
                     upper=ndbounds[0],
+                    staggerloc=self.staggerloc,
                     coordinate_type="time",
                 )
                 target_dims = DimensionCollection(
@@ -225,12 +255,16 @@ class NcToField(BaseModel):
                 staggerloc=self.staggerloc,
             )
             field.data[:] = load_variable_data(ds.variables[self.name], target_dims)
-            fwrap = FieldWrapper(value=field, dims=target_dims)
+            fwrap = FieldWrapper(value=field, dims=target_dims, gwrap=self.gwrap)
             return fwrap
 
 
 class FieldWrapperCollection(BaseModel):
     value: Tuple[FieldWrapper, ...]
+
+    def fill_nc_variables(self, path: Path) -> None:
+        for fwrap in self.value:
+            fwrap.fill_nc_variable(path)
 
     @field_validator("value", mode="before")
     @classmethod
