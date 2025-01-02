@@ -1,12 +1,11 @@
 import abc
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Tuple, Literal, Dict, List, Sequence
+from typing import Tuple, Literal, Dict, Sequence
 
 import numpy as np
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 import esmpy
-import xarray as xr
 import netCDF4 as nc
 
 from mpi4py import MPI
@@ -22,8 +21,8 @@ def open_nc(
     ds = nc.Dataset(
         path,
         mode=mode,
-        parallel=parallel,
         clobber=clobber,
+        parallel=parallel,
         comm=MPI.COMM_WORLD,
         info=MPI.Info(),
     )
