@@ -1,5 +1,4 @@
 import random
-import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Sequence, List
@@ -14,7 +13,6 @@ from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.context.env import ENV
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.model.spec import (
-    AbstractRegridSpec,
     GenerateWeightFileSpec,
 )
 
@@ -134,10 +132,6 @@ def create_smoke_dust_grid_file(path: Path, field_names: List[str]) -> xr.Datase
         ds[field_name].attrs["foo"] = random.random()
     ds.to_netcdf(path)
     return ds
-
-
-def ncdump(path: Path) -> None:
-    subprocess.check_call(["ncdump", "-h", str(path)])
 
 
 def create_dust_data_file(path: Path) -> xr.Dataset:

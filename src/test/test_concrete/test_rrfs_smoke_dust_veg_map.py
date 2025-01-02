@@ -12,9 +12,9 @@ import xarray as xr
 from test.conftest import (
     create_smoke_dust_grid_file,
     create_rrfs_grid_file,
-    ncdump,
     TEST_LOGGER,
 )
+from regrid_wrapper.common import ncdump
 
 
 @pytest.mark.skip("dev only")

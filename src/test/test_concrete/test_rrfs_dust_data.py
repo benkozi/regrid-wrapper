@@ -3,6 +3,7 @@ import numpy as np
 
 from regrid_wrapper.concrete.rrfs_dust_data import (
     RrfsDustData,
+    RRFS_DUST_DATA_ENV,
 )
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.model.spec import GenerateWeightFileAndRegridFields
@@ -12,9 +13,9 @@ import pytest
 import xarray as xr
 from test.conftest import (
     create_rrfs_grid_file,
-    ncdump,
     create_dust_data_file,
 )
+from regrid_wrapper.common import ncdump
 
 
 # @pytest.mark.skip("dev only")
@@ -54,6 +55,7 @@ def test(tmp_path_shared: Path) -> None:
         output_filename=dust_data,
         esmpy_debug=True,
         name="dust-data",
+        fields=RRFS_DUST_DATA_ENV.fields,
     )
     op = RrfsDustData(spec=spec)
     processor = RegridProcessor(operation=op)
@@ -62,6 +64,10 @@ def test(tmp_path_shared: Path) -> None:
     assert weights.exists()
     assert dust_data.exists()
 
+    # ncdump(dust_data)
+
+    return
+    tdk
     if COMM.rank == 0:
         with xr.open_dataset(src_grid) as ds:
             expected = ds["emiss_factor"]

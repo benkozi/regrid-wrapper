@@ -14,7 +14,8 @@ from regrid_wrapper.esmpy.field_wrapper import (
     load_variable_data,
     GridSpec,
 )
-from test.conftest import tmp_path_shared, create_dust_data_file, ncdump
+from test.conftest import tmp_path_shared, create_dust_data_file
+from regrid_wrapper.common import ncdump
 from regrid_wrapper.context.comm import COMM
 import pytest
 
@@ -101,6 +102,7 @@ class TestFieldWrapperCollection:
             assert fwrap.dims.value[2].name == "time"
 
 
+@pytest.mark.mpi
 def test_resize_nc(tmp_path_shared: Path) -> None:
     src_path = create_dust_file(tmp_path_shared)
     dst_path = tmp_path_shared / "data_resized.nc"
