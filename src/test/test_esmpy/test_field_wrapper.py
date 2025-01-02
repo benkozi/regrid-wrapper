@@ -11,6 +11,7 @@ from regrid_wrapper.esmpy.field_wrapper import (
     resize_nc,
     open_nc,
     load_variable_data,
+    GridSpec,
 )
 from test.conftest import tmp_path_shared, create_dust_data_file, ncdump
 from regrid_wrapper.context.comm import COMM
@@ -32,9 +33,8 @@ def create_dust_file(dst_dir: Path) -> Path:
 def fake_field_wrapper_collection(tmp_path_shared: Path) -> FieldWrapperCollection:
     path = create_dust_file(tmp_path_shared)
 
-    nc2grid = NcToGrid(
-        path=path, x_center="geolon", y_center="geolat", x_dim="lon", y_dim="lat"
-    )
+    spec = GridSpec(x_center="geolon", y_center="geolat", x_dim="lon", y_dim="lat")
+    nc2grid = NcToGrid(path=path, spec=spec)
     gwrap = nc2grid.create_grid_wrapper()
 
     fwraps = []
