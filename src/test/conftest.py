@@ -1,7 +1,8 @@
 import random
 from contextlib import contextmanager
+from dataclasses import field
 from pathlib import Path
-from typing import Any, Iterator, Sequence, List
+from typing import Any, Iterator, Sequence, List, Dict
 
 import numpy as np
 import pytest
@@ -134,6 +135,9 @@ def create_smoke_dust_grid_file(path: Path, field_names: List[str]) -> xr.Datase
     return ds
 
 
+DUST_FIELD_OFFSETS = {ii: random.randint(1, 1000) for ii in RRFS_DUST_DATA_ENV.fields}
+
+
 def create_dust_data_file(path: Path) -> xr.Dataset:
     if path.exists():
         raise ValueError(f"path exists: {path}")
@@ -155,7 +159,12 @@ def create_dust_data_file(path: Path) -> xr.Dataset:
         ds[field_name] = create_analytic_data_array(
             ["time", "lat", "lon"], lon_mesh, lat_mesh, ntime=12
         )
+        ds[field_name] += DUST_FIELD_OFFSETS[field_name]
         ds[field_name].attrs["foo"] = random.random()
     ds.attrs["foo"] = random.random()
     ds.to_netcdf(path)
     return ds
+
+
+def assert_zero_sum_diff(actual: np.ndarray, expected: np.ndarray) -> None:
+    assert (actual - expected).sum() == 0

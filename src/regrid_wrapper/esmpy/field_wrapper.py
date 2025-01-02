@@ -1,7 +1,7 @@
 import abc
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Tuple, Literal, Dict
+from typing import Tuple, Literal, Dict, List, Sequence
 
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
@@ -14,12 +14,15 @@ from mpi4py import MPI
 
 @contextmanager
 def open_nc(
-    path: Path, mode: Literal["r", "w", "a"] = "r", clobber: bool = False
+    path: Path,
+    mode: Literal["r", "w", "a"] = "r",
+    clobber: bool = False,
+    parallel: bool = True,
 ) -> nc.Dataset:
     ds = nc.Dataset(
         path,
         mode=mode,
-        parallel=True,
+        parallel=parallel,
         clobber=clobber,
         comm=MPI.COMM_WORLD,
         info=MPI.Info(),
@@ -37,7 +40,12 @@ def copy_nc_attrs(src: nc.Dataset | nc.Variable, dst: nc.Dataset | nc.Variable) 
         setattr(dst, attr, getattr(src, attr))
 
 
-def resize_nc(src_path: Path, dst_path: Path, new_sizes: Dict[str, int]) -> None:
+def resize_nc(
+    src_path: Path,
+    dst_path: Path,
+    new_sizes: Dict[str, int],
+    copy_values_for: Sequence[str] | None = None,
+) -> None:
     with open_nc(src_path, mode="r") as src:
         with open_nc(dst_path, mode="w") as dst:
             copy_nc_attrs(src, dst)
@@ -51,6 +59,8 @@ def resize_nc(src_path: Path, dst_path: Path, new_sizes: Dict[str, int]) -> None
                     varname, var.dtype, var.dimensions, fill_value=fill_value
                 )
                 copy_nc_attrs(var, new_var)
+                if copy_values_for and varname in copy_values_for:
+                    new_var[:] = var[:]
 
 
 class Dimension(BaseModel):
@@ -138,12 +148,12 @@ class GridSpec(BaseModel):
     def create_grid_dims(
         self, grid: esmpy.Grid, staggerloc: esmpy.StaggerLoc
     ) -> DimensionCollection:
-        grid_shape = grid.size[staggerloc]
+        grid_shape = grid.max_index
         dims = DimensionCollection(
             value=[
                 Dimension(
                     name=self.x_dim,
-                    size=grid_shape[0],
+                    size=grid_shape[self.x_index],
                     lower=grid.lower_bounds[staggerloc][self.x_index],
                     upper=grid.upper_bounds[staggerloc][self.x_index],
                     staggerloc=staggerloc,
@@ -151,7 +161,7 @@ class GridSpec(BaseModel):
                 ),
                 Dimension(
                     name=self.y_dim,
-                    size=grid_shape[1],
+                    size=grid_shape[self.y_index],
                     lower=grid.lower_bounds[staggerloc][self.y_index],
                     upper=grid.upper_bounds[staggerloc][self.y_index],
                     staggerloc=staggerloc,

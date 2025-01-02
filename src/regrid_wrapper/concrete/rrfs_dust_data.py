@@ -67,7 +67,14 @@ class RrfsDustData(AbstractRegridOperation):
             src_grid_def.spec.y_dim: dst_gwrap.dims.get(dst_grid_def.spec.y_dim).size,
         }
         self._logger.info(f"resizing netcdf. new_sizes={new_sizes}")
-        resize_nc(self._spec.src_path, self._spec.output_filename, new_sizes)
+        if self._spec.output_filename.exists():
+            raise ValueError("output file must not exist")
+        resize_nc(
+            self._spec.src_path,
+            self._spec.output_filename,
+            new_sizes,
+            copy_values_for=["time"],
+        )
 
         dst_gwrap_output = copy(dst_gwrap)
         dst_gwrap_output.spec = src_gwrap.spec
