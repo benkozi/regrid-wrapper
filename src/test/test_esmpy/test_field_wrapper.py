@@ -10,14 +10,18 @@ from regrid_wrapper.esmpy.field_wrapper import (
     FieldWrapperCollection,
     resize_nc,
     open_nc,
+    load_variable_data,
 )
 from test.conftest import tmp_path_shared, create_dust_data_file, ncdump
 from regrid_wrapper.context.comm import COMM
 import pytest
 
 
+DUST_FILENAME = "data.nc"
+
+
 def create_dust_file(dst_dir: Path) -> Path:
-    path = dst_dir / "data.nc"
+    path = dst_dir / DUST_FILENAME
     if COMM.rank == 0:
         _ = create_dust_data_file(path)
     COMM.barrier()
@@ -39,6 +43,27 @@ def fake_field_wrapper_collection(tmp_path_shared: Path) -> FieldWrapperCollecti
         fwrap = nc2field.create_field_wrapper()
         fwraps.append(fwrap)
     return FieldWrapperCollection(value=fwraps)
+
+
+class TestFieldWrapper:
+
+    def test_fill_nc_variable(
+        self,
+        tmp_path_shared: Path,
+        fake_field_wrapper_collection: FieldWrapperCollection,
+    ):
+        fwrap = fake_field_wrapper_collection.value[0]
+        expected = COMM.rank + 1
+        fwrap.value.data.fill(expected)
+        # print(fwrap.value.data)
+        path = tmp_path_shared / DUST_FILENAME
+        fwrap.fill_nc_variable(path)
+        with open_nc(path, "r") as ds:
+            var = ds.variables[fwrap.value.name]
+            actual = load_variable_data(var, fwrap.dims)
+            assert actual.min() == expected
+            assert actual.max() == expected
+            assert actual.mean() == expected
 
 
 class TestFieldWrapperCollection:

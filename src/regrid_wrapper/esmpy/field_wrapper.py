@@ -14,7 +14,7 @@ from mpi4py import MPI
 
 @contextmanager
 def open_nc(
-    path: Path, mode: Literal["r", "w"] = "r", clobber: bool = False
+    path: Path, mode: Literal["r", "w", "a"] = "r", clobber: bool = False
 ) -> nc.Dataset:
     ds = nc.Dataset(
         path,
@@ -82,6 +82,20 @@ def load_variable_data(
     dim_map = {dim: ii for ii, dim in enumerate(var.dimensions)}
     axes = [dim_map[ii.name] for ii in target_dims.value]
     transposed_data = raw_data.transpose(axes)
+    return transposed_data
+
+
+def set_variable_data(
+    var: nc.Variable, target_dims: DimensionCollection, target_data: np.ndarray
+) -> np.ndarray:
+    dim_map = {dim.name: ii for ii, dim in enumerate(target_dims.value)}
+    axes = [dim_map[ii] for ii in var.dimensions]
+    transposed_data = target_data.transpose(axes)
+    slices = [
+        slice(target_dims.get(ii).lower, target_dims.get(ii).upper)
+        for ii in var.dimensions
+    ]
+    var[*slices] = transposed_data
     return transposed_data
 
 
@@ -165,6 +179,11 @@ class NcToGrid(BaseModel):
 
 class FieldWrapper(AbstractWrapper):
     value: esmpy.Field
+
+    def fill_nc_variable(self, path: Path):
+        with open_nc(path, "a") as ds:
+            var = ds.variables[self.value.name]
+            set_variable_data(var, self.dims, self.value.data)
 
 
 class NcToField(BaseModel):
