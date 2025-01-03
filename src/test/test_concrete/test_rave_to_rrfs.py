@@ -11,6 +11,7 @@ from regrid_wrapper.model.spec import (
 from regrid_wrapper.strategy.core import RegridProcessor
 
 from test.conftest import create_rrfs_grid_file
+import xarray as xr
 
 
 @pytest.mark.skip("dev only")
@@ -50,3 +51,8 @@ def test(tmp_path_shared: Path) -> None:
     processor.execute()
 
     assert Path(weights).exists()
+
+    if COMM.rank == 0:
+        with xr.open_dataset(weights) as ds:
+            n_s = ds["n_s"].values
+            assert n_s.sum() == 1655290
