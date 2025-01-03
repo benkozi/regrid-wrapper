@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Tuple, Literal, Dict, Sequence
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 import esmpy
 import netCDF4 as nc
 
@@ -78,7 +78,7 @@ class DimensionCollection(BaseModel):
         for ii in self.value:
             if ii.name == name:
                 return ii
-        raise ValueError
+        raise ValueError(f"dimension not found: {name}")
 
 
 def load_variable_data(
@@ -121,8 +121,25 @@ class GridSpec(BaseModel):
     y_dim: str
     x_corner: str | None = None
     y_corner: str | None = None
+    x_corner_dim: str | None = None
+    y_corner_dim: str | None = None
     x_index: int = 0
     y_index: int = 1
+
+    @model_validator(mode="after")
+    def _validate_model_(self) -> "GridSpec":
+        corner_meta = [
+            self.x_corner,
+            self.y_corner,
+            self.x_corner_dim,
+            self.y_corner_dim,
+        ]
+        is_given_sum = sum([ii is not None for ii in corner_meta])
+        if is_given_sum > 0 and is_given_sum != len(corner_meta):
+            raise ValueError(
+                "if one corner name is supplied, then all must be supplied"
+            )
+        return self
 
     @property
     def has_corners(self) -> bool:
@@ -145,22 +162,27 @@ class GridSpec(BaseModel):
         return grid.get_coords(self.y_index, staggerloc=staggerloc)
 
     def create_grid_dims(
-        self, grid: esmpy.Grid, staggerloc: esmpy.StaggerLoc
+        self, ds: nc.Dataset, grid: esmpy.Grid, staggerloc: esmpy.StaggerLoc
     ) -> DimensionCollection:
-        grid_shape = grid.max_index
+        if staggerloc == esmpy.StaggerLoc.CENTER:
+            x_dim, y_dim = self.x_dim, self.y_dim
+        elif staggerloc == esmpy.StaggerLoc.CORNER:
+            x_dim, y_dim = self.x_corner_dim, self.y_corner_dim
+        else:
+            raise NotImplementedError(staggerloc)
         dims = DimensionCollection(
             value=[
                 Dimension(
-                    name=self.x_dim,
-                    size=grid_shape[self.x_index],
+                    name=x_dim,
+                    size=ds.dimensions[x_dim].size,
                     lower=grid.lower_bounds[staggerloc][self.x_index],
                     upper=grid.upper_bounds[staggerloc][self.x_index],
                     staggerloc=staggerloc,
                     coordinate_type="x",
                 ),
                 Dimension(
-                    name=self.y_dim,
-                    size=grid_shape[self.y_index],
+                    name=y_dim,
+                    size=ds.dimensions[y_dim].size,
                     lower=grid.lower_bounds[staggerloc][self.y_index],
                     upper=grid.upper_bounds[staggerloc][self.y_index],
                     staggerloc=staggerloc,
@@ -174,9 +196,11 @@ class GridSpec(BaseModel):
 class GridWrapper(AbstractWrapper):
     value: esmpy.Grid
     spec: GridSpec
+    corner_dims: DimensionCollection | None = None
 
     def fill_nc_variables(self, path: Path):
-        # tdk: needs to work with corners
+        if self.corner_dims is not None:
+            raise NotImplementedError
         with open_nc(path, "a") as ds:
             staggerloc = esmpy.StaggerLoc.CENTER
             x_center_data = self.spec.get_x_data(self.value, staggerloc)
@@ -207,7 +231,7 @@ class NcToGrid(BaseModel):
                 staggerloc=staggerloc,
                 coord_sys=esmpy.CoordSys.SPH_DEG,
             )
-            dims = self.spec.create_grid_dims(grid, staggerloc)
+            dims = self.spec.create_grid_dims(ds, grid, staggerloc)
             grid_x_center_coords = self.spec.get_x_data(grid, staggerloc)
             grid_x_center_coords[:] = load_variable_data(
                 ds.variables[self.spec.x_center], dims
@@ -216,10 +240,32 @@ class NcToGrid(BaseModel):
             grid_y_center_coords[:] = load_variable_data(
                 ds.variables[self.spec.y_center], dims
             )
-            # tdk: needs to work with corners
 
-            gwrap = GridWrapper(value=grid, dims=dims, spec=self.spec)
+            if self.spec.has_corners:
+                corner_dims = self._add_corner_coords_(ds, grid)
+            else:
+                corner_dims = None
+
+            gwrap = GridWrapper(
+                value=grid, dims=dims, spec=self.spec, corner_dims=corner_dims
+            )
             return gwrap
+
+    def _add_corner_coords_(
+        self, ds: nc.Dataset, grid: esmpy.Grid
+    ) -> DimensionCollection:
+        staggerloc = esmpy.StaggerLoc.CORNER
+        grid.add_coords(staggerloc)
+        dims = self.spec.create_grid_dims(ds, grid, staggerloc)
+        grid_x_corner_coords = self.spec.get_x_data(grid, staggerloc)
+        grid_x_corner_coords[:] = load_variable_data(
+            ds.variables[self.spec.x_corner], dims
+        )
+        grid_y_corner_coords = self.spec.get_y_data(grid, staggerloc)
+        grid_y_corner_coords[:] = load_variable_data(
+            ds.variables[self.spec.y_corner], dims
+        )
+        return dims
 
 
 class FieldWrapper(AbstractWrapper):

@@ -14,7 +14,7 @@ from regrid_wrapper.esmpy.field_wrapper import (
     load_variable_data,
     GridSpec,
 )
-from test.conftest import tmp_path_shared, create_dust_data_file
+from test.conftest import tmp_path_shared, create_dust_data_file, create_rrfs_grid_file
 from regrid_wrapper.common import ncdump
 from regrid_wrapper.context.comm import COMM
 import pytest
@@ -48,6 +48,29 @@ def fake_field_wrapper_collection(tmp_path_shared: Path) -> FieldWrapperCollecti
 
 
 class TestGridWrapper:
+
+    @pytest.mark.mpi
+    def test_with_grid_corners(self, tmp_path_shared: Path) -> None:
+        path = tmp_path_shared / "grid_with_corners.nc"
+        if COMM.rank == 0:
+            _ = create_rrfs_grid_file(path, with_corners=True)
+        COMM.barrier()
+        ncdump(path)
+
+        spec = GridSpec(
+            x_center="grid_lont",
+            y_center="grid_latt",
+            x_corner="grid_lon",
+            y_corner="grid_lat",
+            x_dim="grid_xt",
+            y_dim="grid_yt",
+            x_corner_dim="grid_x",
+            y_corner_dim="grid_y",
+        )
+        gwrap = NcToGrid(path=path, spec=spec).create_grid_wrapper()
+
+        assert gwrap.corner_dims is not None
+        assert gwrap.spec.has_corners
 
     @pytest.mark.mpi
     def test_fill_nc_variables(

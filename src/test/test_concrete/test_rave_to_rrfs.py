@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from regrid_wrapper.concrete.rave_to_rrfs import RaveToRrfs
@@ -10,7 +11,7 @@ from regrid_wrapper.model.spec import (
 
 from regrid_wrapper.strategy.core import RegridProcessor
 
-from test.conftest import create_rrfs_grid_file
+from test.conftest import create_rrfs_grid_file, assert_zero_sum_diff
 import xarray as xr
 
 
@@ -54,5 +55,4 @@ def test(tmp_path_shared: Path) -> None:
 
     if COMM.rank == 0:
         with xr.open_dataset(weights) as ds:
-            n_s = ds["n_s"].values
-            assert n_s.sum() == 1655290
+            assert_zero_sum_diff(ds["S"].values, np.array(1.0))
