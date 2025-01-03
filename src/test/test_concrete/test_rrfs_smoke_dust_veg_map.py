@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import numpy as np
 
 from regrid_wrapper.concrete.rrfs_smoke_dust_veg_map import RrfsSmokeDustVegetationMap
 from regrid_wrapper.context.comm import COMM
@@ -10,9 +9,8 @@ import pytest
 
 import xarray as xr
 from test.conftest import (
-    create_smoke_dust_grid_file,
+    create_veg_map_file,
     create_rrfs_grid_file,
-    TEST_LOGGER,
     assert_zero_sum_diff,
 )
 from regrid_wrapper.common import ncdump
@@ -43,8 +41,8 @@ def test(tmp_path_shared: Path) -> None:
     veg_map = tmp_path_shared / "veg_map.nc"
 
     if COMM.rank == 0:
-        _ = create_smoke_dust_grid_file(src_grid, ["emiss_factor"])
-        _ = create_rrfs_grid_file(dst_grid, fields=["emiss_factor"])
+        _ = create_veg_map_file(src_grid, ["emiss_factor"])
+        _ = create_rrfs_grid_file(dst_grid)
     COMM.barrier()
 
     spec = GenerateWeightFileAndRegridFields(
@@ -72,7 +70,7 @@ def test(tmp_path_shared: Path) -> None:
             # TEST_LOGGER.debug(actual.to_dataframe().describe())
         assert_zero_sum_diff(actual.values, expected.values)
         assert expected.attrs == actual.attrs
-        # ncdump(veg_map)
+        ncdump(veg_map)
 
         with xr.open_dataset(weights) as ds:
             n_s = ds.sizes["n_s"]

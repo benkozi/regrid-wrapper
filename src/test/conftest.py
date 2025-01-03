@@ -118,7 +118,7 @@ def create_rrfs_grid_file(
     return ds
 
 
-def create_smoke_dust_grid_file(path: Path, field_names: List[str]) -> xr.Dataset:
+def create_veg_map_file(path: Path, field_names: List[str]) -> xr.Dataset:
     if path.exists():
         raise ValueError(f"path exists: {path}")
     lon = np.linspace(230, 300, 71)

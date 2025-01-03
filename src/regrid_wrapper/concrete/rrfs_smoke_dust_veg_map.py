@@ -1,82 +1,108 @@
-import esmpy
-import numpy as np
-import xarray as xr
-from netCDF4 import Dataset
+from copy import copy
+from pathlib import Path
 
-from regrid_wrapper.concrete.rave_to_rrfs import DatasetToGrid
+import esmpy
+
+from regrid_wrapper.esmpy.field_wrapper import (
+    GridWrapper,
+    NcToGrid,
+    GridSpec,
+    FieldWrapper,
+    NcToField,
+    resize_nc,
+)
 from regrid_wrapper.model.spec import GenerateWeightFileAndRegridFields
 from regrid_wrapper.strategy.operation import AbstractRegridOperation
-from mpi4py import MPI
 
 
 class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
 
+    def _create_source_grid_wrapper_(self) -> GridWrapper:
+        src_grid_def = NcToGrid(
+            path=self._spec.src_path,
+            spec=GridSpec(
+                x_center="geolon",
+                y_center="geolat",
+                x_dim="geolon",
+                y_dim="geolat",
+            ),
+        )
+        src_gwrap = src_grid_def.create_grid_wrapper()
+        return src_gwrap
+
+    def _create_destination_grid_wrapper_(self):
+        dst_grid_def = NcToGrid(
+            path=self._spec.dst_path,
+            spec=GridSpec(
+                x_center="grid_lont",
+                y_center="grid_latt",
+                x_dim="grid_xt",
+                y_dim="grid_yt",
+            ),
+        )
+        dst_gwrap = dst_grid_def.create_grid_wrapper()
+        return dst_gwrap
+
+    @staticmethod
+    def _create_field_wrapper_(
+        field_name: str, path: Path, gwrap: GridWrapper
+    ) -> FieldWrapper:
+        nc2field = NcToField(
+            path=path,
+            name=field_name,
+            gwrap=gwrap,
+        )
+        fwrap = nc2field.create_field_wrapper()
+        return fwrap
+
     def run(self) -> None:
         assert isinstance(self._spec, GenerateWeightFileAndRegridFields)
 
-        src_grid_def = DatasetToGrid(
-            path=self._spec.src_path,
-            x_center="geolon",
-            y_center="geolat",
-            x_corner=None,
-            y_corner=None,
-            fields=("emiss_factor",),
-        )
-        src_grid = src_grid_def.create_esmpy_grid()
+        field_to_regrid = "emiss_factor"
 
-        dst_grid_def = DatasetToGrid(
-            path=self._spec.dst_path,
-            x_center="grid_lont",
-            y_center="grid_latt",
-        )
-        dst_grid = dst_grid_def.create_esmpy_grid()
+        src_gwrap = self._create_source_grid_wrapper_()
+        dst_gwrap = self._create_destination_grid_wrapper_()
 
-        src_field = list(src_grid_def.iter_esmpy_fields(src_grid))[0]
-        dst_field = dst_grid_def.create_empty_esmpy_field(dst_grid, "emiss_factor")
+        src_fwrap = self._create_field_wrapper_(
+            field_to_regrid, self._spec.src_path, src_gwrap
+        )
+
+        new_sizes = {
+            src_gwrap.spec.x_dim: dst_gwrap.dims.get(dst_gwrap.spec.x_dim).size,
+            src_gwrap.spec.y_dim: dst_gwrap.dims.get(dst_gwrap.spec.y_dim).size,
+        }
+        self._logger.info(f"resizing netcdf. new_sizes={new_sizes}")
+        if self._spec.output_filename.exists():
+            raise ValueError("output file must not exist")
+        resize_nc(
+            self._spec.src_path,
+            self._spec.output_filename,
+            new_sizes,
+        )
+
+        dst_gwrap_output = copy(dst_gwrap)
+        dst_gwrap_output.spec = src_gwrap.spec
+        dst_gwrap_output.dims = src_gwrap.dims
+        dst_gwrap_output.fill_nc_variables(self._spec.output_filename)
+
+        dst_fwrap = self._create_field_wrapper_(
+            field_to_regrid, self._spec.output_filename, dst_gwrap_output
+        )
 
         self._logger.info("starting weight file generation")
         regrid_method = esmpy.RegridMethod.BILINEAR
         regridder = esmpy.Regrid(
-            src_field,
-            dst_field,
+            src_fwrap.value,
+            dst_fwrap.value,
             regrid_method=regrid_method,
             filename=str(self._spec.output_weight_filename),
-            unmapped_action=esmpy.UnmappedAction.IGNORE,
-            # ignore_degenerate=True,
+            unmapped_action=esmpy.UnmappedAction.ERROR,
         )
 
-        self._logger.info("filling destination array")
-        ds_in = xr.open_dataset(self._spec.src_path)
-        ds_out = xr.open_dataset(self._spec.dst_path)
-
-        ds = Dataset(
-            self._spec.output_filename,
-            mode="w",
-            parallel=True,
-            comm=MPI.COMM_WORLD,
-            info=MPI.Info(),
+        self._logger.info(f"regridding field: {field_to_regrid}")
+        regridder(
+            src_fwrap.value,
+            dst_fwrap.value,
+            zero_region=esmpy.Region.SELECT,
         )
-        ds.setncatts(ds_in.attrs)
-        dlat = ds.createDimension("lat", ds_out.sizes["grid_yt"])
-        dlon = ds.createDimension("lon", ds_out.sizes["grid_xt"])
-        dgeolat = ds.createDimension("geolat", ds_out.sizes["grid_yt"])
-        dgeolon = ds.createDimension("geolon", ds_out.sizes["grid_xt"])
-        geolon = ds.createVariable("geolon", np.float_, ["lat", "lon"])
-        geolon.setncatts(ds_in["geolon"].attrs)
-        geolat = ds.createVariable("geolat", np.float_, ["lat", "lon"])
-        geolat.setncatts(ds_in["geolat"].attrs)
-        geolat[:] = ds_out[dst_grid_def.y_center]
-        geolon[:] = ds_out[dst_grid_def.x_center]
-        emiss_factor = ds.createVariable(
-            "emiss_factor", np.float_, ["geolat", "geolon"]
-        )
-        emiss_factor.setncatts(ds_in["emiss_factor"].attrs)
-
-        ds_in.close()
-        ds_out.close()
-
-        dst_grid_def.fill_array(
-            dst_grid, emiss_factor, dst_field.data, slice_side="lhs"
-        )
-
-        ds.close()
+        dst_fwrap.fill_nc_variable(self._spec.output_filename)
