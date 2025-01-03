@@ -13,6 +13,7 @@ from test.conftest import (
     create_smoke_dust_grid_file,
     create_rrfs_grid_file,
     TEST_LOGGER,
+    assert_zero_sum_diff,
 )
 from regrid_wrapper.common import ncdump
 
@@ -69,10 +70,9 @@ def test(tmp_path_shared: Path) -> None:
         with xr.open_dataset(veg_map) as ds:
             actual = ds["emiss_factor"]
             # TEST_LOGGER.debug(actual.to_dataframe().describe())
-        diff = expected.values - actual.values
-        assert np.max(diff) == 0.0
+        assert_zero_sum_diff(actual.values, expected.values)
         assert expected.attrs == actual.attrs
-        ncdump(veg_map)
+        # ncdump(veg_map)
 
         with xr.open_dataset(weights) as ds:
             n_s = ds.sizes["n_s"]
