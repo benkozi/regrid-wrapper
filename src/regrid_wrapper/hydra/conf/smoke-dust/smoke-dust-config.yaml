@@ -1,0 +1,2 @@
+defaults:
+  - operation: rrfs_conus_25km

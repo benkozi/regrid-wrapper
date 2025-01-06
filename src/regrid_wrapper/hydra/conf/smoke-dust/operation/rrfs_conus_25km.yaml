@@ -1,0 +1,15 @@
+key: RRFS_CONUS_25km
+root_dir: /scratch2/NAGAPE/epic/Ben.Koziol/staged-data/RRFS_CONUS_25km
+rrfs_grid:
+  path: ds_out_base.nc
+rave:
+  path: grid_in.nc
+  output_weights: weight_file.nc
+veg_map:
+  src: /scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/veg_map.nc
+  output_weights: weights-veg_map-from-NA_3km.nc
+  output_filename: veg_map.nc
+dust:
+  src: path
+  output_weights: path
+  output_filename: path
