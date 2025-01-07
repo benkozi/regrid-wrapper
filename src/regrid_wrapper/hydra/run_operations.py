@@ -19,7 +19,7 @@ def do_run_operations(cfg: SmokeDustRegridConfig) -> None:
 @hydra.main(version_base=None, config_path="conf", config_name="smoke-dust-config")
 def do_run_operations_cli(cfg: DictConfig) -> None:
     sd_cfg = SmokeDustRegridConfig.model_validate(cfg)
-    do_run_operations_cli(sd_cfg)
+    do_run_operations(sd_cfg)
 
 
 if __name__ == "__main__":
