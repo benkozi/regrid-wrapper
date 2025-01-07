@@ -43,4 +43,17 @@ class SourceDefinition(BaseModel):
 class SmokeDustRegridConfig(BaseModel):
     target_grid: RrfsGridKey
     target_components: Tuple[ComponentKey, ...] = Field(min_length=1)
+    root_output_directory: PathType
     source_definition: SourceDefinition
+
+    @property
+    def output_directory(self) -> PathType:
+        return self.root_output_directory / "output"
+
+    @property
+    def log_directory(self) -> PathType:
+        return self.root_output_directory / "logs"
+
+    @property
+    def main_job_path(self) -> PathType:
+        return self.root_output_directory / "main_job.sh"
