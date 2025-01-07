@@ -16,6 +16,7 @@ from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.model.spec import (
     GenerateWeightFileSpec,
 )
+import netCDF4 as nc
 
 TEST_LOGGER = LOGGER.getChild("test")
 
@@ -124,14 +125,32 @@ def create_veg_map_file(path: Path, field_names: List[str]) -> xr.Dataset:
     lon = np.linspace(230, 300, 71)
     lat = np.linspace(25, 50, 26)
     lon_mesh, lat_mesh = np.meshgrid(lon, lat)
-    ds = xr.Dataset()
-    dims = ["geolat", "geolon"]
-    ds["geolat"] = xr.DataArray(lat_mesh, dims=dims)
-    ds["geolon"] = xr.DataArray(lon_mesh, dims=dims)
-    for field_name in field_names:
-        ds[field_name] = create_analytic_data_array(dims, lon_mesh, lat_mesh)
-        ds[field_name].attrs["foo"] = random.random()
-    ds.to_netcdf(path)
+
+    with nc.Dataset(path, "w") as ds:
+        ds.createDimension("lon", 71)
+        ds.createDimension("geolon", 71)
+        ds.createDimension("lat", 26)
+        ds.createDimension("geolat", 26)
+        geolat = ds.createVariable("geolat", float, ("lat", "lon"))
+        geolat[:] = lat_mesh
+        geolon = ds.createVariable("geolon", float, ("lat", "lon"))
+        geolon[:] = lon_mesh
+        for field_name in field_names:
+            field = ds.createVariable(field_name, float, ("geolat", "geolon"))
+            field[:] = create_analytic_data_array(
+                ("geolat", "geolon"), lon_mesh, lat_mesh
+            )
+            field.setncattr("foo", random.random())
+
+    # ds = xr.Dataset()
+    # dims = ["geolat", "geolon"]
+    # ds["geolat"] = xr.DataArray(lat_mesh, dims=dims)
+    # ds["geolon"] = xr.DataArray(lon_mesh, dims=dims)
+    # for field_name in field_names:
+    #     ds[field_name] = create_analytic_data_array(dims, lon_mesh, lat_mesh)
+    #     ds[field_name].attrs["foo"] = random.random()
+    # ds.to_netcdf(path)
+
     return ds
 
 

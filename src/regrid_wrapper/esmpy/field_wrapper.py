@@ -1,7 +1,7 @@
 import abc
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Tuple, Literal, Dict, Sequence
+from typing import Tuple, Literal, Dict, Sequence, Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -49,7 +49,8 @@ def resize_nc(
         with open_nc(dst_path, mode="w") as dst:
             copy_nc_attrs(src, dst)
             for dim in src.dimensions:
-                dst.createDimension(dim, size=new_sizes[dim])
+                size = get_aliased_key(new_sizes, dim)
+                dst.createDimension(dim, size=size)
             for varname, var in src.variables.items():
                 fill_value = (
                     getattr(var, "_FillValue") if hasattr(var, "_FillValue") else None
@@ -62,8 +63,20 @@ def resize_nc(
                     new_var[:] = var[:]
 
 
+NameListType = Tuple[str, ...]
+
+
+def get_nc_dimension(ds: nc.Dataset, names: NameListType) -> nc.Dimension:
+    for name in names:
+        try:
+            return ds.dimensions[name]
+        except KeyError:
+            continue
+    raise ValueError(f"netCDF dimension not found: {names}")
+
+
 class Dimension(BaseModel):
-    name: str
+    name: NameListType
     size: int
     lower: int
     upper: int
@@ -74,11 +87,37 @@ class Dimension(BaseModel):
 class DimensionCollection(BaseModel):
     value: Tuple[Dimension, ...]
 
-    def get(self, name: str) -> Dimension:
-        for ii in self.value:
-            if ii.name == name:
-                return ii
+    def get(self, name: str | NameListType) -> Dimension:
+        if isinstance(name, str):
+            name_to_find = (name,)
+        else:
+            name_to_find = name
+        for jj in name_to_find:
+            for ii in self.value:
+                if jj in ii.name:
+                    return ii
         raise ValueError(f"dimension not found: {name}")
+
+
+def get_aliased_key(source: Dict, keys: NameListType | str) -> Any:
+    if isinstance(keys, str):
+        keys_to_find = (keys,)
+    else:
+        keys_to_find = keys
+    for key in keys_to_find:
+        try:
+            return source[key]
+        except KeyError:
+            continue
+    raise ValueError(f"key not found: {keys}")
+
+
+def create_dimension_map(dims: DimensionCollection) -> Dict[str, int]:
+    ret = {}
+    for idx, dim in enumerate(dims.value):
+        for name in dim.name:
+            ret[name] = idx
+    return ret
 
 
 def load_variable_data(
@@ -90,7 +129,7 @@ def load_variable_data(
     ]
     raw_data = var[*slices]
     dim_map = {dim: ii for ii, dim in enumerate(var.dimensions)}
-    axes = [dim_map[ii.name] for ii in target_dims.value]
+    axes = [get_aliased_key(dim_map, ii.name) for ii in target_dims.value]
     transposed_data = raw_data.transpose(axes)
     return transposed_data
 
@@ -98,8 +137,8 @@ def load_variable_data(
 def set_variable_data(
     var: nc.Variable, target_dims: DimensionCollection, target_data: np.ndarray
 ) -> np.ndarray:
-    dim_map = {dim.name: ii for ii, dim in enumerate(target_dims.value)}
-    axes = [dim_map[ii] for ii in var.dimensions]
+    dim_map = create_dimension_map(target_dims)
+    axes = [get_aliased_key(dim_map, ii) for ii in var.dimensions]
     transposed_data = target_data.transpose(axes)
     slices = [
         slice(target_dims.get(ii).lower, target_dims.get(ii).upper)
@@ -117,12 +156,12 @@ class AbstractWrapper(abc.ABC, BaseModel):
 class GridSpec(BaseModel):
     x_center: str
     y_center: str
-    x_dim: str
-    y_dim: str
+    x_dim: NameListType
+    y_dim: NameListType
     x_corner: str | None = None
     y_corner: str | None = None
-    x_corner_dim: str | None = None
-    y_corner_dim: str | None = None
+    x_corner_dim: NameListType | None = None
+    y_corner_dim: NameListType | None = None
     x_index: int = 0
     y_index: int = 1
 
@@ -174,7 +213,7 @@ class GridSpec(BaseModel):
             value=[
                 Dimension(
                     name=x_dim,
-                    size=ds.dimensions[x_dim].size,
+                    size=get_nc_dimension(ds, x_dim).size,
                     lower=grid.lower_bounds[staggerloc][self.x_index],
                     upper=grid.upper_bounds[staggerloc][self.x_index],
                     staggerloc=staggerloc,
@@ -182,7 +221,7 @@ class GridSpec(BaseModel):
                 ),
                 Dimension(
                     name=y_dim,
-                    size=ds.dimensions[y_dim].size,
+                    size=get_nc_dimension(ds, y_dim).size,
                     lower=grid.lower_bounds[staggerloc][self.y_index],
                     upper=grid.upper_bounds[staggerloc][self.y_index],
                     staggerloc=staggerloc,
@@ -221,8 +260,8 @@ class NcToGrid(BaseModel):
         with open_nc(self.path, "r") as ds:
             grid_shape = np.array(
                 [
-                    ds.dimensions[self.spec.x_dim].size,
-                    ds.dimensions[self.spec.y_dim].size,
+                    get_nc_dimension(ds, self.spec.x_dim).size,
+                    get_nc_dimension(ds, self.spec.y_dim).size,
                 ]
             )
             staggerloc = esmpy.StaggerLoc.CENTER
@@ -282,7 +321,7 @@ class NcToField(BaseModel):
     path: Path
     name: str
     gwrap: GridWrapper
-    dim_time: str | None = None
+    dim_time: NameListType | None = None
     staggerloc: int = esmpy.StaggerLoc.CENTER
 
     def create_field_wrapper(self) -> FieldWrapper:
@@ -291,7 +330,7 @@ class NcToField(BaseModel):
                 ndbounds = None
                 target_dims = self.gwrap.dims
             else:
-                ndbounds = (ds.dimensions[self.dim_time].size,)
+                ndbounds = (get_nc_dimension(ds, self.dim_time).size,)
                 time_dim = Dimension(
                     name=self.dim_time,
                     size=ndbounds[0],

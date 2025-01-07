@@ -35,13 +35,15 @@ def create_dust_file(dst_dir: Path) -> Path:
 def fake_field_wrapper_collection(tmp_path_shared: Path) -> FieldWrapperCollection:
     path = create_dust_file(tmp_path_shared)
 
-    spec = GridSpec(x_center="geolon", y_center="geolat", x_dim="lon", y_dim="lat")
+    spec = GridSpec(
+        x_center="geolon", y_center="geolat", x_dim=("lon",), y_dim=("lat",)
+    )
     nc2grid = NcToGrid(path=path, spec=spec)
     gwrap = nc2grid.create_grid_wrapper()
 
     fwraps = []
     for name in RRFS_DUST_DATA_ENV.fields:
-        nc2field = NcToField(path=path, name=name, gwrap=gwrap, dim_time="time")
+        nc2field = NcToField(path=path, name=name, gwrap=gwrap, dim_time=("time",))
         fwrap = nc2field.create_field_wrapper()
         fwraps.append(fwrap)
     return FieldWrapperCollection(value=fwraps)
@@ -62,10 +64,10 @@ class TestGridWrapper:
             y_center="grid_latt",
             x_corner="grid_lon",
             y_corner="grid_lat",
-            x_dim="grid_xt",
-            y_dim="grid_yt",
-            x_corner_dim="grid_x",
-            y_corner_dim="grid_y",
+            x_dim=("grid_xt",),
+            y_dim=("grid_yt",),
+            x_corner_dim=("grid_x",),
+            y_corner_dim=("grid_y",),
         )
         gwrap = NcToGrid(path=path, spec=spec).create_grid_wrapper()
 
@@ -122,7 +124,7 @@ class TestFieldWrapperCollection:
         for fwrap in fake_field_wrapper_collection.value:
             assert fwrap.value.data.sum() > 0
             assert len(fwrap.dims.value) == 3
-            assert fwrap.dims.value[2].name == "time"
+            assert fwrap.dims.value[2].name == ("time",)
 
 
 @pytest.mark.mpi

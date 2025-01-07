@@ -23,8 +23,8 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
             spec=GridSpec(
                 x_center="geolon",
                 y_center="geolat",
-                x_dim="geolon",
-                y_dim="geolat",
+                x_dim=("geolon", "lon"),
+                y_dim=("geolat", "lat"),
             ),
         )
         src_gwrap = src_grid_def.create_grid_wrapper()
@@ -36,8 +36,8 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
             spec=GridSpec(
                 x_center="grid_lont",
                 y_center="grid_latt",
-                x_dim="grid_xt",
-                y_dim="grid_yt",
+                x_dim=("grid_xt",),
+                y_dim=("grid_yt",),
             ),
         )
         dst_gwrap = dst_grid_def.create_grid_wrapper()
@@ -67,10 +67,13 @@ class RrfsSmokeDustVegetationMap(AbstractRegridOperation):
             field_to_regrid, self._spec.src_path, src_gwrap
         )
 
-        new_sizes = {
-            src_gwrap.spec.x_dim: dst_gwrap.dims.get(dst_gwrap.spec.x_dim).size,
-            src_gwrap.spec.y_dim: dst_gwrap.dims.get(dst_gwrap.spec.y_dim).size,
-        }
+        new_sizes = {}
+        for axis in [
+            (src_gwrap.spec.x_dim, dst_gwrap.spec.x_dim),
+            (src_gwrap.spec.y_dim, dst_gwrap.spec.y_dim),
+        ]:
+            for dimname in axis[0]:
+                new_sizes[dimname] = dst_gwrap.dims.get(axis[1]).size
         self._logger.info(f"resizing netcdf. new_sizes={new_sizes}")
         if self._spec.output_filename.exists():
             raise ValueError("output file must not exist")

@@ -16,12 +16,12 @@ class RaveToRrfs(AbstractRegridOperation):
             spec=GridSpec(
                 x_center="grid_lont",
                 y_center="grid_latt",
-                x_dim="grid_xt",
-                y_dim="grid_yt",
+                x_dim=("grid_xt",),
+                y_dim=("grid_yt",),
                 x_corner="grid_lon",
                 y_corner="grid_lat",
-                x_corner_dim="grid_x",
-                y_corner_dim="grid_y",
+                x_corner_dim=("grid_x",),
+                y_corner_dim=("grid_y",),
             ),
         )
         gwrap = nc2grid.create_grid_wrapper()

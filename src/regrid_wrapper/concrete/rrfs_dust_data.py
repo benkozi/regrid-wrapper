@@ -44,10 +44,14 @@ class RrfsDustData(AbstractRegridOperation):
         new_sizes = {
             RRFS_DUST_DATA_ENV.dim_time: src_fwrap.dims.get(
                 RRFS_DUST_DATA_ENV.dim_time
-            ).size,
-            src_gwrap.spec.x_dim: dst_gwrap.dims.get(dst_gwrap.spec.x_dim).size,
-            src_gwrap.spec.y_dim: dst_gwrap.dims.get(dst_gwrap.spec.y_dim).size,
+            ).size
         }
+        for axis in [
+            (src_gwrap.spec.x_dim, dst_gwrap.spec.x_dim),
+            (src_gwrap.spec.y_dim, dst_gwrap.spec.y_dim),
+        ]:
+            for dimname in axis[0]:
+                new_sizes[dimname] = dst_gwrap.dims.get(axis[1]).size
         self._logger.info(f"resizing netcdf. new_sizes={new_sizes}")
         if self._spec.output_filename.exists():
             raise ValueError("output file must not exist")
@@ -99,7 +103,7 @@ class RrfsDustData(AbstractRegridOperation):
         nc2field = NcToField(
             path=path,
             name=field_name,
-            dim_time=RRFS_DUST_DATA_ENV.dim_time,
+            dim_time=(RRFS_DUST_DATA_ENV.dim_time,),
             gwrap=gwrap,
         )
         fwrap = nc2field.create_field_wrapper()
@@ -111,8 +115,8 @@ class RrfsDustData(AbstractRegridOperation):
             spec=GridSpec(
                 x_center="grid_lont",
                 y_center="grid_latt",
-                x_dim="grid_xt",
-                y_dim="grid_yt",
+                x_dim=("grid_xt",),
+                y_dim=("grid_yt",),
             ),
         )
         dst_gwrap = dst_grid_def.create_grid_wrapper()
@@ -124,8 +128,8 @@ class RrfsDustData(AbstractRegridOperation):
             spec=GridSpec(
                 x_center="geolon",
                 y_center="geolat",
-                x_dim="lon",
-                y_dim="lat",
+                x_dim=("lon",),
+                y_dim=("lat",),
             ),
         )
         src_gwrap = src_grid_def.create_grid_wrapper()
