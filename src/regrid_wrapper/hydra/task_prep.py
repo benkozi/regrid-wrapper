@@ -30,7 +30,7 @@ export PYTHONPATH=${{DIR}}/src:${{PYTHONPATH}}
 export REGRID_WRAPPER_LOG_DIR={log_directory}
 
 cd ${{REGRID_WRAPPER_LOG_DIR}}
-mpirun -np {ntasks} python ${{DIR}}/src/regrid_wrapper/hydra/regrid_wrapper_cli.py
+mpirun -np {ntasks} python ${{DIR}}/src/regrid_wrapper/hydra/run_operations.py
 """
 
 
