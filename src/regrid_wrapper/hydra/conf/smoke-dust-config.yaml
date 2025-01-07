@@ -1,5 +1,5 @@
 #python src/regrid_wrapper/hydra/regrid_wrapper.py "target_grid=RRFS_NA_13km"
-target_grid: <one of rrfs_grids>
+target_grid: RRFS_CONUS_25KM
 target_components:
   - VEG_MAP
   - RAVE_GRID
