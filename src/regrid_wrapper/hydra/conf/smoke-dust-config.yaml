@@ -4,7 +4,7 @@ target_components:
   - VEG_MAP
   - RAVE_GRID
   - DUST
-root_output_directory: /path/to/output/directory
+root_output_directory: /scratch2/NAGAPE/epic/Ben.Koziol/sandbox/regrid-wrapper/foo-test
 source_definition:
   components:
     VEG_MAP:
