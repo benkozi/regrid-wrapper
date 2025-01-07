@@ -1,0 +1,24 @@
+#python src/regrid_wrapper/hydra/regrid_wrapper.py "target_grid=RRFS_NA_13km"
+target_grid: <one of rrfs_grids>
+target_components:
+  - VEG_MAP
+  - RAVE_GRID
+  - DUST
+source_definition:
+  components:
+    VEG_MAP:
+      grid: /scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/veg_map.nc
+    RAVE_GRID:
+      grid: /scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/grid_in.nc
+    DUST:
+      grid: /scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/dust12m_data.nc
+  rrfs_grids:
+    RRFS_NA_13KM:
+      grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_NA_13km.nc
+      nodes: 2
+    RRFS_CONUS_13KM:
+      grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_13km.nc
+      nodes: 2
+    RRFS_CONUS_25KM:
+      grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_25km.nc
+      nodes: 2

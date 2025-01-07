@@ -54,6 +54,8 @@ class GenerateWeightFileSpec(AbstractRegridSpec):
             errors.append(f"parent directory does not exist: {path.parent}")
         if not os.access(parent, os.W_OK):
             errors.append(f"parent directory is not writable: {path.parent}")
+        if path.exists():
+            errors.append(f"file already exists: {path}")
         return errors
 
 
