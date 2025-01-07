@@ -5,8 +5,7 @@ from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.model.config import SmokeDustRegridConfig
 
 
-MAIN_JOB_TEMPLATE = """
-#!/usr/bin/env bash
+MAIN_JOB_TEMPLATE = """#!/usr/bin/env bash
 #
 #SBATCH --job-name={job_name}
 #SBATCH --account=epic
