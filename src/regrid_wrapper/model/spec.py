@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from typing import List, Literal, Tuple
 
+import esmpy
 from pydantic import BaseModel, model_validator, field_validator
 
 from regrid_wrapper.context.common import PathType
@@ -14,6 +15,7 @@ class AbstractRegridSpec(BaseModel, abc.ABC):
     name: str
     nproc: int = 1
     esmpy_debug: bool = False
+    esmpy_unmapped_action: int = esmpy.UnmappedAction.ERROR
 
 
 class GenerateWeightFileSpec(AbstractRegridSpec):

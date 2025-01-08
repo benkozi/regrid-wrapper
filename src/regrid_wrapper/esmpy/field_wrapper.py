@@ -22,7 +22,7 @@ def open_nc(
     clobber: bool = False,
     parallel: bool = True,
 ) -> nc.Dataset:
-    _LOGGER.info(f"opening {path}")
+    _LOGGER.debug(f"opening {path}")
     ds = nc.Dataset(
         path,
         mode=mode,
@@ -315,6 +315,7 @@ class FieldWrapper(AbstractWrapper):
     gwrap: GridWrapper
 
     def fill_nc_variable(self, path: Path):
+        _LOGGER.debug(r"filling variable: {self.value.name}")
         with open_nc(path, "a") as ds:
             var = ds.variables[self.value.name]
             set_variable_data(var, self.dims, self.value.data)

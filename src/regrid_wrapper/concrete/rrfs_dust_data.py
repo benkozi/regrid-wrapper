@@ -64,7 +64,8 @@ class RrfsDustData(AbstractRegridOperation):
 
         dst_gwrap_output = copy(dst_gwrap)
         dst_gwrap_output.spec = src_gwrap.spec
-        dst_gwrap_output.dims = src_gwrap.dims
+        for src_dim, dst_dim in zip(src_gwrap.dims.value, dst_gwrap_output.dims.value):
+            dst_dim.name = src_dim.name
         dst_gwrap_output.fill_nc_variables(self._spec.output_filename)
 
         dst_fwrap = self._create_field_wrapper_(

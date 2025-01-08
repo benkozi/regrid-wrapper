@@ -95,12 +95,20 @@ def create_analytic_data_array(
 
 
 def create_rrfs_grid_file(
-    path: Path, with_corners: bool = True, fields: List[str] | None = None
+    path: Path,
+    with_corners: bool = True,
+    fields: List[str] | None = None,
+    min_lon: int = 230,
+    max_lon: int = 300,
+    min_lat: int = 25,
+    max_lat: int = 50,
+    nlon: int = 71,
+    nlat: int = 26,
 ) -> xr.Dataset:
     if path.exists():
         raise ValueError(f"path exists: {path}")
-    lon = np.linspace(230, 300, 71)
-    lat = np.linspace(25, 50, 26)
+    lon = np.linspace(min_lon, max_lon, nlon)
+    lat = np.linspace(min_lat, max_lat, nlat)
     lon_mesh, lat_mesh = np.meshgrid(lon, lat)
     ds = xr.Dataset()
     dims = ["grid_yt", "grid_xt"]
