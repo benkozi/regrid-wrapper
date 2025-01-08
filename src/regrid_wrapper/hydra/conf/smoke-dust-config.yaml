@@ -1,6 +1,6 @@
 defaults:
-  - hydra/job_logging: none
-  - hydra/hydra_logging: none
+  - override hydra/job_logging: none
+  - override hydra/hydra_logging: none
 target_grids:
   - RRFS_CONUS_25KM
   - RRFS_CONUS_13KM
