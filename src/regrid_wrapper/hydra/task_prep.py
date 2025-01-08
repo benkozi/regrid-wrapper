@@ -16,7 +16,7 @@ MAIN_JOB_TEMPLATE = """#!/usr/bin/env bash
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --nodes={nodes}
-#SBATCH --ntasks-per-node=24  # Assuming 24 cores per node, utilize them fully
+#SBATCH --ntasks-per-node=8  # Assuming 24 cores per node, utilize them fully
 #SBATCH --ntasks={ntasks}  # Total tasks should be nodes * tasks-per-node
 
 set -e
@@ -47,7 +47,7 @@ def do_task_prep(cfg: SmokeDustRegridConfig) -> None:
         template = MAIN_JOB_TEMPLATE.format(
             job_name=cfg.target_grid.value,
             nodes=nodes,
-            ntasks=nodes * 24,
+            ntasks=nodes * 8,
             log_directory=cfg.log_directory,
         )
         logger.info(template)
