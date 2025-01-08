@@ -1,3 +1,6 @@
+defaults:
+  - hydra/job_logging: none
+  - hydra/hydra_logging: none
 target_grids:
   - RRFS_CONUS_25KM
   - RRFS_CONUS_13KM
@@ -28,6 +31,4 @@ source_definition:
       grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_25km.nc
       nodes: 2
       wall_time: "01:00:00"
-hydra:
-  job_logging: none
-  hydra_logging: none
+
