@@ -42,14 +42,13 @@ class SourceDefinition(BaseModel):
 
 
 class SmokeDustRegridConfig(BaseModel):
-    target_grid: RrfsGridKey
+    target_grids: Tuple[RrfsGridKey, ...] = Field(min_length=1)
     target_components: Tuple[ComponentKey, ...] = Field(min_length=1)
     root_output_directory: PathType
     source_definition: SourceDefinition
 
-    @property
-    def output_directory(self) -> PathType:
-        return self.root_output_directory / "output"
+    def output_directory(self, target_grid: RrfsGridKey) -> PathType:
+        return self.root_output_directory / f"{target_grid.value}/output"
 
     @property
     def log_directory(self) -> PathType:
@@ -59,10 +58,8 @@ class SmokeDustRegridConfig(BaseModel):
     def main_job_path(self) -> PathType:
         return self.root_output_directory / "main-job.sh"
 
-    @property
-    def model_grid_path(self) -> PathType:
-        return self.output_directory / "ds_out_base.nc"
+    def model_grid_path(self, target_grid: RrfsGridKey) -> PathType:
+        return self.output_directory(target_grid) / "ds_out_base.nc"
 
-    @property
-    def rave_grid_path(self) -> PathType:
-        return self.output_directory / "grid_in.nc"
+    def rave_grid_path(self, target_grid: RrfsGridKey) -> PathType:
+        return self.output_directory(target_grid) / "grid_in.nc"

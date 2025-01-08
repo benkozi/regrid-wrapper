@@ -2,7 +2,7 @@
 
 cd ~/l/scratch/sandbox/regrid-wrapper || exit
 git pull
-rm -rf foo-test
+rm -rf smoke-dust-fixed-files
 
 export PYTHONPATH=$(pwd -LP)/src
 export REGRID_WRAPPER_LOG_DIR=.

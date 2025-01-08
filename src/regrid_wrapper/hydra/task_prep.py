@@ -39,22 +39,25 @@ def do_task_prep(cfg: SmokeDustRegridConfig) -> None:
     logger = LOGGER.getChild("do_task_prep")
     logger.info(cfg)
     logger.info("creating run directories")
-    cfg.root_output_directory.mkdir(exist_ok=False)
-    cfg.output_directory.mkdir(exist_ok=False)
+    cfg.root_output_directory.mkdir(exist_ok=False, parents=True)
     cfg.log_directory.mkdir(exist_ok=False)
-    logger.info("copying rrfs grid")
-    rrfs_grid = cfg.source_definition.rrfs_grids[cfg.target_grid]
-    with xr.open_dataset(rrfs_grid.grid) as src:
-        src.to_netcdf(cfg.model_grid_path)
-    logger.info("copying rave grid")
-    with xr.open_dataset(
-        cfg.source_definition.components[ComponentKey.RAVE_GRID].grid
-    ) as src:
-        src.to_netcdf(cfg.rave_grid_path)
+    rrfs_grid = None
+    for grid_key in cfg.target_grids:
+        cfg.output_directory(grid_key).mkdir(exist_ok=False, parents=True)
+        logger.info("copying rrfs grid")
+        rrfs_grid = cfg.source_definition.rrfs_grids[grid_key]
+        with xr.open_dataset(rrfs_grid.grid) as src:
+            src.to_netcdf(cfg.model_grid_path(grid_key))
+        logger.info("copying rave grid")
+        with xr.open_dataset(
+            cfg.source_definition.components[ComponentKey.RAVE_GRID].grid
+        ) as src:
+            src.to_netcdf(cfg.rave_grid_path(grid_key))
     logger.info("creating main job script")
+    assert rrfs_grid is not None
     with open(cfg.main_job_path, "w") as f:
         template = MAIN_JOB_TEMPLATE.format(
-            job_name=cfg.target_grid.value,
+            job_name=cfg.root_output_directory.name,
             nodes=rrfs_grid.nodes,
             ntasks=rrfs_grid.nodes * rrfs_grid.tasks_per_node,
             log_directory=cfg.log_directory,
@@ -72,6 +75,8 @@ def do_task_prep_cli(cfg: DictConfig) -> None:
     sd_cfg = SmokeDustRegridConfig.model_validate(cfg)
     do_task_prep(sd_cfg)
     logger.info("success")
+    for h in logger.handlers:  # tdk:rm
+        h.flush()
 
 
 if __name__ == "__main__":

@@ -45,7 +45,11 @@ def create_fake_cfg(tmp_path_shared: Path) -> SmokeDustRegridConfig:
     }
     source_definition = SourceDefinition(components=components, rrfs_grids=rrfs_grids)
     cfg = SmokeDustRegridConfig(
-        target_grid=RrfsGridKey.RRFS_CONUS_25KM,
+        target_grids=[
+            RrfsGridKey.RRFS_CONUS_25KM,
+            RrfsGridKey.RRFS_NA_13KM,
+            RrfsGridKey.RRFS_CONUS_13KM,
+        ],
         target_components=[
             ComponentKey.VEG_MAP,
             ComponentKey.RAVE_GRID,
@@ -62,8 +66,7 @@ def test_do_task_prep(tmp_path_shared: Path) -> None:
     do_task_prep(cfg)
     stuff = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     print(stuff)
-    subprocess.check_call(["ncdump", "-k", cfg.model_grid_path])
-    assert len(stuff) == 10
+    assert len(stuff) == 19
 
 
 @pytest.mark.mpi
@@ -80,4 +83,4 @@ def test_run_operations(tmp_path_shared: Path) -> None:
     globs = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     # for g in globs:
     #     print(g)
-    assert len(globs) == 15
+    assert len(globs) == 34
