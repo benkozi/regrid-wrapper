@@ -3,3 +3,4 @@
 *Regrid-Wrapper*.log
 /.env
 /logs/
+/outputs/

@@ -1,6 +1,0 @@
-regrid:
-  src: foo1
-  dst: foo2
-  fields:
-    - one
-    - two
