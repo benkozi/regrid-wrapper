@@ -75,8 +75,6 @@ def do_task_prep_cli(cfg: DictConfig) -> None:
     sd_cfg = SmokeDustRegridConfig.model_validate(cfg)
     do_task_prep(sd_cfg)
     logger.info("success")
-    for h in logger.handlers:  # tdk:rm
-        h.flush()
 
 
 if __name__ == "__main__":

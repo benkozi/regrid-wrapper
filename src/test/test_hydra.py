@@ -66,7 +66,7 @@ def test_do_task_prep(tmp_path_shared: Path) -> None:
     do_task_prep(cfg)
     stuff = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     print(stuff)
-    assert len(stuff) == 19
+    assert len(stuff) == 17
 
 
 @pytest.mark.mpi
@@ -83,4 +83,4 @@ def test_run_operations(tmp_path_shared: Path) -> None:
     globs = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     # for g in globs:
     #     print(g)
-    assert len(globs) == 34
+    assert len(globs) == 32
