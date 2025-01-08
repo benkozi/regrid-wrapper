@@ -13,11 +13,11 @@ MAIN_JOB_TEMPLATE = """#!/usr/bin/env bash
 #SBATCH --qos=batch
 #_SBATCH --partition=bigmem
 #SBATCH --partition=hera
-#SBATCH -t 04:00:00
+#SBATCH -t {wall_time}
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --nodes={nodes}
-#SBATCH --ntasks-per-node=24  # Assuming 24 cores per node, utilize them fully
+#SBATCH --ntasks-per-node={tasks_per_node}  # Assuming 24 cores per node, utilize them fully
 #SBATCH --ntasks={ntasks}  # Total tasks should be nodes * tasks-per-node
 
 set -e
@@ -43,16 +43,18 @@ def do_task_prep(cfg: SmokeDustRegridConfig) -> None:
     cfg.output_directory.mkdir(exist_ok=False)
     cfg.log_directory.mkdir(exist_ok=False)
     logger.info("copying source grid")
-    with xr.open_dataset(cfg.source_definition.rrfs_grids[cfg.target_grid].grid) as src:
+    rrfs_grid = cfg.source_definition.rrfs_grids[cfg.target_grid]
+    with xr.open_dataset(rrfs_grid.grid) as src:
         src.to_netcdf(cfg.model_grid_path)
     logger.info("creating main job script")
-    nodes = cfg.source_definition.rrfs_grids[cfg.target_grid].nodes
     with open(cfg.main_job_path, "w") as f:
         template = MAIN_JOB_TEMPLATE.format(
             job_name=cfg.target_grid.value,
-            nodes=nodes,
-            ntasks=nodes * 24,
+            nodes=rrfs_grid.nodes,
+            ntasks=rrfs_grid.nodes * rrfs_grid.tasks_per_node,
             log_directory=cfg.log_directory,
+            wall_time=rrfs_grid.wall_time,
+            tasks_per_node=rrfs_grid.tasks_per_node,
         )
         logger.info(template)
         f.write(template)

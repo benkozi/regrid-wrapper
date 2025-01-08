@@ -1,7 +1,6 @@
 from enum import StrEnum, unique
-from typing import Literal, Tuple, Dict
+from typing import Tuple, Dict
 
-from omegaconf import DictConfig
 from pydantic import BaseModel, Field
 
 from regrid_wrapper.context.common import PathType
@@ -29,6 +28,8 @@ InputPathType = PathType
 class RrfsGrid(BaseModel):
     grid: InputPathType
     nodes: int
+    tasks_per_node: int = 24
+    wall_time: str = "04:00:00"
 
 
 class Component(BaseModel):
@@ -60,4 +61,4 @@ class SmokeDustRegridConfig(BaseModel):
 
     @property
     def model_grid_path(self) -> PathType:
-        return self.root_output_directory / "ds_out_base.nc"
+        return self.output_directory / "ds_out_base.nc"

@@ -144,6 +144,9 @@ def set_variable_data(
         slice(target_dims.get(ii).lower, target_dims.get(ii).upper)
         for ii in var.dimensions
     ]
+    _LOGGER.debug(f"var.shape: {var.shape}")
+    _LOGGER.debug(f"transposed_data.shape: {transposed_data.shape}")
+    _LOGGER.debug(f"slices: {slices}")
     var[*slices] = transposed_data
     return transposed_data
 

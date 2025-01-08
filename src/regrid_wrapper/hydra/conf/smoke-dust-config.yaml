@@ -23,3 +23,5 @@ source_definition:
     RRFS_CONUS_25KM:
       grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_25km.nc
       nodes: 1
+      tasks_per_node: 2
+      wall_time: "01:00:00"
