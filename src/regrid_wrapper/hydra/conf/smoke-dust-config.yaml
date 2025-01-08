@@ -29,5 +29,5 @@ source_definition:
       nodes: 2
       wall_time: "01:00:00"
 hydra:
-  job_logging: null
-  log: null
+  job_logging: none
+  hydra_logging: none
