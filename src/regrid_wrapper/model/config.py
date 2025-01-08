@@ -11,9 +11,9 @@ class AbstractEnum(StrEnum): ...
 
 
 class RrfsGridKey(AbstractEnum):
-    RRFS_NA_13KM = "RRFS_NA_13KM"
-    RRFS_CONUS_13KM = "RRFS_CONUS_13KM"
-    RRFS_CONUS_25KM = "RRFS_CONUS_25KM"
+    RRFS_NA_13KM = "RRFS_NA_13km"
+    RRFS_CONUS_13KM = "RRFS_CONUS_13km"
+    RRFS_CONUS_25KM = "RRFS_CONUS_25km"
 
 
 class ComponentKey(AbstractEnum):
