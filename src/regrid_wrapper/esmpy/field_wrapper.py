@@ -10,6 +10,10 @@ import netCDF4 as nc
 
 from mpi4py import MPI
 
+from regrid_wrapper.context.logging import LOGGER
+
+_LOGGER = LOGGER.getChild(__name__)
+
 
 @contextmanager
 def open_nc(
@@ -18,6 +22,7 @@ def open_nc(
     clobber: bool = False,
     parallel: bool = True,
 ) -> nc.Dataset:
+    _LOGGER.info(f"opening {path}")
     ds = nc.Dataset(
         path,
         mode=mode,
@@ -66,13 +71,21 @@ def resize_nc(
 NameListType = Tuple[str, ...]
 
 
-def get_nc_dimension(ds: nc.Dataset, names: NameListType) -> nc.Dimension:
-    for name in names:
+def get_aliased_key(source: Dict, keys: NameListType | str) -> Any:
+    if isinstance(keys, str):
+        keys_to_find = (keys,)
+    else:
+        keys_to_find = keys
+    for key in keys_to_find:
         try:
-            return ds.dimensions[name]
+            return source[key]
         except KeyError:
             continue
-    raise ValueError(f"netCDF dimension not found: {names}")
+    raise ValueError(f"key not found: {keys}")
+
+
+def get_nc_dimension(ds: nc.Dataset, names: NameListType) -> nc.Dimension:
+    return get_aliased_key(ds.dimensions, names)
 
 
 class Dimension(BaseModel):
@@ -97,19 +110,6 @@ class DimensionCollection(BaseModel):
                 if jj in ii.name:
                     return ii
         raise ValueError(f"dimension not found: {name}")
-
-
-def get_aliased_key(source: Dict, keys: NameListType | str) -> Any:
-    if isinstance(keys, str):
-        keys_to_find = (keys,)
-    else:
-        keys_to_find = keys
-    for key in keys_to_find:
-        try:
-            return source[key]
-        except KeyError:
-            continue
-    raise ValueError(f"key not found: {keys}")
 
 
 def create_dimension_map(dims: DimensionCollection) -> Dict[str, int]:

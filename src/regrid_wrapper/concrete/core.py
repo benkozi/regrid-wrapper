@@ -21,7 +21,7 @@ def iter_operations(cfg: SmokeDustRegridConfig) -> Iterator[AbstractRegridOperat
             case ComponentKey.VEG_MAP:
                 spec = GenerateWeightFileAndRegridFields(
                     src_path=cfg.source_definition.components[target_component].grid,
-                    dst_path=cfg.source_definition.rrfs_grids[cfg.target_grid].grid,
+                    dst_path=cfg.model_grid_path,
                     output_weight_filename=cfg.output_directory
                     / f"weights-veg_map-NA_3km-to-{cfg.target_grid}.nc",
                     output_filename=cfg.output_directory / "veg_map.nc",
@@ -32,7 +32,7 @@ def iter_operations(cfg: SmokeDustRegridConfig) -> Iterator[AbstractRegridOperat
             case ComponentKey.RAVE_GRID:
                 spec = GenerateWeightFileSpec(
                     src_path=cfg.source_definition.components[target_component].grid,
-                    dst_path=cfg.source_definition.rrfs_grids[cfg.target_grid].grid,
+                    dst_path=cfg.model_grid_path,
                     output_weight_filename=cfg.output_directory / "weight_file.nc",
                     name=name,
                 )
@@ -40,7 +40,7 @@ def iter_operations(cfg: SmokeDustRegridConfig) -> Iterator[AbstractRegridOperat
             case ComponentKey.DUST:
                 spec = GenerateWeightFileAndRegridFields(
                     src_path=cfg.source_definition.components[target_component].grid,
-                    dst_path=cfg.source_definition.rrfs_grids[cfg.target_grid].grid,
+                    dst_path=cfg.model_grid_path,
                     output_weight_filename=cfg.output_directory
                     / f"weights-dust_data-to-{cfg.target_grid}.nc",
                     output_filename=cfg.output_directory / "dust_12m.nc",

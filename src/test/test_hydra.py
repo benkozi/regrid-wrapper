@@ -1,4 +1,5 @@
 import glob
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -61,7 +62,8 @@ def test_do_task_prep(tmp_path_shared: Path) -> None:
     do_task_prep(cfg)
     stuff = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     print(stuff)
-    assert len(stuff) == 8
+    subprocess.check_call(["ncdump", "-k", cfg.model_grid_path])
+    assert len(stuff) == 9
 
 
 @pytest.mark.mpi
@@ -78,4 +80,4 @@ def test_run_operations(tmp_path_shared: Path) -> None:
     globs = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     # for g in globs:
     #     print(g)
-    assert len(globs) == 13
+    assert len(globs) == 14

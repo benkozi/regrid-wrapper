@@ -57,3 +57,7 @@ class SmokeDustRegridConfig(BaseModel):
     @property
     def main_job_path(self) -> PathType:
         return self.root_output_directory / "main-job.sh"
+
+    @property
+    def model_grid_path(self) -> PathType:
+        return self.root_output_directory / "ds_out_base.nc"

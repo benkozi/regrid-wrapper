@@ -3,6 +3,7 @@ from omegaconf import DictConfig
 
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.model.config import SmokeDustRegridConfig
+import xarray as xr
 
 
 MAIN_JOB_TEMPLATE = """#!/usr/bin/env bash
@@ -16,7 +17,7 @@ MAIN_JOB_TEMPLATE = """#!/usr/bin/env bash
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --nodes={nodes}
-#SBATCH --ntasks-per-node=8  # Assuming 24 cores per node, utilize them fully
+#SBATCH --ntasks-per-node=24  # Assuming 24 cores per node, utilize them fully
 #SBATCH --ntasks={ntasks}  # Total tasks should be nodes * tasks-per-node
 
 set -e
@@ -41,13 +42,16 @@ def do_task_prep(cfg: SmokeDustRegridConfig) -> None:
     cfg.root_output_directory.mkdir(exist_ok=False)
     cfg.output_directory.mkdir(exist_ok=False)
     cfg.log_directory.mkdir(exist_ok=False)
+    logger.info("copying source grid")
+    with xr.open_dataset(cfg.source_definition.rrfs_grids[cfg.target_grid].grid) as src:
+        src.to_netcdf(cfg.model_grid_path)
     logger.info("creating main job script")
     nodes = cfg.source_definition.rrfs_grids[cfg.target_grid].nodes
     with open(cfg.main_job_path, "w") as f:
         template = MAIN_JOB_TEMPLATE.format(
             job_name=cfg.target_grid.value,
             nodes=nodes,
-            ntasks=nodes * 8,
+            ntasks=nodes * 24,
             log_directory=cfg.log_directory,
         )
         logger.info(template)
