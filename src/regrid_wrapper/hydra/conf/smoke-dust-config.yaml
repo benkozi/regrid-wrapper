@@ -22,4 +22,4 @@ source_definition:
       nodes: 2
     RRFS_CONUS_25KM:
       grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_25km.nc
-      nodes: 2
+      nodes: 1
