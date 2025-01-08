@@ -1,0 +1,6 @@
+.idea
+*.ESMF_LogFile
+*Regrid-Wrapper*.log
+/.env
+/logs/
+/outputs/

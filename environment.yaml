@@ -1,0 +1,20 @@
+name: regrid-wrapper
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - esmpy=*=mpi_mpich*
+  - pydantic
+  - typer
+  - hydra-core
+  - xarray
+  - mpi4py
+  - numpy
+  - netcdf4=*=mpi_mpich*
+  - matplotlib
+  - pydantic-settings
+  - cartopy
+  - mypy #dev
+  - black #dev
+  - pytest #dev
+  - pytest-mock #dev
