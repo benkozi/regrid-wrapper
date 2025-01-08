@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 cd ~/l/scratch/sandbox/regrid-wrapper || exit
+git pull
 rm -rf foo-test
 
 export PYTHONPATH=$(pwd -LP)/src
