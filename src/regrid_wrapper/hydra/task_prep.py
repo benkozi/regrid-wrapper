@@ -2,7 +2,7 @@ import hydra
 from omegaconf import DictConfig
 
 from regrid_wrapper.context.logging import LOGGER
-from regrid_wrapper.model.config import SmokeDustRegridConfig
+from regrid_wrapper.model.config import SmokeDustRegridConfig, ComponentKey
 import xarray as xr
 
 
@@ -42,10 +42,15 @@ def do_task_prep(cfg: SmokeDustRegridConfig) -> None:
     cfg.root_output_directory.mkdir(exist_ok=False)
     cfg.output_directory.mkdir(exist_ok=False)
     cfg.log_directory.mkdir(exist_ok=False)
-    logger.info("copying source grid")
+    logger.info("copying rrfs grid")
     rrfs_grid = cfg.source_definition.rrfs_grids[cfg.target_grid]
     with xr.open_dataset(rrfs_grid.grid) as src:
         src.to_netcdf(cfg.model_grid_path)
+    logger.info("copying rave grid")
+    with xr.open_dataset(
+        cfg.source_definition.components[ComponentKey.RAVE_GRID].grid
+    ) as src:
+        src.to_netcdf(cfg.rave_grid_path)
     logger.info("creating main job script")
     with open(cfg.main_job_path, "w") as f:
         template = MAIN_JOB_TEMPLATE.format(

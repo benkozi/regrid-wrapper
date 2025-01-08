@@ -1,7 +1,7 @@
 import abc
 import os
 from pathlib import Path
-from typing import List, Literal, Tuple
+from typing import List, Tuple
 
 import esmpy
 from pydantic import BaseModel, model_validator, field_validator

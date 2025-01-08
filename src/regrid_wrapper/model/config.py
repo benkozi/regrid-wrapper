@@ -62,3 +62,7 @@ class SmokeDustRegridConfig(BaseModel):
     @property
     def model_grid_path(self) -> PathType:
         return self.output_directory / "ds_out_base.nc"
+
+    @property
+    def rave_grid_path(self) -> PathType:
+        return self.output_directory / "grid_in.nc"

@@ -63,7 +63,7 @@ def test_do_task_prep(tmp_path_shared: Path) -> None:
     stuff = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     print(stuff)
     subprocess.check_call(["ncdump", "-k", cfg.model_grid_path])
-    assert len(stuff) == 9
+    assert len(stuff) == 10
 
 
 @pytest.mark.mpi
@@ -80,4 +80,4 @@ def test_run_operations(tmp_path_shared: Path) -> None:
     globs = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     # for g in globs:
     #     print(g)
-    assert len(globs) == 14
+    assert len(globs) == 15

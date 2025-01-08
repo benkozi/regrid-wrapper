@@ -1,5 +1,5 @@
 #python src/regrid_wrapper/hydra/regrid_wrapper_cli.py "target_grid=RRFS_NA_13KM" "output_directory=/tmp/foo"
-target_grid: RRFS_NA_13KM
+target_grid: RRFS_CONUS_25KM
 target_components:
   - VEG_MAP
   - RAVE_GRID
@@ -24,5 +24,5 @@ source_definition:
       wall_time: "02:00:00"
     RRFS_CONUS_25KM:
       grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_25km.nc
-      nodes: 1
+      nodes: 2
       wall_time: "01:00:00"
