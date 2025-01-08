@@ -4,3 +4,4 @@
 /.env
 /logs/
 /outputs/
+__pycache__/
