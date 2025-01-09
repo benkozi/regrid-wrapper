@@ -36,7 +36,8 @@ def copy_nc(
                 dst.createDimension(dim, size=src.dimensions[dim].size)
             for varname, var in src.variables.items():
                 new_var = dst.createVariable(varname, var.dtype, var.dimensions)
-                new_var[:] = var[:]
+                # new_var[:] = var[:]
+                new_var[:].fill(0)
 
 
 def run() -> None:
