@@ -2,9 +2,9 @@ defaults:
   - override hydra/job_logging: none
   - override hydra/hydra_logging: none
 target_grids:
-#  - RRFS_CONUS_25km
-#  - RRFS_CONUS_13km
-  - RRFS_NA_13km
+#  - RRFS_CONUS_25KM
+#  - RRFS_CONUS_13KM
+  - RRFS_NA_13KM
 target_components:
   - VEG_MAP
   - RAVE_GRID

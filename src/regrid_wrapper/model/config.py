@@ -11,9 +11,9 @@ class AbstractEnum(StrEnum): ...
 
 
 class RrfsGridKey(AbstractEnum):
-    RRFS_NA_13KM = "RRFS_NA_13km"
-    RRFS_CONUS_13KM = "RRFS_CONUS_13km"
-    RRFS_CONUS_25KM = "RRFS_CONUS_25km"
+    RRFS_NA_13KM = "RRFS_NA_13KM"
+    RRFS_CONUS_13KM = "RRFS_CONUS_13KM"
+    RRFS_CONUS_25KM = "RRFS_CONUS_25KM"
 
 
 class ComponentKey(AbstractEnum):
@@ -48,7 +48,10 @@ class SmokeDustRegridConfig(BaseModel):
     source_definition: SourceDefinition
 
     def output_directory(self, target_grid: RrfsGridKey) -> PathType:
-        return self.root_output_directory / f"fix_smoke/{target_grid.value}"
+        return (
+            self.root_output_directory
+            / f"fix_smoke/{target_grid.value.replace('KM', 'km')}"
+        )
 
     @property
     def log_directory(self) -> PathType:
