@@ -3,6 +3,8 @@ from pathlib import Path
 import esmpy
 import numpy as np
 
+esmpy.Manager(debug=True)
+
 
 # def _create_grid_wrapper_(path: Path) -> GridWrapper:
 #     nc2grid = NcToGrid(
