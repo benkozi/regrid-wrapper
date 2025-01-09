@@ -37,7 +37,10 @@ def open_nc(
         ds.close()
 
 
-def copy_nc_attrs(src: nc.Dataset | nc.Variable, dst: nc.Dataset | nc.Variable) -> None:
+HasNcAttrsType = nc.Dataset | nc.Variable
+
+
+def copy_nc_attrs(src: HasNcAttrsType, dst: HasNcAttrsType) -> None:
     for attr in src.ncattrs():
         if attr.startswith("_"):
             continue
