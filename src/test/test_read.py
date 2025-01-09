@@ -33,7 +33,7 @@ def copy_nc(
     with nc.Dataset(src_path, mode="r") as src:
         with nc.Dataset(dst_path, mode="w", clobber=True) as dst:
             for dim in src.dimensions:
-                dst.createDimension(dim, size=5)
+                dst.createDimension(dim, size=19863223)
             for varname, var in src.variables.items():
                 new_var = dst.createVariable(varname, var.dtype, var.dimensions)
                 # new_var[:] = var[:]
@@ -48,15 +48,16 @@ def run() -> None:
     # dst_gwrap = _create_grid_wrapper_(
     #     "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/ds_out_base.nc"
     # )
-    weight_file = (
-        "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/weight_file.nc"
-    )
-    # new_weights = "/home/Benjamin.Koziol/new_weights.nc"
-    # copy_nc(weight_file, new_weights)
-
     # weight_file = (
     #     "/scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_CONUS_3km/weight_file.nc"
     # )
+
+    in_weight_file = (
+        "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/weight_file.nc"
+    )
+
+    weight_file = "/home/Benjamin.Koziol/new_weights.nc"
+    copy_nc(in_weight_file, weight_file)
 
     grid = esmpy.Grid(np.array([2, 2]))
 
