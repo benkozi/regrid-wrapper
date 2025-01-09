@@ -48,11 +48,15 @@ def run() -> None:
     # dst_gwrap = _create_grid_wrapper_(
     #     "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/ds_out_base.nc"
     # )
+    # weight_file = (
+    #     "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/weight_file.nc"
+    # )
+    # new_weights = "/home/Benjamin.Koziol/new_weights.nc"
+    # copy_nc(weight_file, new_weights)
+
     weight_file = (
-        "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/weight_file.nc"
+        "/scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_CONUS_3km/weight_file.nc"
     )
-    new_weights = "/home/Benjamin.Koziol/new_weights.nc"
-    copy_nc(weight_file, new_weights)
 
     grid = esmpy.Grid(np.array([2, 2]))
 
@@ -73,7 +77,7 @@ def run() -> None:
     _ = esmpy.RegridFromFile(
         src_field,
         dst_field,
-        new_weights,
+        weight_file,
         # str("/scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/grid_in.nc"),
     )
 
