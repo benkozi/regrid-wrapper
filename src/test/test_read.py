@@ -29,7 +29,7 @@ def run() -> None:
         "/scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/grid_in.nc"
     )
     dst_gwrap = _create_grid_wrapper_(
-        "/scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_NA_13km.nc"
+        "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/ds_out_base.nc"
     )
 
     src_field = esmpy.Field(src_gwrap.value, name="src")
