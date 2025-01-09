@@ -165,8 +165,8 @@ class GridSpec(BaseModel):
     y_corner: str | None = None
     x_corner_dim: NameListType | None = None
     y_corner_dim: NameListType | None = None
-    x_index: int = 0
-    y_index: int = 1
+    x_index: int = 1  # tdk: switch and make configurable
+    y_index: int = 0
 
     @model_validator(mode="after")
     def _validate_model_(self) -> "GridSpec":
@@ -212,16 +212,27 @@ class GridSpec(BaseModel):
             x_dim, y_dim = self.x_corner_dim, self.y_corner_dim
         else:
             raise NotImplementedError(staggerloc)
+        # dims = DimensionCollection( #tdk: needs to adapt to x,y switching
+        #     value=[
+        #         Dimension(
+        #             name=x_dim,
+        #             size=get_nc_dimension(ds, x_dim).size,
+        #             lower=grid.lower_bounds[staggerloc][self.x_index],
+        #             upper=grid.upper_bounds[staggerloc][self.x_index],
+        #             staggerloc=staggerloc,
+        #             coordinate_type="x",
+        #         ),
+        #         Dimension(
+        #             name=y_dim,
+        #             size=get_nc_dimension(ds, y_dim).size,
+        #             lower=grid.lower_bounds[staggerloc][self.y_index],
+        #             upper=grid.upper_bounds[staggerloc][self.y_index],
+        #             staggerloc=staggerloc,
+        #             coordinate_type="y",
+        #         ),
+        #     ]
         dims = DimensionCollection(
             value=[
-                Dimension(
-                    name=x_dim,
-                    size=get_nc_dimension(ds, x_dim).size,
-                    lower=grid.lower_bounds[staggerloc][self.x_index],
-                    upper=grid.upper_bounds[staggerloc][self.x_index],
-                    staggerloc=staggerloc,
-                    coordinate_type="x",
-                ),
                 Dimension(
                     name=y_dim,
                     size=get_nc_dimension(ds, y_dim).size,
@@ -230,8 +241,17 @@ class GridSpec(BaseModel):
                     staggerloc=staggerloc,
                     coordinate_type="y",
                 ),
+                Dimension(
+                    name=x_dim,
+                    size=get_nc_dimension(ds, x_dim).size,
+                    lower=grid.lower_bounds[staggerloc][self.x_index],
+                    upper=grid.upper_bounds[staggerloc][self.x_index],
+                    staggerloc=staggerloc,
+                    coordinate_type="x",
+                ),
             ]
         )
+        # )
         return dims
 
 
@@ -261,10 +281,16 @@ class NcToGrid(BaseModel):
 
     def create_grid_wrapper(self) -> GridWrapper:
         with open_nc(self.path, "r") as ds:
+            # grid_shape = np.array( #tdk: needs to adjust to x/y index switching
+            #     [
+            #         get_nc_dimension(ds, self.spec.x_dim).size,
+            #         get_nc_dimension(ds, self.spec.y_dim).size,
+            #     ]
+            # )
             grid_shape = np.array(
                 [
-                    get_nc_dimension(ds, self.spec.x_dim).size,
                     get_nc_dimension(ds, self.spec.y_dim).size,
+                    get_nc_dimension(ds, self.spec.x_dim).size,
                 ]
             )
             staggerloc = esmpy.StaggerLoc.CENTER
