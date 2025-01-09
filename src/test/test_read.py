@@ -49,8 +49,11 @@ def run() -> None:
     _ = esmpy.RegridFromFile(
         src_field,
         dst_field,
+        # str(
+        #     "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/weight_file.nc"
+        # ),
         str(
-            "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/weight_file.nc"
+            "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_CONUS_25km/weight_file.nc"
         ),
     )
 
