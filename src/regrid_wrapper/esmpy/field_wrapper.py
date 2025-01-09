@@ -165,8 +165,8 @@ class GridSpec(BaseModel):
     y_corner: str | None = None
     x_corner_dim: NameListType | None = None
     y_corner_dim: NameListType | None = None
-    x_index: int = 1  # tdk: switch and make configurable
-    y_index: int = 0
+    x_index: int = 0
+    y_index: int = 1
 
     @model_validator(mode="after")
     def _validate_model_(self) -> "GridSpec":
@@ -263,17 +263,10 @@ class NcToGrid(BaseModel):
 
     def create_grid_wrapper(self) -> GridWrapper:
         with open_nc(self.path, "r") as ds:
-            x_size = get_nc_dimension(ds, self.spec.x_dim).size
-            y_size = get_nc_dimension(ds, self.spec.y_dim).size
-            if self.spec.x_index == 0:
-                grid_shape = (x_size, y_size)
-            elif self.spec.x_index == 1:
-                grid_shape = (y_size, x_size)
-            else:
-                raise NotImplementedError(self.spec.x_index, self.spec.y_index)
+            grid_shape = self._create_grid_shape_(ds)
             staggerloc = esmpy.StaggerLoc.CENTER
             grid = esmpy.Grid(
-                np.array(grid_shape),
+                grid_shape,
                 staggerloc=staggerloc,
                 coord_sys=esmpy.CoordSys.SPH_DEG,
             )
@@ -296,6 +289,17 @@ class NcToGrid(BaseModel):
                 value=grid, dims=dims, spec=self.spec, corner_dims=corner_dims
             )
             return gwrap
+
+    def _create_grid_shape_(self, ds: nc.Dataset) -> np.ndarray:
+        x_size = get_nc_dimension(ds, self.spec.x_dim).size
+        y_size = get_nc_dimension(ds, self.spec.y_dim).size
+        if self.spec.x_index == 0:
+            grid_shape = (x_size, y_size)
+        elif self.spec.x_index == 1:
+            grid_shape = (y_size, x_size)
+        else:
+            raise NotImplementedError(self.spec.x_index, self.spec.y_index)
+        return np.array(grid_shape)
 
     def _add_corner_coords_(
         self, ds: nc.Dataset, grid: esmpy.Grid
