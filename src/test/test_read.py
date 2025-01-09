@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import esmpy
+import numpy as np
 
 
 # def _create_grid_wrapper_(path: Path) -> GridWrapper:
@@ -30,7 +31,7 @@ def run() -> None:
     #     "/scratch2/NAGAPE/epic/Ben.Koziol/tmp-smoke-fix-dir/RRFS_NA_13km/ds_out_base.nc"
     # )
 
-    grid = esmpy.Grid([2, 2])
+    grid = esmpy.Grid(np.array([2, 2]))
 
     src_field = esmpy.Field(grid, name="src")
     dst_field = esmpy.Field(grid, name="dst")
