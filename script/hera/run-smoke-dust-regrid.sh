@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 RUNDIR=smoke-dust-fixed-files
-CONDAENV=~/l/scratch/miniconda/envs/regrid-wrapper
+#CONDAENV=~/l/scratch/miniconda/envs/regrid-wrapper
+CONDAENV=~/miniconda3/envs/tmp-uni
 
 cd ~/l/scratch/sandbox/regrid-wrapper || exit
 git pull
