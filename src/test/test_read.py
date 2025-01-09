@@ -33,7 +33,8 @@ def copy_nc(
     with nc.Dataset(src_path, mode="r") as src:
         with nc.Dataset(dst_path, mode="w", clobber=True) as dst:
             for dim in src.dimensions:
-                dst.createDimension(dim, size=19863223)
+                # dst.createDimension(dim, size=19863223)
+                dst.createDimension(dim, size=18863223)
             for varname, var in src.variables.items():
                 new_var = dst.createVariable(varname, var.dtype, var.dimensions)
                 # new_var[:] = var[:]
