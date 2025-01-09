@@ -212,47 +212,29 @@ class GridSpec(BaseModel):
             x_dim, y_dim = self.x_corner_dim, self.y_corner_dim
         else:
             raise NotImplementedError(staggerloc)
-        # dims = DimensionCollection( #tdk: needs to adapt to x,y switching
-        #     value=[
-        #         Dimension(
-        #             name=x_dim,
-        #             size=get_nc_dimension(ds, x_dim).size,
-        #             lower=grid.lower_bounds[staggerloc][self.x_index],
-        #             upper=grid.upper_bounds[staggerloc][self.x_index],
-        #             staggerloc=staggerloc,
-        #             coordinate_type="x",
-        #         ),
-        #         Dimension(
-        #             name=y_dim,
-        #             size=get_nc_dimension(ds, y_dim).size,
-        #             lower=grid.lower_bounds[staggerloc][self.y_index],
-        #             upper=grid.upper_bounds[staggerloc][self.y_index],
-        #             staggerloc=staggerloc,
-        #             coordinate_type="y",
-        #         ),
-        #     ]
-        dims = DimensionCollection(
-            value=[
-                Dimension(
-                    name=y_dim,
-                    size=get_nc_dimension(ds, y_dim).size,
-                    lower=grid.lower_bounds[staggerloc][self.y_index],
-                    upper=grid.upper_bounds[staggerloc][self.y_index],
-                    staggerloc=staggerloc,
-                    coordinate_type="y",
-                ),
-                Dimension(
-                    name=x_dim,
-                    size=get_nc_dimension(ds, x_dim).size,
-                    lower=grid.lower_bounds[staggerloc][self.x_index],
-                    upper=grid.upper_bounds[staggerloc][self.x_index],
-                    staggerloc=staggerloc,
-                    coordinate_type="x",
-                ),
-            ]
+        x_dimobj = Dimension(
+            name=x_dim,
+            size=get_nc_dimension(ds, x_dim).size,
+            lower=grid.lower_bounds[staggerloc][self.x_index],
+            upper=grid.upper_bounds[staggerloc][self.x_index],
+            staggerloc=staggerloc,
+            coordinate_type="x",
         )
-        # )
-        return dims
+        y_dimobj = Dimension(
+            name=y_dim,
+            size=get_nc_dimension(ds, y_dim).size,
+            lower=grid.lower_bounds[staggerloc][self.y_index],
+            upper=grid.upper_bounds[staggerloc][self.y_index],
+            staggerloc=staggerloc,
+            coordinate_type="y",
+        )
+        if self.x_index == 0:
+            value = [x_dimobj, y_dimobj]
+        elif self.x_index == 1:
+            value = [y_dimobj, x_dimobj]
+        else:
+            raise NotImplementedError(self.x_index, self.y_index)
+        return DimensionCollection(value=value)
 
 
 class GridWrapper(AbstractWrapper):
@@ -281,21 +263,17 @@ class NcToGrid(BaseModel):
 
     def create_grid_wrapper(self) -> GridWrapper:
         with open_nc(self.path, "r") as ds:
-            # grid_shape = np.array( #tdk: needs to adjust to x/y index switching
-            #     [
-            #         get_nc_dimension(ds, self.spec.x_dim).size,
-            #         get_nc_dimension(ds, self.spec.y_dim).size,
-            #     ]
-            # )
-            grid_shape = np.array(
-                [
-                    get_nc_dimension(ds, self.spec.y_dim).size,
-                    get_nc_dimension(ds, self.spec.x_dim).size,
-                ]
-            )
+            x_size = get_nc_dimension(ds, self.spec.x_dim).size
+            y_size = get_nc_dimension(ds, self.spec.y_dim).size
+            if self.spec.x_index == 0:
+                grid_shape = (x_size, y_size)
+            elif self.spec.x_index == 1:
+                grid_shape = (y_size, x_size)
+            else:
+                raise NotImplementedError(self.spec.x_index, self.spec.y_index)
             staggerloc = esmpy.StaggerLoc.CENTER
             grid = esmpy.Grid(
-                grid_shape,
+                np.array(grid_shape),
                 staggerloc=staggerloc,
                 coord_sys=esmpy.CoordSys.SPH_DEG,
             )
