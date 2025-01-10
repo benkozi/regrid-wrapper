@@ -160,6 +160,8 @@ class AbstractWrapper(abc.ABC, BaseModel):
 
 
 class GridSpec(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     x_center: str
     y_center: str
     x_dim: NameListType
