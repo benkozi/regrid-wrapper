@@ -5,15 +5,8 @@ import esmpy
 
 from regrid_wrapper.common import ncdump
 
-esmpy.Manager(debug=True)
 
-
-def test(tmp_path_shared: Path) -> None:
-    run_same_index(tmp_path_shared)
-    run_different_index(tmp_path_shared)
-
-
-def run_same_index(tmp_path_shared: Path) -> None:
+def test_same_index(tmp_path_shared: Path) -> None:
     x_index, y_index = 0, 1
     first = run_esmpy(tmp_path_shared, "one-same", x_index, y_index)
     x_index, y_index = 0, 1
@@ -22,7 +15,7 @@ def run_same_index(tmp_path_shared: Path) -> None:
     assert diff.sum() == 0.0
 
 
-def run_different_index(tmp_path_shared: Path) -> None:
+def test_different_index(tmp_path_shared: Path) -> None:
     x_index, y_index = 0, 1
     first = run_esmpy(tmp_path_shared, "one-diff", x_index, y_index)
     x_index, y_index = 1, 0

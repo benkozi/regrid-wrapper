@@ -35,7 +35,7 @@ def test(tmp_path_shared: Path) -> None:
         dst_path=dst_grid,
         output_weight_filename=weights,
         output_filename=dust_data,
-        esmpy_debug=True,
+        esmpy_debug=False,
         name="dust-data",
         fields=RRFS_DUST_DATA_ENV.fields,
     )
