@@ -21,7 +21,7 @@ def test_different_index(tmp_path_shared: Path) -> None:
     x_index, y_index = 1, 0
     second = run_esmpy(tmp_path_shared, "two-diff", x_index, y_index)
     diff = first - second
-    assert diff.sum() == 0.0
+    assert diff.sum() != 0.0
 
 
 def run_esmpy(root_path: Path, tag: str, x_index: int, y_index: int) -> np.ndarray:

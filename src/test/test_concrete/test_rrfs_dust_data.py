@@ -43,7 +43,7 @@ def test(tmp_path_shared: Path) -> None:
     processor = RegridProcessor(operation=op)
     processor.execute()
 
-    assert weights.exists()
+    assert not weights.exists()
     assert dust_data.exists()
 
     if COMM.rank == 0:

@@ -1,7 +1,7 @@
 import abc
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Tuple, Literal, Dict, Sequence, Any
+from typing import Tuple, Literal, Dict, Sequence, Any, Union, List
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -37,7 +37,7 @@ def open_nc(
         ds.close()
 
 
-HasNcAttrsType = nc.Dataset | nc.Variable
+HasNcAttrsType = Union[nc.Dataset, nc.Variable]
 
 
 def copy_nc_attrs(src: HasNcAttrsType, dst: HasNcAttrsType) -> None:
@@ -347,7 +347,7 @@ class NcToField(BaseModel):
                 ndbounds = None
                 target_dims = self.gwrap.dims
             else:
-                ndbounds = (get_nc_dimension(ds, self.dim_time).size,)
+                ndbounds = (len(get_nc_dimension(ds, self.dim_time)),)
                 time_dim = Dimension(
                     name=self.dim_time,
                     size=ndbounds[0],
