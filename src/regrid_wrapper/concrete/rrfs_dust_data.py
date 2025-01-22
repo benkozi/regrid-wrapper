@@ -81,7 +81,7 @@ class RrfsDustData(AbstractRegridOperation):
             )
 
             self._logger.info("updating grid mask")
-            self._update_grid_mask_(
+            self._update_grid_mask_and_dst_field_(
                 src_gwrap, src_fwrap_regrid, dst_fwrap_regrid, field_to_regrid
             )
 
@@ -102,7 +102,7 @@ class RrfsDustData(AbstractRegridOperation):
             )
             dst_fwrap_regrid.fill_nc_variable(self._spec.output_filename)
 
-    def _update_grid_mask_(
+    def _update_grid_mask_and_dst_field_(
         self,
         gwrap: GridWrapper,
         src_fwrap: FieldWrapper,
