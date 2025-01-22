@@ -81,7 +81,9 @@ class RrfsDustData(AbstractRegridOperation):
             )
 
             self._logger.info("updating grid mask")
-            self._update_grid_mask_(src_gwrap, src_fwrap_regrid, field_to_regrid)
+            self._update_grid_mask_(
+                src_gwrap, src_fwrap_regrid, dst_fwrap_regrid, field_to_regrid
+            )
 
             self._logger.info("starting weight file generation")
             regridder = esmpy.Regrid(
@@ -89,7 +91,7 @@ class RrfsDustData(AbstractRegridOperation):
                 dst_fwrap_regrid.value,
                 regrid_method=regrid_method,
                 # filename=str(self._spec.output_weight_filename), # Disable since weight files differ per-variable
-                unmapped_action=esmpy.UnmappedAction.ERROR,
+                unmapped_action=esmpy.UnmappedAction.IGNORE,
                 src_mask_values=[0],
             )
 
@@ -101,23 +103,34 @@ class RrfsDustData(AbstractRegridOperation):
             dst_fwrap_regrid.fill_nc_variable(self._spec.output_filename)
 
     def _update_grid_mask_(
-        self, gwrap: GridWrapper, fwrap: FieldWrapper, varname: str
+        self,
+        gwrap: GridWrapper,
+        src_fwrap: FieldWrapper,
+        dst_fwrap: FieldWrapper,
+        varname: str,
     ) -> None:
         mask = gwrap.value.get_item(esmpy.GridItem.MASK)
         mask.fill(1)  # 1 = unmasked
+
         # Assume that the mask is constant through time
-        field_data = fwrap.value.data[:, :, 0]
+        src_field_data = src_fwrap.value.data[:, :, 0]
+
+        dst_field_data = dst_fwrap.value.data
+
         self._logger.debug(f"{mask.shape=}")
-        self._logger.debug(f"{field_data.shape=}")
+        self._logger.debug(f"{src_field_data.shape=}")
         match varname:
             case "uthr":
-                mask[np.where(field_data == 999)] = 0
+                mask[np.where(src_field_data == 999)] = 0
+                dst_field_data.fill(999)
             case "clay":
-                mask[np.where(field_data == -1)] = 0
+                mask[np.where(src_field_data == -1)] = 0
+                dst_field_data.fill(-1)
             case "ssm":
                 pass
             case "sand":
-                mask[np.where(field_data == -1)] = 0
+                mask[np.where(src_field_data == -1)] = 0
+                dst_field_data.fill(-1)
             case "rdrag":
                 pass
             case _:
