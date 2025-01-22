@@ -90,6 +90,7 @@ class RrfsDustData(AbstractRegridOperation):
                 regrid_method=regrid_method,
                 # filename=str(self._spec.output_weight_filename), # Disable since weight files differ per-variable
                 unmapped_action=esmpy.UnmappedAction.ERROR,
+                src_mask_values=[0],
             )
 
             regridder(
