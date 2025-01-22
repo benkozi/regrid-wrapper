@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 
+set -e
+
 RUNDIR=smoke-dust-fixed-files
+CONDAENV=~/l/scratch/miniconda/envs/regrid-wrapper
 
 cd ~/l/scratch/sandbox/regrid-wrapper || exit
 git pull
-rm -rf ${RUNDIR}
+rm -rf ${RUNDIR} || echo "run directory does not exist"
 
+export PATH=${CONDAENV}/bin:${PATH}
 export PYTHONPATH=$(pwd -LP)/src
 export REGRID_WRAPPER_LOG_DIR=.
+export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
 
-~/l/scratch/miniconda/envs/regrid-wrapper/bin/python ./src/regrid_wrapper/hydra/task_prep.py || exit
+python ./src/regrid_wrapper/hydra/task_prep.py || exit
 
 cd ${RUNDIR}/logs || exit
 sbatch ../main-job.sh || exit
-squeue -u Benjamin.Koziol -i 5
+squeue -u Benjamin.Koziol -i 30

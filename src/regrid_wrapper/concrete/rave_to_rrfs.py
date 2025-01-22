@@ -46,3 +46,8 @@ class RaveToRrfs(AbstractRegridOperation):
             unmapped_action=esmpy.UnmappedAction.IGNORE,
             ignore_degenerate=True,
         )
+
+        # Uncomment to test read back from file
+        # _ = esmpy.RegridFromFile(
+        #     src_field, dst_field, str(self._spec.output_weight_filename)
+        # )

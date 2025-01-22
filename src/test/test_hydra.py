@@ -83,4 +83,4 @@ def test_run_operations(tmp_path_shared: Path) -> None:
     globs = glob.glob(str(tmp_path_shared / "**"), recursive=True)
     # for g in globs:
     #     print(g)
-    assert len(globs) == 32
+    assert len(globs) == 29

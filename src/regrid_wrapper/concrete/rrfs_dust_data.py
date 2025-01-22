@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Tuple
 
 import esmpy
+import numpy as np
 
 from pydantic import BaseModel, ConfigDict
 
@@ -34,6 +35,7 @@ class RrfsDustData(AbstractRegridOperation):
         assert isinstance(self._spec, GenerateWeightFileAndRegridFields)
 
         src_gwrap = self._create_source_grid_wrapper_()
+        src_gwrap.value.add_item(esmpy.GridItem.MASK)
         dst_gwrap = self._create_destination_grid_wrapper_()
 
         archetype_field_name = RRFS_DUST_DATA_ENV.fields[0]
@@ -68,20 +70,7 @@ class RrfsDustData(AbstractRegridOperation):
             dst_dim.name = src_dim.name
         dst_gwrap_output.fill_nc_variables(self._spec.output_filename)
 
-        dst_fwrap = self._create_field_wrapper_(
-            archetype_field_name, self._spec.output_filename, dst_gwrap_output
-        )
-
-        self._logger.info("starting weight file generation")
         regrid_method = esmpy.RegridMethod.BILINEAR
-        regridder = esmpy.Regrid(
-            src_fwrap.value,
-            dst_fwrap.value,
-            regrid_method=regrid_method,
-            filename=str(self._spec.output_weight_filename),
-            unmapped_action=esmpy.UnmappedAction.ERROR,
-        )
-
         for field_to_regrid in RRFS_DUST_DATA_ENV.fields:
             self._logger.info(f"regridding field: {field_to_regrid}")
             src_fwrap_regrid = self._create_field_wrapper_(
@@ -90,12 +79,62 @@ class RrfsDustData(AbstractRegridOperation):
             dst_fwrap_regrid = self._create_field_wrapper_(
                 field_to_regrid, self._spec.output_filename, dst_gwrap_output
             )
+
+            self._logger.info("updating grid mask")
+            self._update_grid_mask_and_dst_field_(
+                src_gwrap, src_fwrap_regrid, dst_fwrap_regrid, field_to_regrid
+            )
+
+            self._logger.info("starting weight file generation")
+            regridder = esmpy.Regrid(
+                src_fwrap_regrid.value,
+                dst_fwrap_regrid.value,
+                regrid_method=regrid_method,
+                # filename=str(self._spec.output_weight_filename), # Disable since weight files differ per-variable
+                unmapped_action=esmpy.UnmappedAction.IGNORE,
+                src_mask_values=[0],
+            )
+
             regridder(
                 src_fwrap_regrid.value,
                 dst_fwrap_regrid.value,
                 zero_region=esmpy.Region.SELECT,
             )
             dst_fwrap_regrid.fill_nc_variable(self._spec.output_filename)
+
+    def _update_grid_mask_and_dst_field_(
+        self,
+        gwrap: GridWrapper,
+        src_fwrap: FieldWrapper,
+        dst_fwrap: FieldWrapper,
+        varname: str,
+    ) -> None:
+        mask = gwrap.value.get_item(esmpy.GridItem.MASK)
+        mask.fill(1)  # 1 = unmasked
+
+        # Assume that the mask is constant through time
+        src_field_data = src_fwrap.value.data[:, :, 0]
+
+        dst_field_data = dst_fwrap.value.data
+
+        self._logger.debug(f"{mask.shape=}")
+        self._logger.debug(f"{src_field_data.shape=}")
+        match varname:
+            case "uthr":
+                mask[np.where(src_field_data == 999)] = 0
+                dst_field_data.fill(999)
+            case "clay":
+                mask[np.where(src_field_data == -1)] = 0
+                dst_field_data.fill(-1)
+            case "ssm":
+                pass
+            case "sand":
+                mask[np.where(src_field_data == -1)] = 0
+                dst_field_data.fill(-1)
+            case "rdrag":
+                pass
+            case _:
+                raise NotImplementedError
 
     @staticmethod
     def _create_field_wrapper_(

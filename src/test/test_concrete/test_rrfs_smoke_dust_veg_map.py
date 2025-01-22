@@ -26,7 +26,7 @@ def test_dev(bin_dir: Path, tmp_path_shared: Path) -> None:
         output_weight_filename=tmp_path_shared / weight_filename,
         output_filename=tmp_path_shared / "veg_map.nc",
         fields=("emiss_factor",),
-        esmpy_debug=True,
+        esmpy_debug=False,
         name=weight_filename,
     )
     op = RrfsSmokeDustVegetationMap(spec=spec)
@@ -52,7 +52,7 @@ def test(tmp_path_shared: Path) -> None:
         output_weight_filename=weights,
         output_filename=veg_map,
         fields=("emiss_factor",),
-        esmpy_debug=True,
+        esmpy_debug=False,
         name="veg_map-3km-to-25km",
     )
     op = RrfsSmokeDustVegetationMap(spec=spec)
@@ -106,7 +106,7 @@ def test_different_shapes(tmp_path_shared: Path) -> None:
         output_weight_filename=weights,
         output_filename=veg_map,
         fields=("emiss_factor",),
-        esmpy_debug=True,
+        esmpy_debug=False,
         name="veg_map-3km-to-25km",
         esmpy_unmapped_action=esmpy.UnmappedAction.IGNORE,
     )

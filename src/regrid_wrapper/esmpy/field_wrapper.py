@@ -1,7 +1,7 @@
 import abc
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Tuple, Literal, Dict, Sequence, Any
+from typing import Tuple, Literal, Dict, Sequence, Any, Union, List
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -37,7 +37,10 @@ def open_nc(
         ds.close()
 
 
-def copy_nc_attrs(src: nc.Dataset | nc.Variable, dst: nc.Dataset | nc.Variable) -> None:
+HasNcAttrsType = Union[nc.Dataset, nc.Variable]
+
+
+def copy_nc_attrs(src: HasNcAttrsType, dst: HasNcAttrsType) -> None:
     for attr in src.ncattrs():
         if attr.startswith("_"):
             continue
@@ -157,6 +160,8 @@ class AbstractWrapper(abc.ABC, BaseModel):
 
 
 class GridSpec(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     x_center: str
     y_center: str
     x_dim: NameListType
@@ -212,27 +217,29 @@ class GridSpec(BaseModel):
             x_dim, y_dim = self.x_corner_dim, self.y_corner_dim
         else:
             raise NotImplementedError(staggerloc)
-        dims = DimensionCollection(
-            value=[
-                Dimension(
-                    name=x_dim,
-                    size=get_nc_dimension(ds, x_dim).size,
-                    lower=grid.lower_bounds[staggerloc][self.x_index],
-                    upper=grid.upper_bounds[staggerloc][self.x_index],
-                    staggerloc=staggerloc,
-                    coordinate_type="x",
-                ),
-                Dimension(
-                    name=y_dim,
-                    size=get_nc_dimension(ds, y_dim).size,
-                    lower=grid.lower_bounds[staggerloc][self.y_index],
-                    upper=grid.upper_bounds[staggerloc][self.y_index],
-                    staggerloc=staggerloc,
-                    coordinate_type="y",
-                ),
-            ]
+        x_dimobj = Dimension(
+            name=x_dim,
+            size=get_nc_dimension(ds, x_dim).size,
+            lower=grid.lower_bounds[staggerloc][self.x_index],
+            upper=grid.upper_bounds[staggerloc][self.x_index],
+            staggerloc=staggerloc,
+            coordinate_type="x",
         )
-        return dims
+        y_dimobj = Dimension(
+            name=y_dim,
+            size=get_nc_dimension(ds, y_dim).size,
+            lower=grid.lower_bounds[staggerloc][self.y_index],
+            upper=grid.upper_bounds[staggerloc][self.y_index],
+            staggerloc=staggerloc,
+            coordinate_type="y",
+        )
+        if self.x_index == 0:
+            value = [x_dimobj, y_dimobj]
+        elif self.x_index == 1:
+            value = [y_dimobj, x_dimobj]
+        else:
+            raise NotImplementedError(self.x_index, self.y_index)
+        return DimensionCollection(value=value)
 
 
 class GridWrapper(AbstractWrapper):
@@ -261,12 +268,7 @@ class NcToGrid(BaseModel):
 
     def create_grid_wrapper(self) -> GridWrapper:
         with open_nc(self.path, "r") as ds:
-            grid_shape = np.array(
-                [
-                    get_nc_dimension(ds, self.spec.x_dim).size,
-                    get_nc_dimension(ds, self.spec.y_dim).size,
-                ]
-            )
+            grid_shape = self._create_grid_shape_(ds)
             staggerloc = esmpy.StaggerLoc.CENTER
             grid = esmpy.Grid(
                 grid_shape,
@@ -292,6 +294,17 @@ class NcToGrid(BaseModel):
                 value=grid, dims=dims, spec=self.spec, corner_dims=corner_dims
             )
             return gwrap
+
+    def _create_grid_shape_(self, ds: nc.Dataset) -> np.ndarray:
+        x_size = get_nc_dimension(ds, self.spec.x_dim).size
+        y_size = get_nc_dimension(ds, self.spec.y_dim).size
+        if self.spec.x_index == 0:
+            grid_shape = (x_size, y_size)
+        elif self.spec.x_index == 1:
+            grid_shape = (y_size, x_size)
+        else:
+            raise NotImplementedError(self.spec.x_index, self.spec.y_index)
+        return np.array(grid_shape)
 
     def _add_corner_coords_(
         self, ds: nc.Dataset, grid: esmpy.Grid
@@ -334,7 +347,7 @@ class NcToField(BaseModel):
                 ndbounds = None
                 target_dims = self.gwrap.dims
             else:
-                ndbounds = (get_nc_dimension(ds, self.dim_time).size,)
+                ndbounds = (len(get_nc_dimension(ds, self.dim_time)),)
                 time_dim = Dimension(
                     name=self.dim_time,
                     size=ndbounds[0],

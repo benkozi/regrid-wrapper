@@ -31,4 +31,3 @@ source_definition:
       grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_CONUS_25km.nc
       nodes: 2
       wall_time: "01:00:00"
-

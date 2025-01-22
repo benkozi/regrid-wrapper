@@ -21,7 +21,7 @@ def test_dev(bin_dir: Path, tmp_path_shared: Path) -> None:
         src_path=bin_dir / "RAVE/grid_in.nc",
         dst_path=bin_dir / "RRFS_CONUS_25km/ds_out_base.nc",
         output_weight_filename=tmp_path_shared / "weights.nc",
-        esmpy_debug=True,
+        esmpy_debug=False,
         name="tester",
     )
     op = RaveToRrfs(spec=spec)
@@ -44,7 +44,7 @@ def test(tmp_path_shared: Path) -> None:
         src_path=src_grid,
         dst_path=dst_grid,
         output_weight_filename=weights,
-        esmpy_debug=True,
+        esmpy_debug=False,
         name="tester",
     )
     op = RaveToRrfs(spec=spec)

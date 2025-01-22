@@ -48,7 +48,10 @@ class SmokeDustRegridConfig(BaseModel):
     source_definition: SourceDefinition
 
     def output_directory(self, target_grid: RrfsGridKey) -> PathType:
-        return self.root_output_directory / f"fix_smoke/{target_grid.value}"
+        return (
+            self.root_output_directory
+            / f"fix_smoke/{target_grid.value.replace('KM', 'km')}"
+        )
 
     @property
     def log_directory(self) -> PathType:
