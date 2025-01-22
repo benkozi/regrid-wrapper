@@ -19,4 +19,4 @@ python ./src/regrid_wrapper/hydra/task_prep.py || exit
 
 cd ${RUNDIR}/logs || exit
 sbatch ../main-job.sh || exit
-squeue -u Benjamin.Koziol -i 5
+squeue -u Benjamin.Koziol -i 30
