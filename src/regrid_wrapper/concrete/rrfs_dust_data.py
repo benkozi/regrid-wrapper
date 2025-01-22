@@ -99,23 +99,24 @@ class RrfsDustData(AbstractRegridOperation):
             )
             dst_fwrap_regrid.fill_nc_variable(self._spec.output_filename)
 
-    @staticmethod
     def _update_grid_mask_(
-        gwrap: GridWrapper, fwrap: FieldWrapper, varname: str
+        self, gwrap: GridWrapper, fwrap: FieldWrapper, varname: str
     ) -> None:
         mask = gwrap.value.get_item(esmpy.GridItem.MASK)
-        mask.fill(0)
+        mask.fill(1)  # 1 = unmasked
         # Assume that the mask is constant through time
-        field_data = fwrap.value.data[0, ...]
+        field_data = fwrap.value.data[:, :, 0]
+        self._logger.debug(f"{mask.shape=}")
+        self._logger.debug(f"{field_data.shape=}")
         match varname:
             case "uthr":
-                mask[np.where(field_data == 999)] = 1
+                mask[np.where(field_data == 999)] = 0
             case "clay":
-                mask[np.where(field_data == -1)] = 1
+                mask[np.where(field_data == -1)] = 0
             case "ssm":
                 pass
             case "sand":
-                mask[np.where(field_data == -1)] = 1
+                mask[np.where(field_data == -1)] = 0
             case "rdrag":
                 pass
             case _:
