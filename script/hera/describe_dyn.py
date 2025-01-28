@@ -16,7 +16,7 @@ def create_params() -> DescribeParams:
     print(f"{files=}")
     params = DescribeParams(
         namespace="smoke_dust.dyn",
-        files=files,
+        files=tuple([root_dir / ii for ii in files]),
         varnames=(
             "coarsepm",
             "coarsepm_ave",
