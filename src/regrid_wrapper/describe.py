@@ -18,6 +18,7 @@ def describe(params: DescribeParams) -> pd.DataFrame:
         with xr.open_dataset(f) as ds:
             print(f"{idx + 1} of {len(params.files)}: {f=}")
             for varname in params.varnames:
+                print(varname)
                 row = {"file": f, "namespace": params.namespace}
                 row["varname"] = varname
                 row["median"] = ds[varname].median().values.item()
