@@ -12,7 +12,7 @@ def create_params() -> DescribeParams:
     root_dir = Path(
         "/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/data/smoke_dust_conus_3km/nco_dirs/test_smoke/com/smoke_dust/v1.0.0"
     )
-    files = glob.glob("*smoke_dust*dyn*nc", root_dir=root_dir, recursive=True)
+    files = glob.glob("**/*smoke_dust*dyn*nc", root_dir=root_dir, recursive=True)
     print(f"{files=}")
     params = DescribeParams(
         namespace="smoke_dust.dyn",
