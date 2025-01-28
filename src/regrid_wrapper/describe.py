@@ -14,8 +14,9 @@ class DescribeParams(BaseModel):
 
 def describe(params: DescribeParams) -> pd.DataFrame:
     summary = []
-    for f in params.files:
+    for idx, f in enumerate(params.files):
         with xr.open_dataset(f) as ds:
+            print(f"{idx + 1} of {len(params.files)}: {f=}")
             for varname in params.varnames:
                 row = {"file": f, "namespace": params.namespace}
                 row["varname"] = varname
