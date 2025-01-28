@@ -1,5 +1,8 @@
 from pathlib import Path
+
 import numpy as np
+import pytest
+import xarray as xr
 
 from regrid_wrapper.concrete.rrfs_dust_data import (
     RrfsDustData,
@@ -8,9 +11,6 @@ from regrid_wrapper.concrete.rrfs_dust_data import (
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.model.spec import GenerateWeightFileAndRegridFields
 from regrid_wrapper.strategy.core import RegridProcessor
-import pytest
-
-import xarray as xr
 from test.conftest import (
     create_rrfs_grid_file,
     create_dust_data_file,
