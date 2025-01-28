@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append("/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/src")
+
 from pathlib import Path
 
 from regrid_wrapper.describe import DescribeParams, describe
@@ -21,6 +25,7 @@ def create_params() -> DescribeParams:
         ),
         csv_out=Path("/home/Benjamin.Koziol/htmp") / "smoke_dust.dyn.csv",
     )
+    return params
 
 
 def main() -> None:
