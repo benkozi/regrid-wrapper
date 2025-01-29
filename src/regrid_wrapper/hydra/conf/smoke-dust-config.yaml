@@ -10,7 +10,7 @@ target_components:
   - RAVE_GRID
   - DUST
   - EMI
-root_output_directory: ~/l/stmp2/sandbox/regrid-wrapper/smoke-dust-fixed-files
+root_output_directory: /scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/smoke-dust-fixed-files
 source_definition:
   components:
     VEG_MAP:
