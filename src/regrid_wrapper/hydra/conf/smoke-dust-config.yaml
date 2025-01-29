@@ -9,6 +9,7 @@ target_components:
   - VEG_MAP
   - RAVE_GRID
   - DUST
+  - EMI
 root_output_directory: /scratch2/NAGAPE/epic/Ben.Koziol/sandbox/regrid-wrapper/smoke-dust-fixed-files
 source_definition:
   components:
@@ -18,6 +19,8 @@ source_definition:
       grid: /scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/grid_in.nc
     DUST:
       grid: /scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/dust12m_data.nc
+    EMI:
+      grid: /scratch2/NAGAPE/epic/SRW-AQM_DATA/fix_smoke/RRFS_NA_3km/emi_data.nc
   rrfs_grids:
     RRFS_NA_13KM:
       grid: /scratch2/NAGAPE/epic/Ben.Koziol/output-data/RRFS_NA_13km.nc
