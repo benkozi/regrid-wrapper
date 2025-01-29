@@ -1,5 +1,6 @@
 from typing import Iterator
 
+from regrid_wrapper.concrete.emi_data import EMI_DATA_ENV, EmiData
 from regrid_wrapper.concrete.rave_to_rrfs import RaveToRrfs
 from regrid_wrapper.concrete.rrfs_dust_data import RRFS_DUST_DATA_ENV, RrfsDustData
 from regrid_wrapper.concrete.rrfs_smoke_dust_veg_map import RrfsSmokeDustVegetationMap
@@ -57,6 +58,20 @@ def iter_operations(cfg: SmokeDustRegridConfig) -> Iterator[AbstractRegridOperat
                         name=name,
                     )
                     yield RrfsDustData(spec=spec)
+                case ComponentKey.EMI:
+                    spec = GenerateWeightFileAndRegridFields(
+                        src_path=cfg.source_definition.components[
+                            target_component
+                        ].grid,
+                        dst_path=model_grid_path,
+                        output_weight_filename=output_directory
+                        / f"weights-dust_data-to-{target_grid}.nc",
+                        output_filename=output_directory / "emi_data.nc",
+                        esmpy_debug=False,
+                        name="emi-data",
+                        fields=EMI_DATA_ENV.fields,
+                    )
+                    yield EmiData(spec=spec)
                 case _:
                     raise NotImplementedError(
                         f"Unsupported target component {target_component}"
