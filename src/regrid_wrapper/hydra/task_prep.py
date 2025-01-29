@@ -22,8 +22,8 @@ MAIN_JOB_TEMPLATE = """#!/usr/bin/env bash
 
 set -e
 
-DIR=/scratch2/NAGAPE/epic/Ben.Koziol/sandbox/regrid-wrapper
-CONDAENV=/scratch2/NAGAPE/epic/Ben.Koziol/miniconda/envs/regrid-wrapper
+DIR=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper
+CONDAENV=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/miniconda3/envs/regrid-wrapper
 
 export PATH=${{CONDAENV}}/bin:${{PATH}}
 export ESMFMKFILE=${{CONDAENV}}/lib/esmf.mk
