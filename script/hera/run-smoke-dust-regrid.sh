@@ -3,7 +3,7 @@
 set -e
 
 RUNDIR=smoke-dust-fixed-files
-CONDAENV=~/l/stmp2/miniconda/envs/regrid-wrapper
+CONDAENV=~/l/stmp2/miniconda3/envs/regrid-wrapper
 
 cd ~/l/stmp2/sandbox/regrid-wrapper || exit
 git pull
