@@ -3,9 +3,9 @@
 set -e
 
 RUNDIR=smoke-dust-fixed-files
-CONDAENV=~/l/scratch/miniconda/envs/regrid-wrapper
+CONDAENV=~/l/stmp2/miniconda/envs/regrid-wrapper
 
-cd ~/l/scratch/sandbox/regrid-wrapper || exit
+cd ~/l/stmp2/sandbox/regrid-wrapper || exit
 git pull
 rm -rf ${RUNDIR} || echo "run directory does not exist"
 
