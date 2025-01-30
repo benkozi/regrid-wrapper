@@ -54,6 +54,7 @@ def create_fake_cfg(tmp_path_shared: Path) -> SmokeDustRegridConfig:
             ComponentKey.VEG_MAP,
             ComponentKey.RAVE_GRID,
             ComponentKey.DUST,
+            ComponentKey.EMI,
         ],
         root_output_directory=root_output_directory,
         source_definition=source_definition,

@@ -20,6 +20,7 @@ class ComponentKey(AbstractEnum):
     VEG_MAP = "VEG_MAP"
     RAVE_GRID = "RAVE_GRID"
     DUST = "DUST"
+    EMI = "EMI"
 
 
 InputPathType = PathType
