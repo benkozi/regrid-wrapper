@@ -1,12 +1,15 @@
 #!/bin/ksh --login
 
-#SBATCH --time=18:00:00
+#SBATCH --time=01:00:00
+#_SBATCH --time=18:00:00
 #SBATCH --qos=batch
 #SBATCH --partition=service
 #SBATCH --ntasks=1
-#SBATCH --account=acomp
+#SBATCH --account=epic
 #SBATCH --job-name=GFS_extract
-#SBATCH --output=/scratch1/BMC/acomp/Johana/for_Partha/GFS_extract.log
+#SBATCH --output=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/data/GFS_NA/GFS_extract.log
+
+  set -xue
 
 # Wall time was 10h; this is insufficient for 15 days.
   # Set dates of interest
@@ -22,7 +25,7 @@
   module load wgrib2
 
   # Set destination directories (just set first one)
-  export DEST_DIR=/scratch1/BMC/acomp/Johana/for_Partha
+  export DEST_DIR=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/data/GFS_NA
   cd ${DEST_DIR}
 
   while [[ ${day} -le ${dayEND} ]] ;
