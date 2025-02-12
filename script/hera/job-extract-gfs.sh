@@ -9,6 +9,8 @@
 #SBATCH --job-name=GFS_extract
 #SBATCH --output=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/data/GFS_NA/GFS_extract.log
 
+  # origin = /scratch1/BMC/acomp/Johana/to_share1/for_Partha/extract_GFS.sh
+
   set -xue
 
 # Wall time was 10h; this is insufficient for 15 days.
@@ -16,9 +18,9 @@
 
   typeset -RZ4 year=2019
   typeset -RZ2 yr=19
-  typeset -RZ2 month=08
-  typeset -RZ2 day=07
-  typeset -RZ2 dayEND=08
+  typeset -RZ2 month=07
+  typeset -RZ2 day=21
+  typeset -RZ2 dayEND=23
   typeset -RZ2 hour=00
   typeset -RZ2 hr=0
   module load hpss
