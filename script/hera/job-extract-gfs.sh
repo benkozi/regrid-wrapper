@@ -1,7 +1,7 @@
 #!/bin/ksh --login
 
-#SBATCH --time=01:00:00
-#_SBATCH --time=18:00:00
+#_SBATCH --time=01:00:00
+#SBATCH --time=18:00:00
 #SBATCH --qos=batch
 #SBATCH --partition=service
 #SBATCH --ntasks=1
