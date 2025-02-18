@@ -1,6 +1,8 @@
 import glob
 import sys
 
+import typer
+
 sys.path.append("/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/src")
 
 from pathlib import Path
@@ -8,10 +10,7 @@ from pathlib import Path
 from regrid_wrapper.describe import DescribeParams, describe
 
 
-def create_params() -> DescribeParams:
-    root_dir = Path(
-        "/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/data/smoke_dust_conus_3km/nco_dirs/test_smoke/com/smoke_dust/v1.0.0"
-    )
+def create_params(root_dir: Path, csv_out: Path) -> DescribeParams:
     files = glob.glob("**/*smoke_dust*dyn*nc", root_dir=root_dir, recursive=True)
     print(f"{files=}")
     params = DescribeParams(
@@ -25,15 +24,15 @@ def create_params() -> DescribeParams:
             # "smoke",
             "smoke_ave",
         ),
-        csv_out=Path("/home/Benjamin.Koziol/htmp") / "smoke_dust.dyn.csv",
+        csv_out=csv_out,
     )
     return params
 
 
-def main() -> None:
-    params = create_params()
+def main(root_dir: Path, csv_out: Path) -> None:
+    params = create_params(root_dir, csv_out)
     describe(params)
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
