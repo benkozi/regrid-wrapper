@@ -12,7 +12,7 @@ import numpy as np
 import xarray as xr
 import sys
 
-sys.path.append("/mnt/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/scripts/pyremap")
+# sys.path.append("/mnt/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/scripts/pyremap")
 from pyremap import (
     MpasCellMeshDescriptor,
     Remapper,
@@ -45,14 +45,15 @@ src.regional = True
 # method = "bilinear"
 method = "conserve"
 # method = "neareststod"
-p_weights = "/mnt/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/scripts/weights_RAVE_to_mpas_na15km_conserve.nc"
+# p_weights = "/mnt/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/scripts/weights_RAVE_to_mpas_na15km_conserve.nc"
+p_weights = "/home/Benjamin.Koziol/htmp/weights_RAVE_to_mpas_na15km_conserve.nc"
 remapper = Remapper(src, dst, p_weights)
 # if not p_weights.is_file():
 remapper.esmf_build_map(
     method=method,
     mpi_tasks=1,
     include_logs=True,
-    tempdir="/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/scripts/",
+    tempdir="/home/Benjamin.Koziol/htmp",
 )
 
 # Do some remapping
