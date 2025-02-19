@@ -26,9 +26,10 @@ p_mpas_grid = Path(
 dst = MpasCellMeshDescriptor(p_mpas_grid, "na15km.init")
 
 
-static_file = sys.argv[
-    1
-]  # "/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/emissions/anthro/GRAPES/"+sector+"/202101/satdy/GRA2PESv1.0_"+sector+"_202101_satdy_00to11Z.nc"
+# static_file = sys.argv[
+#     1
+# ]  # "/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/emissions/anthro/GRAPES/"+sector+"/202101/satdy/GRA2PESv1.0_"+sector+"_202101_satdy_00to11Z.nc"
+static_file = " /mnt/lfs5/BMC/rtwbl/Jordan/src/MPAS/input/emissions/fire/RAVE-HrlyEmiss-3km_v1r3_blend_s202407240000000_e202407240059590_c202407240203140.nc"
 static_fid = xr.open_dataset(static_file)
 lat = static_fid["grid_latt"]  # .values.ravel()
 lon = static_fid["grid_lont"]  # .values.ravel()
