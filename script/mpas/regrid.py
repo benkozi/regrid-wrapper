@@ -24,12 +24,12 @@ class RegridProcessor(BaseModel):
     def initialize(self) -> None:
         esmpy.Manager(debug=True)
 
+        scrip_path = self.context.tmp_path / "mpas_scrip.nc"
         if self.context.rank == 0:
             _LOGGER.info("writing mpas scrip grid")
             mpas_desc = MpasCellMeshDescriptor(
                 str(self.context.dst_path), "na15km.init"
             )
-            scrip_path = self.context.tmp_path / "mpas_scrip.nc"
             mpas_desc.to_scrip(str(scrip_path))
 
         print("create source grid")
