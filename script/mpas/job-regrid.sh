@@ -5,18 +5,18 @@
 #SBATCH --qos=batch
 #SBATCH --partition=hera
 #SBATCH -t 00:05:00
-#SBATCH --output=/home/Benjamin.Koziol/htmp/%x.out
-#_SBATCH --output=/home/Benjamin.Koziol/htmp/%x_%j.out
-#SBATCH --error=/home/Benjamin.Koziol/htmp/%x.err
-#_SBATCH --error=/home/Benjamin.Koziol/htmp/%x_%j.err
+#SBATCH --output=/home/Benjamin.Koziol/htmp/out/%x.out
+#_SBATCH --output=/home/Benjamin.Koziol/htmp/out/%x_%j.out
+#SBATCH --error=/home/Benjamin.Koziol/htmp/out/%x.err
+#_SBATCH --error=/home/Benjamin.Koziol/htmp/out/%x_%j.err
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1  # Assuming 24 cores per node, utilize them fully
-#SBATCH --ntasks=1  # Total tasks should be nodes * tasks-per-node
+#SBATCH --ntasks-per-node=24 # Assuming 24 cores per node, utilize them fully
+#SBATCH --ntasks=24  # Total tasks should be nodes * tasks-per-node
 
 set -e
 
-export REGRID_WRAPPER_LOG_DIR=/home/Benjamin.Koziol/htmp
-RUNDIR=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/script/mpas
+export REGRID_WRAPPER_LOG_DIR=/home/Benjamin.Koziol/htmp/out
+SCRIPT=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/script/mpas/regrid.py
 PYTHONDIR=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/src
 CONDAENV=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/miniconda3/envs/regrid-wrapper
 
@@ -24,6 +24,5 @@ export PATH=${CONDAENV}/bin:${PATH}
 export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
 export PYTHONPATH=${PYTHONDIR}:${PYTHONPATH}
 
-cd ${RUNDIR}
-python regrid.py
-#mpirun -np 1 python
+cd ${REGRID_WRAPPER_LOG_DIR}
+mpirun -n 24 python ${SCRIPT}
