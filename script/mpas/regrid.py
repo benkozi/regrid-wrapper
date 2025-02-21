@@ -25,7 +25,7 @@ class RegridProcessor(BaseModel):
         esmpy.Manager(debug=True)
 
         if self.context.rank == 0:
-            _LOGGER.log("writing mpas scrip grid")
+            _LOGGER.info("writing mpas scrip grid")
             mpas_desc = MpasCellMeshDescriptor(
                 str(self.context.dst_path), "na15km.init"
             )
@@ -48,10 +48,10 @@ class RegridProcessor(BaseModel):
         )
         src_gwrap = nc2grid.create_grid_wrapper()
 
-        _LOGGER.log("create destination mesh")
+        _LOGGER.info("create destination mesh")
         dst_mesh = esmpy.Mesh(filename=str(scrip_path), filetype=esmpy.FileFormat.SCRIP)
 
-        _LOGGER.log("create regridder")
+        _LOGGER.info("create regridder")
         src_field = esmpy.Field(src_gwrap.value, name="src")
         dst_field = esmpy.Field(dst_mesh, name="dst")
         regridder = esmpy.Regrid(
