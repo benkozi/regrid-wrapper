@@ -3,7 +3,7 @@
 ##SBATCH --job-name=mpas-regrid
 ##SBATCH --account=epic
 ##SBATCH --qos=batch
-##SBATCH --partition=bigmem
+##SBATCH --partition=batch
 ##SBATCH -t 00:05:00
 ##SBATCH --output=/home/Benjamin.Koziol/htmp/%x_%j.out
 ##SBATCH --error=/home/Benjamin.Koziol/htmp/%x_%j.err
