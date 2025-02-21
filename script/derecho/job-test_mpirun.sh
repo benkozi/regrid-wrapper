@@ -1,11 +1,9 @@
 #!/bin/bash
-#SBATCH --time=0:01:00
-#SBATCH --qos=normal
-#SBATCH --partition=batch
-#SBATCH --ntasks=8
-#SBATCH --account=epic
-#SBATCH --job-name=test_mpirun
-#SBATCH --output=test_mpirun.out
+#PBS -A epic
+#PBS -N test_mpirun
+#PBS -q main
+#PBS -l walltime=00:01:00
+#PBS -l select=1:mpiprocs=8
 
 set -xue
 
