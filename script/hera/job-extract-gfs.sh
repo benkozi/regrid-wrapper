@@ -3,7 +3,7 @@
 #_SBATCH --time=01:00:00
 #SBATCH --time=18:00:00
 #SBATCH --qos=batch
-#SBATCH --partition=hera
+#SBATCH --partition=service
 #SBATCH --ntasks=1
 #SBATCH --account=epic
 #SBATCH --job-name=GFS_extract
