@@ -37,13 +37,12 @@ class RegridProcessor(BaseModel):
             ),
         )
         src_gwrap = nc2grid.create_grid_wrapper()
-        src_grid = src_gwrap.value
 
         print("create destination mesh")
         dst_mesh = esmpy.Mesh(filename=str(scrip_path), filetype=esmpy.FileFormat.SCRIP)
 
         print("create regridder")
-        src_field = esmpy.Field(src_grid.value, name="src")
+        src_field = esmpy.Field(src_gwrap.value, name="src")
         dst_field = esmpy.Field(dst_mesh, name="dst")
         regridder = esmpy.Regrid(
             srcfield=src_field,
