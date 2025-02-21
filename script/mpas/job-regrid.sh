@@ -15,6 +15,7 @@
 
 set -e
 
+export REGRID_WRAPPER_LOG_DIR=/home/Benjamin.Koziol/htmp
 RUNDIR=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/script/mpas
 PYTHONDIR=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/src
 CONDAENV=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/miniconda3/envs/regrid-wrapper
