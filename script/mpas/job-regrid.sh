@@ -5,8 +5,10 @@
 #SBATCH --qos=batch
 #SBATCH --partition=hera
 #SBATCH -t 00:05:00
-#SBATCH --output=/home/Benjamin.Koziol/htmp/%x_%j.out
-#SBATCH --error=/home/Benjamin.Koziol/htmp/%x_%j.err
+#SBATCH --output=/home/Benjamin.Koziol/htmp/%x.out
+#_SBATCH --output=/home/Benjamin.Koziol/htmp/%x_%j.out
+#SBATCH --error=/home/Benjamin.Koziol/htmp/%x.err
+#_SBATCH --error=/home/Benjamin.Koziol/htmp/%x_%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1  # Assuming 24 cores per node, utilize them fully
 #SBATCH --ntasks=1  # Total tasks should be nodes * tasks-per-node
