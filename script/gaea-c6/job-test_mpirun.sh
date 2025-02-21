@@ -1,7 +1,8 @@
 #!/bin/bash
+#SBATCH --clusters=c6
 #SBATCH --time=0:01:00
 #SBATCH --qos=normal
-#SBATCH --partition=testing
+#SBATCH --partition=batch
 #SBATCH --ntasks=8
 #SBATCH --account=bil-fire8
 #SBATCH --job-name=test_mpirun
