@@ -1,7 +1,6 @@
 #!/bin/bash
 
 #SBATCH --time=0:01:00
-#SBATCH --qos=batch
 #SBATCH --partition=batch
 #SBATCH --ntasks=8
 #SBATCH --account=bil-fire8
