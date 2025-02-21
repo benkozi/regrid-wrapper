@@ -6,7 +6,7 @@ from pyremap import MpasCellMeshDescriptor
 
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.context.logging import LOGGER
-from regrid_wrapper.esmpy.field_wrapper import GridSpec, NcToGrid
+from regrid_wrapper.esmpy.field_wrapper import GridSpec, NcToGrid, NcToField
 
 _LOGGER = LOGGER.getChild("mpas-regrid")
 
@@ -33,7 +33,7 @@ class RegridProcessor(BaseModel):
             mpas_desc.to_scrip(str(scrip_path))
 
         print("create source grid")
-        nc2grid = NcToGrid(
+        src_gwrap = NcToGrid(
             path=self.context.src_path,
             spec=GridSpec(
                 x_center="grid_lont",
@@ -45,17 +45,22 @@ class RegridProcessor(BaseModel):
                 x_corner_dim=("grid_x",),
                 y_corner_dim=("grid_y",),
             ),
-        )
-        src_gwrap = nc2grid.create_grid_wrapper()
+        ).create_grid_wrapper()
 
         _LOGGER.info("create destination mesh")
         dst_mesh = esmpy.Mesh(filename=str(scrip_path), filetype=esmpy.FileFormat.SCRIP)
 
-        _LOGGER.info("create regridder")
-        src_field = esmpy.Field(src_gwrap.value, name="src")
+        _LOGGER.info("create source field")
+        src_fwrap = NcToField(
+            path=self.context.src_path, name="FRE", gwrap=src_gwrap, dim_time=("time",)
+        ).create_field_wrapper()
+
+        _LOGGER.info("create destination field")
         dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT)
+
+        _LOGGER.info("create regridder")
         regridder = esmpy.Regrid(
-            srcfield=src_field,
+            srcfield=src_fwrap.value,
             dstfield=dst_field,
             regrid_method=esmpy.RegridMethod.CONSERVE,
             unmapped_action=esmpy.UnmappedAction.ERROR,
