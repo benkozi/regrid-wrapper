@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -A epic
+#PBS -A NRAL0032
 #PBS -N test_mpirun
 #PBS -q main
 #PBS -l walltime=00:01:00
