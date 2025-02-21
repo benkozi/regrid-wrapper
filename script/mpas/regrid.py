@@ -53,7 +53,7 @@ class RegridProcessor(BaseModel):
 
         _LOGGER.info("create regridder")
         src_field = esmpy.Field(src_gwrap.value, name="src")
-        dst_field = esmpy.Field(dst_mesh, name="dst")
+        dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT)
         regridder = esmpy.Regrid(
             srcfield=src_field,
             dstfield=dst_field,
