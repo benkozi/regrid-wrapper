@@ -98,14 +98,14 @@ class RegridProcessor:
             src_stats = self.create_desc_stuff(
                 container={field_name: src_fwrap.value.data},
                 origin="src",
-                path=self.src_path,
+                path=self.context.src_path,
             )
             _LOGGER.info(f"{src_stats=}")
 
             dst_stats = self.create_desc_stuff(
                 container={field_name: dst_field.data},
                 origin="dst",
-                path=self.dst_path,
+                path=self.context.dst_path,
             )
             _LOGGER.info(f"{dst_stats=}")
 
