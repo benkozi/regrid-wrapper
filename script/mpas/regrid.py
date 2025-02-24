@@ -1,13 +1,21 @@
 from pathlib import Path
+from typing import Literal
 
 import esmpy
 import numpy as np
+import pandas as pd
 from pydantic import BaseModel
 from pyremap import MpasCellMeshDescriptor
 
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.context.logging import LOGGER
-from regrid_wrapper.esmpy.field_wrapper import GridSpec, NcToGrid, NcToField
+from regrid_wrapper.esmpy.field_wrapper import (
+    GridSpec,
+    NcToGrid,
+    NcToField,
+    FieldWrapper,
+    GridWrapper,
+)
 
 _LOGGER = LOGGER.getChild("mpas-regrid")
 
@@ -16,7 +24,11 @@ class Context(BaseModel):
     src_path: Path
     dst_path: Path
     tmp_path: Path
+    field_names: tuple[str, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2")
     rank: int = COMM.rank
+    _regridder: esmpy.Regrid | None = None
+    _dst_field: esmpy.Field | None = None
+    _src_gwrap: GridWrapper | None = None
 
 
 class RegridProcessor(BaseModel):
@@ -34,7 +46,7 @@ class RegridProcessor(BaseModel):
             mpas_desc.to_scrip(str(scrip_path))
 
         print("create source grid")
-        src_gwrap = NcToGrid(
+        self._src_gwrap = NcToGrid(
             path=self.context.src_path,
             spec=GridSpec(
                 x_center="grid_lont",
@@ -48,27 +60,17 @@ class RegridProcessor(BaseModel):
             ),
         ).create_grid_wrapper()
 
+        _LOGGER.info("create source field")
+        src_fwrap = self.create_field_wrapper(self.context.field_names[0])
+
         _LOGGER.info("create destination mesh")
         dst_mesh = esmpy.Mesh(filename=str(scrip_path), filetype=esmpy.FileFormat.SCRIP)
-
-        _LOGGER.info("create source field")
-        src_fwrap = NcToField(
-            path=self.context.src_path, name="FRE", gwrap=src_gwrap, dim_time=("time",)
-        ).create_field_wrapper()
-        src_data = src_fwrap.value.data
-        src_data[:] = np.where(src_data < 0.0, 0.0, src_data)
-        stats = [
-            [src_data.shape],
-            [src_data.min(), src_data.mean(), src_data.max()],
-            [np.nanmin(src_data), np.nanmean(src_data), np.nanmax(src_data)],
-        ]
-        _LOGGER.info(f"src_data stats: {stats=}")
 
         _LOGGER.info("create destination field")
         dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT)
 
         _LOGGER.info("create regridder")
-        regridder = esmpy.Regrid(
+        self._regridder = esmpy.Regrid(
             srcfield=src_fwrap.value,
             dstfield=dst_field,
             regrid_method=esmpy.RegridMethod.CONSERVE,
@@ -76,16 +78,103 @@ class RegridProcessor(BaseModel):
             ignore_degenerate=False,
         )
 
+    def run(self) -> None:
         _LOGGER.info("apply regridding")
-        regridder(src_fwrap.value, dst_field)
 
-        dst_data = dst_field.data
-        stats = [
-            [dst_data.shape],
-            [dst_data.min(), dst_data.mean(), dst_data.max()],
-            [np.nanmin(dst_data), np.nanmean(dst_data), np.nanmax(dst_data)],
-        ]
-        _LOGGER.info(f"dst_data stats: {stats=}")
+        regridder = self.get_regridder()
+        all_desc_stats = pd.DataFrame()
+        for field_name in self.field_names:
+            _LOGGER.info(f"regridding {field_name=}")
+            src_fwrap = self.create_field_wrapper(field_name=field_name)
+            dst_field = self.get_dst_field()
+            dst_field.data.fill(0.0)
+            regridder(src_fwrap.value, dst_field)
+
+            src_stats = self.create_desc_stuff(
+                container={field_name: src_fwrap.value.data},
+                origin="src",
+                path=self.src_path,
+            )
+            _LOGGER.info(f"{src_stats=}")
+
+            dst_stats = self.create_desc_stuff(
+                container={field_name: dst_field.data},
+                origin="dst",
+                path=self.dst_path,
+            )
+            _LOGGER.info(f"{dst_stats=}")
+
+            src_fwrap.value.destroy()
+            del src_fwrap
+
+    def create_desc_stuff(
+        self,
+        container: dict[str, np.ndarray],
+        origin: Literal["src", "dst"],
+        path: Path | None = None,
+    ) -> pd.DataFrame:
+        """
+        Create a standard set of descriptive statistics using `pandas`.
+
+
+        Args:
+            container: A dictionary mapping field names to arrays.
+            origin: A tag to indicate the data origin to add to the created dataframe.
+            path: Path associated with the source data.
+
+
+        Returns:
+            A dataframe containing descriptive statistics fields.
+        """
+        data_frame = pd.DataFrame.from_dict(
+            {k: v.ravel() for k, v in container.items()}
+        )
+        desc = data_frame.describe()
+        adds = {}
+        for field_name in container.keys():
+            adds[field_name] = [
+                data_frame[field_name].sum(),
+                data_frame[field_name].isnull().sum(),
+                origin,
+                path,
+                self.context.rank,
+            ]
+        desc = pd.concat(
+            [
+                desc,
+                pd.DataFrame(
+                    data=adds, index=["sum", "count_null", "origin", "path", "rank"]
+                ),
+            ]
+        )
+        return desc
+
+    def create_field_wrapper(self, field_name: str) -> FieldWrapper:
+        _LOGGER.info("create source field")
+        src_fwrap = NcToField(
+            path=self.context.src_path,
+            name=field_name,
+            gwrap=self.get_src_gwrap(),
+            dim_time=("time",),
+        ).create_field_wrapper()
+        src_data = src_fwrap.value.data
+        src_data[:] = np.where(src_data < 0.0, 0.0, src_data)
+        return src_fwrap
+
+    def get_src_gwrap(self) -> GridWrapper:
+        if self._src_gwrap is None:
+            raise ValueError
+        return self._src_gwrap
+
+    def get_dst_field(self) -> esmpy.Field:
+        if self._dst_field is None:
+            raise ValueError
+        return self._dst_field
+
+    def get_regridder(self) -> esmpy.Regrid:
+        if self._regridder is None:
+            raise ValueError
+        return self._regridder
 
 
 def main() -> None:
@@ -99,7 +188,7 @@ def main() -> None:
     context = Context(src_path=src_path, dst_path=dst_path, tmp_path=tmp_path)
     processor = RegridProcessor(context=context)
     processor.initialize()
-    # processor.run()
+    processor.run()
     # processor.finalize()
 
 
