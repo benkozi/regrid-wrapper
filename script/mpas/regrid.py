@@ -56,7 +56,7 @@ class RegridProcessor(BaseModel):
             path=self.context.src_path, name="FRE", gwrap=src_gwrap, dim_time=("time",)
         ).create_field_wrapper()
         src_data = src_fwrap.value.data
-        src_data[:] = np.where(src_data < 0.0, src_data, 0.0)
+        src_data[:] = np.where(src_data < 0.0, 0.0, src_data)
         stats = [
             [src_data.shape],
             [src_data.min(), src_data.mean(), src_data.max()],
