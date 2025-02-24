@@ -26,13 +26,16 @@ class Context(BaseModel):
     tmp_path: Path
     field_names: tuple[str, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2")
     rank: int = COMM.rank
-    _regridder: esmpy.Regrid | None = None
-    _dst_field: esmpy.Field | None = None
-    _src_gwrap: GridWrapper | None = None
 
 
-class RegridProcessor(BaseModel):
-    context: Context
+class RegridProcessor:
+
+    def __init__(self, context: Context) -> None:
+        self.context = context
+
+        self._regridder: esmpy.Regrid | None = None
+        self._dst_field: esmpy.Field | None = None
+        self._src_gwrap: GridWrapper | None = None
 
     def initialize(self) -> None:
         esmpy.Manager(debug=True)
