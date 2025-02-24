@@ -128,11 +128,13 @@ class RegridProcessor:
                 staggerloc=esmpy.StaggerLoc.CENTER,
                 coordinate_type="time",
             )
+            _LOGGER.info(f"{dst_field.lower_bounds=}")
+            _LOGGER.info(f"{dst_field.upper_bounds=}")
             dim_ncells = Dimension(
                 name=("nCells",),
                 size=130333,
-                lower=dst_field.grid.lower_bounds[esmpy.StaggerLoc.CENTER],
-                upper=dst_field.grid.upper_bounds[esmpy.StaggerLoc.CENTER],
+                lower=dst_field.lower_bounds[esmpy.StaggerLoc.CENTER],
+                upper=dst_field.upper_bounds[esmpy.StaggerLoc.CENTER],
                 staggerloc=esmpy.StaggerLoc.CENTER,
                 coordinate_type="cell",
             )
