@@ -83,7 +83,7 @@ class RegridProcessor(BaseModel):
 
         regridder = self.get_regridder()
         all_desc_stats = pd.DataFrame()
-        for field_name in self.field_names:
+        for field_name in self.context.field_names:
             _LOGGER.info(f"regridding {field_name=}")
             src_fwrap = self.create_field_wrapper(field_name=field_name)
             dst_field = self.get_dst_field()
