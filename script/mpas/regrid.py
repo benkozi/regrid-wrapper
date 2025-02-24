@@ -70,12 +70,14 @@ class RegridProcessor:
         dst_mesh = esmpy.Mesh(filename=str(scrip_path), filetype=esmpy.FileFormat.SCRIP)
 
         _LOGGER.info("create destination field")
-        dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT)
+        self._dst_field = esmpy.Field(
+            dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT
+        )
 
         _LOGGER.info("create regridder")
         self._regridder = esmpy.Regrid(
             srcfield=src_fwrap.value,
-            dstfield=dst_field,
+            dstfield=self._dst_field,
             regrid_method=esmpy.RegridMethod.CONSERVE,
             unmapped_action=esmpy.UnmappedAction.ERROR,
             ignore_degenerate=False,
