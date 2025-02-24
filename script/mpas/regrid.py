@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import esmpy
+import numpy as np
 from pydantic import BaseModel
 from pyremap import MpasCellMeshDescriptor
 
@@ -54,6 +55,13 @@ class RegridProcessor(BaseModel):
         src_fwrap = NcToField(
             path=self.context.src_path, name="FRE", gwrap=src_gwrap, dim_time=("time",)
         ).create_field_wrapper()
+        src_data = src_fwrap.value.data
+        stats = [
+            [src_data.shape],
+            [src_data.min(), src_data.mean(), src_data.max()],
+            [np.nanmin(src_data), np.nanmean(src_data), np.nanmax(src_data)],
+        ]
+        _LOGGER.info(f"src_data stats: {stats=}")
 
         _LOGGER.info("create destination field")
         dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT)
