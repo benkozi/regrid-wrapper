@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from typing import Literal
 
@@ -15,6 +16,10 @@ from regrid_wrapper.esmpy.field_wrapper import (
     NcToField,
     FieldWrapper,
     GridWrapper,
+    open_nc,
+    Dimension,
+    DimensionCollection,
+    set_variable_data,
 )
 
 _LOGGER = LOGGER.getChild("mpas-regrid")
@@ -23,6 +28,7 @@ _LOGGER = LOGGER.getChild("mpas-regrid")
 class Context(BaseModel):
     src_path: Path
     dst_path: Path
+    new_dst_path: Path
     tmp_path: Path
     field_names: tuple[str, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2")
     rank: int = COMM.rank
@@ -83,11 +89,15 @@ class RegridProcessor:
             ignore_degenerate=False,
         )
 
+        if self.context.rank == 0:
+            _LOGGER.info("copy destination file")
+            shutil.copy2(scrip_path, self.context.new_dst_path)
+
     def run(self) -> None:
         _LOGGER.info("apply regridding")
 
         regridder = self.get_regridder()
-        all_desc_stats = pd.DataFrame()
+        # all_desc_stats = pd.DataFrame()
         for field_name in self.context.field_names:
             _LOGGER.info(f"regridding {field_name=}")
             src_fwrap = self.create_field_wrapper(field_name=field_name)
@@ -100,14 +110,46 @@ class RegridProcessor:
                 origin="src",
                 path=self.context.src_path,
             )
-            _LOGGER.info(f"{src_stats=}")
+            _LOGGER.info(f"{src_stats.to_dict()=}")
 
             dst_stats = self.create_desc_stuff(
                 container={field_name: dst_field.data},
                 origin="dst",
                 path=self.context.dst_path,
             )
-            _LOGGER.info(f"{dst_stats=}")
+            _LOGGER.info(f"{dst_stats.to_dict()=}")
+
+            # tdk: support NcToMesh
+            dim_time = Dimension(
+                name=("time",),
+                size=1,
+                lower=0,
+                upper=1,
+                staggerloc=esmpy.StaggerLoc.CENTER,
+                coordinate_type="time",
+            )
+            dim_ncells = Dimension(
+                name=("nCells",),
+                size=130333,
+                lower=dst_field.grid.lower_bounds[esmpy.StaggerLoc.CENTER],
+                upper=dst_field.grid.upper_bounds[esmpy.StaggerLoc.CENTER],
+                staggerloc=esmpy.StaggerLoc.CENTER,
+                coordinate_type="cell",
+            )
+            dims = DimensionCollection(value=(dim_time, dim_ncells))
+            _LOGGER.info(f"{dims=}")
+            _LOGGER.info(f"writing field to netcdf")
+            with open_nc(self.context.new_dst_path, mode="a") as ds:
+                var = ds.createVariable(
+                    field_name, float, ("time", "nCells"), fill_value=-1.0
+                )
+                set_variable_data(
+                    var,
+                    dims,
+                    dst_field.data.reshape(1, dst_field.data.shape[0]),
+                )
+
+            # all_desc_stats = all_desc_stats.append(src_stats)tdk
 
             src_fwrap.value.destroy()
             del src_fwrap
@@ -190,7 +232,14 @@ def main() -> None:
     )
     dst_path = data_dir / "na15km.init.nc"
     tmp_path = Path("/home/Benjamin.Koziol/htmp/out")
-    context = Context(src_path=src_path, dst_path=dst_path, tmp_path=tmp_path)
+    new_dst_path = tmp_path / "na15km_with_fields.nc"
+
+    context = Context(
+        src_path=src_path,
+        dst_path=dst_path,
+        new_dst_path=new_dst_path,
+        tmp_path=tmp_path,
+    )
     processor = RegridProcessor(context=context)
     processor.initialize()
     processor.run()
