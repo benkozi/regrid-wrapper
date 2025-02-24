@@ -70,7 +70,7 @@ class RegridProcessor:
         ).create_grid_wrapper()
 
         _LOGGER.info("create source field")
-        src_fwrap = self.create_field_wrapper(self.context.field_names[0])
+        src_fwrap = self.create_src_field_wrapper(self.context.field_names[0])
 
         _LOGGER.info("create destination mesh")
         dst_mesh = esmpy.Mesh(filename=str(scrip_path), filetype=esmpy.FileFormat.SCRIP)
