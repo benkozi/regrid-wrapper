@@ -8,7 +8,7 @@ import pandas as pd
 from pydantic import BaseModel
 from pyremap import MpasCellMeshDescriptor
 
-from regrid_wrapper.context.comm import COMM
+from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.esmpy.field_wrapper import (
     GridSpec,
@@ -100,7 +100,7 @@ class RegridProcessor:
         # all_desc_stats = pd.DataFrame()
         for field_name in self.context.field_names:
             _LOGGER.info(f"regridding {field_name=}")
-            src_fwrap = self.create_field_wrapper(field_name=field_name)
+            src_fwrap = self.create_src_field_wrapper(field_name=field_name)
             dst_field = self.get_dst_field()
             dst_field.data.fill(0.0)
             regridder(src_fwrap.value, dst_field)
@@ -121,20 +121,20 @@ class RegridProcessor:
 
             # tdk: support NcToMesh
             dim_time = Dimension(
-                name=("time",),
+                name=("Time",),
                 size=1,
                 lower=0,
                 upper=1,
                 staggerloc=esmpy.StaggerLoc.CENTER,
                 coordinate_type="time",
             )
-            _LOGGER.info(f"{dst_field.lower_bounds=}")
-            _LOGGER.info(f"{dst_field.upper_bounds=}")
+            local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
+            reconciled_bounds = reconcile_bounds(local_bounds)
             dim_ncells = Dimension(
                 name=("nCells",),
                 size=130333,
-                lower=dst_field.lower_bounds[esmpy.StaggerLoc.CENTER],
-                upper=dst_field.upper_bounds[esmpy.StaggerLoc.CENTER],
+                lower=reconciled_bounds[0],
+                upper=reconciled_bounds[1],
                 staggerloc=esmpy.StaggerLoc.CENTER,
                 coordinate_type="cell",
             )
@@ -143,7 +143,7 @@ class RegridProcessor:
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 var = ds.createVariable(
-                    field_name, float, ("time", "nCells"), fill_value=-1.0
+                    field_name, float, ("Time", "nCells"), fill_value=-1.0
                 )
                 set_variable_data(
                     var,
@@ -198,7 +198,7 @@ class RegridProcessor:
         )
         return desc
 
-    def create_field_wrapper(self, field_name: str) -> FieldWrapper:
+    def create_src_field_wrapper(self, field_name: str) -> FieldWrapper:
         _LOGGER.info("create source field")
         src_fwrap = NcToField(
             path=self.context.src_path,
