@@ -76,6 +76,17 @@ class RegridProcessor(BaseModel):
             ignore_degenerate=False,
         )
 
+        _LOGGER.info("apply regridding")
+        regridder(src_fwrap.value, dst_field)
+
+        dst_data = dst_field.data
+        stats = [
+            [dst_data.shape],
+            [dst_data.min(), dst_data.mean(), dst_data.max()],
+            [np.nanmin(dst_data), np.nanmean(dst_data), np.nanmax(dst_data)],
+        ]
+        _LOGGER.info(f"dst_data stats: {stats=}")
+
 
 def main() -> None:
     data_dir = Path("/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/data/mpas")
