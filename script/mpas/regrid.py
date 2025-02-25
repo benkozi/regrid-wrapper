@@ -108,20 +108,6 @@ class RegridProcessor:
             dst_field.data.fill(0.0)
             regridder(src_fwrap.value, dst_field)
 
-            src_stats = self.create_desc_stuff(
-                container={field_name: src_fwrap.value.data},
-                origin="src",
-                path=self.context.src_path,
-            )
-            _LOGGER.info(f"{src_stats.to_dict()=}")
-
-            dst_stats = self.create_desc_stuff(
-                container={field_name: dst_field.data},
-                origin="dst",
-                path=self.context.dst_path,
-            )
-            _LOGGER.info(f"{dst_stats.to_dict()=}")
-
             # tdk: support NcToMesh
             local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
