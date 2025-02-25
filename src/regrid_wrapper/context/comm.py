@@ -43,7 +43,7 @@ def reconcile_bounds(bounds: tuple[int, int]) -> tuple[int, int]:
         else:
             reconciled_bounds[idx][0] = reconciled_bounds[idx - 1][1]
             reconciled_bounds[idx][1] = reconciled_bounds[idx - 1][1] + (
-                bounds[1] - bounds[0]
+                all_bounds[idx][1] - all_bounds[idx][0]
             )
     LOGGER.debug(f"{reconciled_bounds=}")
     return tuple(reconciled_bounds[COMM.rank])
