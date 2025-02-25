@@ -124,7 +124,7 @@ class RegridProcessor:
             reconciled_bounds = reconcile_bounds(local_bounds)
             dim_ncells = Dimension(
                 name=("grid_size",),
-                size=130333,
+                size=130333,  # tdk: pull from origin
                 lower=reconciled_bounds[0],
                 upper=reconciled_bounds[1],
                 staggerloc=esmpy.MeshLoc.ELEMENT,

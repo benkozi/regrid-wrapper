@@ -33,6 +33,7 @@ COMM = Comm()
 def reconcile_bounds(bounds: tuple[int, int]) -> tuple[int, int]:
     from regrid_wrapper.context.logging import LOGGER  # tdk: avoid local import
 
+    LOGGER.debug(f"{bounds=}")
     all_bounds = COMM.allgather(bounds)
     LOGGER.debug(f"{all_bounds=}")
     reconciled_bounds = [[0, 0] for _ in range(len(all_bounds))]
@@ -42,7 +43,7 @@ def reconcile_bounds(bounds: tuple[int, int]) -> tuple[int, int]:
         else:
             reconciled_bounds[idx][0] = reconciled_bounds[idx - 1][1]
             reconciled_bounds[idx][1] = reconciled_bounds[idx - 1][1] + (
-                all_bounds[idx][1] - all_bounds[idx][0] - 1
+                bounds[1] - bounds[0]
             )
     LOGGER.debug(f"{reconciled_bounds=}")
     return tuple(reconciled_bounds[COMM.rank])
