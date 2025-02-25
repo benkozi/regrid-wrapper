@@ -144,13 +144,13 @@ class RegridProcessor:
                     field_names=self.context.field_names,
                 ),
                 FileDesc(
-                    path=self.context.new_dst_path,
-                    origin="dst",
+                    path=self.context.src_path,
+                    origin="src",
                     field_names=self.context.field_names,
                 ),
             ]
             data_frame = self.create_desc_stuff(targets)
-            data_frame.to_csv(self.context.desc_stats_out)
+            data_frame.to_csv(self.context.desc_stats_out, index=False)
 
     def finalize(self) -> None:
         _LOGGER.info("finalizing")
@@ -164,9 +164,7 @@ class RegridProcessor:
         for target in targets:
             with open_nc(target.path, mode="r", parallel=False) as ds:
                 for varname in target.field_names:
-                    data = ds.variables[varname][:]
-                    data.fill(np.nan)
-                    data = data.ravel()
+                    data = ds.variables[varname][:].filled(np.nan).ravel()
                     data_frame = pd.DataFrame.from_dict({varname: data})
                     desc = data_frame.describe()
                     adds = {
@@ -187,7 +185,7 @@ class RegridProcessor:
                     )
                     to_concat.append(desc)
         ret = pd.concat([ii.transpose() for ii in to_concat])
-        ret.index.name = "variable"
+        ret.index.name = "field_name"
         ret.reset_index(inplace=True)
         _LOGGER.info("exiting create_desc_stuff")
         return ret
