@@ -140,7 +140,7 @@ class RegridProcessor:
                 set_variable_data(
                     var,
                     dims,
-                    dst_field.data.reshape(1, dst_field.data.shape[0]),
+                    dst_field.data,
                 )
 
             # all_desc_stats = all_desc_stats.append(src_stats)tdk
