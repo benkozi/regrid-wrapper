@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Iterable
 
 import esmpy
 import numpy as np
@@ -29,9 +29,15 @@ class Context(BaseModel):
     src_path: Path
     dst_path: Path
     new_dst_path: Path
-    tmp_path: Path
+    desc_stats_out: Path
     field_names: tuple[str, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2")
     rank: int = COMM.rank
+
+
+class FileDesc(BaseModel):
+    path: Path
+    origin: Literal["src", "dst"]
+    field_names: tuple[str, ...]
 
 
 class RegridProcessor:
@@ -46,13 +52,12 @@ class RegridProcessor:
     def initialize(self) -> None:
         esmpy.Manager(debug=True)
 
-        scrip_path = self.context.tmp_path / "mpas_scrip.nc"
         if self.context.rank == 0:
             _LOGGER.info("writing mpas scrip grid")
             mpas_desc = MpasCellMeshDescriptor(
                 str(self.context.dst_path), "na15km.init"
             )
-            mpas_desc.to_scrip(str(scrip_path))
+            mpas_desc.to_scrip(str(self.context.new_dst_path))
 
         print("create source grid")
         self._src_gwrap = NcToGrid(
@@ -73,7 +78,9 @@ class RegridProcessor:
         src_fwrap = self.create_src_field_wrapper(self.context.field_names[0])
 
         _LOGGER.info("create destination mesh")
-        dst_mesh = esmpy.Mesh(filename=str(scrip_path), filetype=esmpy.FileFormat.SCRIP)
+        dst_mesh = esmpy.Mesh(
+            filename=str(self.context.new_dst_path), filetype=esmpy.FileFormat.SCRIP
+        )
 
         _LOGGER.info("create destination field")
         self._dst_field = esmpy.Field(
@@ -88,10 +95,6 @@ class RegridProcessor:
             unmapped_action=esmpy.UnmappedAction.ERROR,
             ignore_degenerate=False,
         )
-
-        if self.context.rank == 0:
-            _LOGGER.info("copy destination file")
-            shutil.copy2(scrip_path, self.context.new_dst_path)
 
     def run(self) -> None:
         _LOGGER.info("apply regridding")
@@ -134,6 +137,7 @@ class RegridProcessor:
             _LOGGER.info(f"{dims=}")
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
+                # tdk: copy variable attributes
                 var = ds.createVariable(
                     field_name, float, ("grid_size",), fill_value=-1.0
                 )
@@ -143,52 +147,62 @@ class RegridProcessor:
                     dst_field.data,
                 )
 
-            # all_desc_stats = all_desc_stats.append(src_stats)tdk
-
             src_fwrap.value.destroy()
             del src_fwrap
 
-    def create_desc_stuff(
-        self,
-        container: dict[str, np.ndarray],
-        origin: Literal["src", "dst"],
-        path: Path | None = None,
-    ) -> pd.DataFrame:
-        """
-        Create a standard set of descriptive statistics using `pandas`.
-
-
-        Args:
-            container: A dictionary mapping field names to arrays.
-            origin: A tag to indicate the data origin to add to the created dataframe.
-            path: Path associated with the source data.
-
-
-        Returns:
-            A dataframe containing descriptive statistics fields.
-        """
-        data_frame = pd.DataFrame.from_dict(
-            {k: v.ravel() for k, v in container.items()}
-        )
-        desc = data_frame.describe()
-        adds = {}
-        for field_name in container.keys():
-            adds[field_name] = [
-                data_frame[field_name].sum(),
-                data_frame[field_name].isnull().sum(),
-                origin,
-                path,
-                self.context.rank,
-            ]
-        desc = pd.concat(
-            [
-                desc,
-                pd.DataFrame(
-                    data=adds, index=["sum", "count_null", "origin", "path", "rank"]
+        if self.context.rank == 0:
+            targets = [
+                FileDesc(
+                    path=self.context.new_dst_path,
+                    origin="dst",
+                    field_names=self.context.field_names,
+                ),
+                FileDesc(
+                    path=self.context.new_dst_path,
+                    origin="dst",
+                    field_names=self.context.field_names,
                 ),
             ]
-        )
-        return desc
+            data_frame = self.create_desc_stuff(targets)
+            data_frame.to_csv(self.context.desc_stats_out)
+
+    def finalize(self) -> None:
+        _LOGGER.info("finalizing")
+
+    def create_desc_stuff(self, targets: Iterable[FileDesc]) -> pd.DataFrame:
+        _LOGGER.info("entering create_desc_stuff")
+        if self.context.rank > 0:
+            raise ValueError
+
+        to_concat = []
+        for target in targets:
+            with open_nc(target.path, mode="r", parallel=False) as ds:
+                for varname in target.field_names:
+                    data = ds.variables[varname][:].fill(np.nan).ravel()
+                    data_frame = pd.DataFrame.from_dict({varname: data})
+                    desc = data_frame.describe()
+                    adds = {
+                        varname: [
+                            data_frame[varname].sum(),
+                            data_frame[varname].isnull().sum(),
+                            target.origin,
+                            target.path,
+                        ]
+                    }
+                    desc = pd.concat(
+                        [
+                            desc,
+                            pd.DataFrame(
+                                data=adds, index=["sum", "count_null", "origin", "path"]
+                            ),
+                        ]
+                    )
+                    to_concat.append(desc)
+        ret = pd.concat([ii.transpose() for ii in to_concat])
+        ret.index.name = "variable"
+        ret.reset_index(inplace=True)
+        _LOGGER.info("exiting create_desc_stuff")
+        return ret
 
     def create_src_field_wrapper(self, field_name: str) -> FieldWrapper:
         _LOGGER.info("create source field")
@@ -227,17 +241,18 @@ def main() -> None:
     dst_path = data_dir / "na15km.init.nc"
     tmp_path = Path("/home/Benjamin.Koziol/htmp/out")
     new_dst_path = tmp_path / "na15km_with_fields.nc"
+    desc_stats_out = tmp_path / "desc_stats.csv"
 
     context = Context(
         src_path=src_path,
         dst_path=dst_path,
         new_dst_path=new_dst_path,
-        tmp_path=tmp_path,
+        desc_stats_out=desc_stats_out,
     )
     processor = RegridProcessor(context=context)
     processor.initialize()
     processor.run()
-    # processor.finalize()
+    processor.finalize()
 
 
 if __name__ == "__main__":
