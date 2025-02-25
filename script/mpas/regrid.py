@@ -164,7 +164,9 @@ class RegridProcessor:
         for target in targets:
             with open_nc(target.path, mode="r", parallel=False) as ds:
                 for varname in target.field_names:
-                    data = ds.variables[varname][:].fill(np.nan).ravel()
+                    data = ds.variables[varname][:]
+                    data.fill(np.nan)
+                    data = data.ravel()
                     data_frame = pd.DataFrame.from_dict({varname: data})
                     desc = data_frame.describe()
                     adds = {
