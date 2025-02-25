@@ -135,7 +135,7 @@ class RegridProcessor:
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 var = ds.createVariable(
-                    field_name, float, ("Time", "nCells"), fill_value=-1.0
+                    field_name, float, ("grid_size",), fill_value=-1.0
                 )
                 set_variable_data(
                     var,
