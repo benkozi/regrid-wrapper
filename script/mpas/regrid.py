@@ -120,14 +120,6 @@ class RegridProcessor:
             _LOGGER.info(f"{dst_stats.to_dict()=}")
 
             # tdk: support NcToMesh
-            dim_time = Dimension(
-                name=("Time",),
-                size=1,
-                lower=0,
-                upper=1,
-                staggerloc=esmpy.StaggerLoc.CENTER,
-                coordinate_type="time",
-            )
             local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
             dim_ncells = Dimension(
@@ -138,7 +130,7 @@ class RegridProcessor:
                 staggerloc=esmpy.MeshLoc.ELEMENT,
                 coordinate_type="cell",
             )
-            dims = DimensionCollection(value=(dim_time, dim_ncells))
+            dims = DimensionCollection(value=(dim_ncells,))
             _LOGGER.info(f"{dims=}")
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
