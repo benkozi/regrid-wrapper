@@ -131,11 +131,11 @@ class RegridProcessor:
             local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
             dim_ncells = Dimension(
-                name=("nCells",),
+                name=("grid_size",),
                 size=130333,
                 lower=reconciled_bounds[0],
                 upper=reconciled_bounds[1],
-                staggerloc=esmpy.StaggerLoc.CENTER,
+                staggerloc=esmpy.MeshLoc.ELEMENT,
                 coordinate_type="cell",
             )
             dims = DimensionCollection(value=(dim_time, dim_ncells))
