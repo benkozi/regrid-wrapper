@@ -398,8 +398,13 @@ def main() -> None:
         break
 
     if COMM.rank == 0:
-        subprocess.run(
-            f"mv {str(tmp_path)}/*.log {str(tmp_path)}/*.ESMF_LogFile {str(log_dir)}"
+        subprocess.check_call(
+            [
+                "mv",
+                f"{str(tmp_path)}/*.log",
+                f"{str(tmp_path)}/*.ESMF_LogFile",
+                str(log_dir),
+            ]
         )
 
     _LOGGER.info("success")
