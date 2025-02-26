@@ -72,6 +72,9 @@ class AbstractRaveField(ABC, BaseModel):
         self, ncells_bounds: tuple[int, int]
     ) -> DimensionCollection: ...
 
+    @abstractmethod
+    def reshape_field_data(self, target: np.ndarray) -> np.ndarray: ...
+
 
 class RaveField2d(AbstractRaveField):
 
@@ -81,6 +84,9 @@ class RaveField2d(AbstractRaveField):
         return DimensionCollection(
             value=(self.time_dimension, self.create_ncells_dimension(ncells_bounds))
         )
+
+    def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
+        return target.reshape(1, -1)
 
 
 class RaveField3d(AbstractRaveField):
@@ -95,6 +101,9 @@ class RaveField3d(AbstractRaveField):
                 self.nkfire_dimension,
             )
         )
+
+    def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
+        return target.reshape(1, -1, 1)
 
 
 class RaveToMpasRegridContext(BaseModel):
@@ -244,7 +253,7 @@ class RaveToMpasRegridProcessor:
                 set_variable_data(
                     var,
                     dims,
-                    dst_field.data,
+                    rave_field.reshape_field_data(dst_field.data),
                 )
 
             src_fwrap.value.destroy()
