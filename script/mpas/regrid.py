@@ -73,6 +73,8 @@ class RaveToMpasRegridContext(BaseModel):
                     app = RaveField2d.model_validate(init_data)
                 elif field_name in ("PM25", "NH3", "SO2"):
                     app = RaveField3d.model_validate(init_data)
+                else:
+                    raise NotImplementedError(field_name)
                 rave_fields.append(app)
         _LOGGER.debug(f"{rave_fields=}")
         return tuple(rave_fields)
@@ -128,7 +130,7 @@ class RaveToMpasRegridProcessor:
         ).create_grid_wrapper()
 
         _LOGGER.info("create source field")
-        src_fwrap = self.create_src_field_wrapper(self.context.field_names[0])
+        src_fwrap = self.create_src_field_wrapper(self.context.rave_fields[0].name)
 
         _LOGGER.info("create destination mesh")
         dst_mesh = esmpy.Mesh(
