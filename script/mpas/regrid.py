@@ -30,7 +30,7 @@ class RaveField(BaseModel):
     name: str
     attrs: dict[str, Any]
     fill_value: float
-    dtype: str
+    dtype: Any
     dim_names: tuple[str, ...]
 
 
