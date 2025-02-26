@@ -367,7 +367,7 @@ def main() -> None:
     rave_src_dir = data_dir / "rave"
     dst_path = data_dir / "na15km.init.nc"
     output_dir = tmp_path / "rave_regridded"
-    output_dir.mkdir(exist_ok=False)
+    output_dir.mkdir(exist_ok=True)
     weight_path = tmp_path / "weights_rave-to-na15km_mpas.nc"
     scrip_path = tmp_path / "mpas_scrip.nc"
 
