@@ -81,11 +81,11 @@ class RaveToMpasRegridContext(BaseModel):
 
     @staticmethod
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
-        exclude = ("coordinates",)
+        exclude = ("coordinates", "valid_range")
         return {
             ii: getattr(src, ii)
             for ii in src.ncattrs()
-            if not ii.startswith("_") or ii in exclude
+            if not ii.startswith("_") or ii not in exclude
         }
 
 
