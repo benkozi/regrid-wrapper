@@ -230,7 +230,7 @@ class RaveToMpasRegridProcessor:
                 dst_nc.createDimension("nkfire", 1)
                 dst_nc.createDimension("Time")
                 dst_nc.setncattr("created_at", str(datetime.now(timezone.utc)))
-                with open_nc(self.context.src_path, mode="r", parallel=False) as src_nc:
+                with open_nc(self.context.dst_path, mode="r", parallel=False) as src_nc:
                     for varname in ("latCell", "lonCell"):
                         copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
 
