@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
 from typing import Literal, Iterable, Any
@@ -22,6 +23,7 @@ from regrid_wrapper.esmpy.field_wrapper import (
     DimensionCollection,
     set_variable_data,
     HasNcAttrsType,
+    copy_nc_variable,
 )
 
 _LOGGER = LOGGER.getChild("mpas-regrid")
@@ -112,7 +114,7 @@ class RaveToMpasRegridContext(BaseModel):
     new_dst_path: Path
     desc_stats_out: Path
     tmp_path: Path
-    # fields: tuple[AbstractRaveField, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2") #tdk:rm
+    weight_path: Path
     rank: int = COMM.rank
 
     @computed_field
@@ -214,6 +216,7 @@ class RaveToMpasRegridProcessor:
             regrid_method=esmpy.RegridMethod.CONSERVE,
             unmapped_action=esmpy.UnmappedAction.ERROR,
             ignore_degenerate=False,
+            filename=str(self.context.weight_path),
         )
 
     def run(self) -> None:
@@ -221,10 +224,15 @@ class RaveToMpasRegridProcessor:
 
         _LOGGER.info("create output file")
         ncells_size = 130333  # tdk: pull from origin
-        with open_nc(self.context.new_dst_path, mode="w") as ds:
-            ds.createDimension("nCells", ncells_size)
-            ds.createDimension("nkfire", 1)
-            ds.createDimension("Time")
+        if self.context.rank == 0:
+            with open_nc(self.context.new_dst_path, mode="w", parallel=False) as dst_nc:
+                dst_nc.createDimension("nCells", ncells_size)
+                dst_nc.createDimension("nkfire", 1)
+                dst_nc.createDimension("Time")
+                dst_nc.setncattr("created_at", str(datetime.now(timezone.utc)))
+                with open_nc(self.context.src_path, mode="r", parallel=False) as src_nc:
+                    for varname in ("latCell", "lonCell"):
+                        copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
 
         regridder = self.get_regridder()
         for rave_field in self.context.rave_fields:
@@ -353,6 +361,7 @@ def main() -> None:
     tmp_path = Path("/home/Benjamin.Koziol/htmp/out")
     new_dst_path = tmp_path / "na15km_with_fields.nc"
     desc_stats_out = tmp_path / "desc_stats.csv"
+    weight_path = tmp_path / "rave-to-na15km_mpas.nc"
 
     context = RaveToMpasRegridContext(
         src_path=src_path,
@@ -360,6 +369,7 @@ def main() -> None:
         new_dst_path=new_dst_path,
         desc_stats_out=desc_stats_out,
         tmp_path=tmp_path,
+        weight_path=weight_path,
     )
     processor = RaveToMpasRegridProcessor(context=context)
     processor.initialize()
