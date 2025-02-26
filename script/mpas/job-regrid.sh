@@ -25,4 +25,6 @@ export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
 export PYTHONPATH=${PYTHONDIR}:${PYTHONPATH}
 
 cd ${REGRID_WRAPPER_LOG_DIR}
+mkdir ${REGRID_WRAPPER_LOG_DIR}/logs
 mpirun -n 24 python ${SCRIPT}
+mv ${REGRID_WRAPPER_LOG_DIR}/*.log ${REGRID_WRAPPER_LOG_DIR}/*.ESMF_LogFile ${REGRID_WRAPPER_LOG_DIR}/logs | echo "could not move logs"

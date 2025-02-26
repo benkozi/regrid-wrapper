@@ -372,8 +372,6 @@ def main() -> None:
     output_dir.mkdir(exist_ok=True)
     weight_path = tmp_path / "weights_rave-to-na15km_mpas.nc"
     scrip_path = tmp_path / "mpas_scrip.nc"
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir(exist_ok=True)
 
     for rave_path in rave_src_dir.glob("RAVE-HrlyEmiss-3km*nc"):
         cycle = re.match(
@@ -397,10 +395,6 @@ def main() -> None:
         processor.finalize()
 
         break
-
-    if COMM.rank == 0:
-        shutil.move(f"{str(tmp_path)}/*.log", log_dir)
-        shutil.move(f"{str(tmp_path)}/*.ESMF_LogFile", log_dir)
 
     _LOGGER.info("success")
 
