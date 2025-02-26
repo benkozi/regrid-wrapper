@@ -13,7 +13,7 @@
 #SBATCH --ntasks-per-node=24 # Assuming 24 cores per node, utilize them fully
 #SBATCH --ntasks=24  # Total tasks should be nodes * tasks-per-node
 
-set -e
+set -xue
 
 export REGRID_WRAPPER_LOG_DIR=/home/Benjamin.Koziol/htmp/out
 SCRIPT=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/script/mpas/regrid.py
@@ -27,4 +27,4 @@ export PYTHONPATH=${PYTHONDIR}:${PYTHONPATH}
 cd ${REGRID_WRAPPER_LOG_DIR}
 mkdir ${REGRID_WRAPPER_LOG_DIR}/logs
 mpirun -n 24 python ${SCRIPT}
-mv ${REGRID_WRAPPER_LOG_DIR}/*.log ${REGRID_WRAPPER_LOG_DIR}/*.ESMF_LogFile ${REGRID_WRAPPER_LOG_DIR}/logs | echo "could not move logs"
+mv *.log *.ESMF_LogFile logs || echo "could not move logs"
