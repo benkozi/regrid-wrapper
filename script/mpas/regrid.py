@@ -66,7 +66,7 @@ class RaveToMpasRegridContext(BaseModel):
                 init_data = {
                     "name": field_name,
                     "attrs": self._get_nc_attrs_(var),
-                    "fill_value": var.fill_value,
+                    "fill_value": var.get_fill_value(),
                     "dtype": var.dtype,
                 }
                 if field_name in ("FRE", "FRP_MEAN"):
