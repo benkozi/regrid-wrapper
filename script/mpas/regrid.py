@@ -394,8 +394,6 @@ def main() -> None:
         processor.run()
         processor.finalize()
 
-        break
-
     _LOGGER.info("success")
 
 

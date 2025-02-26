@@ -4,7 +4,7 @@
 #SBATCH --account=epic
 #SBATCH --qos=batch
 #SBATCH --partition=hera
-#SBATCH -t 00:05:00
+#SBATCH -t 00:30:00
 #SBATCH --output=/home/Benjamin.Koziol/htmp/out/%x.out
 #_SBATCH --output=/home/Benjamin.Koziol/htmp/out/%x_%j.out
 #SBATCH --error=/home/Benjamin.Koziol/htmp/out/%x.err
@@ -26,5 +26,4 @@ export PYTHONPATH=${PYTHONDIR}:${PYTHONPATH}
 
 cd ${REGRID_WRAPPER_LOG_DIR}
 mkdir ${REGRID_WRAPPER_LOG_DIR}/logs
-mpirun -n 24 python ${SCRIPT}
-mv *.log *.ESMF_LogFile logs || echo "could not move logs"
+mpirun -n 24 python ${SCRIPT} || mv *.log *.ESMF_LogFile logs || echo "could not move logs"
