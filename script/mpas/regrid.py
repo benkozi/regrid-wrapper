@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 from typing import Literal, Iterable
 
@@ -25,7 +24,7 @@ from regrid_wrapper.esmpy.field_wrapper import (
 _LOGGER = LOGGER.getChild("mpas-regrid")
 
 
-class Context(BaseModel):
+class RaveToMpasRegridContext(BaseModel):
     src_path: Path
     dst_path: Path
     new_dst_path: Path
@@ -40,9 +39,9 @@ class FileDesc(BaseModel):
     field_names: tuple[str, ...]
 
 
-class RegridProcessor:
+class RaveToMpasRegridProcessor:
 
-    def __init__(self, context: Context) -> None:
+    def __init__(self, context: RaveToMpasRegridContext) -> None:
         self.context = context
 
         self._regridder: esmpy.Regrid | None = None
@@ -100,11 +99,11 @@ class RegridProcessor:
         _LOGGER.info("apply regridding")
 
         regridder = self.get_regridder()
-        # all_desc_stats = pd.DataFrame()
         for field_name in self.context.field_names:
             _LOGGER.info(f"regridding {field_name=}")
             src_fwrap = self.create_src_field_wrapper(field_name=field_name)
             dst_field = self.get_dst_field()
+            # tdk: any more qa stuff? minimum threshold?
             dst_field.data.fill(0.0)
             regridder(src_fwrap.value, dst_field)
 
@@ -229,13 +228,13 @@ def main() -> None:
     new_dst_path = tmp_path / "na15km_with_fields.nc"
     desc_stats_out = tmp_path / "desc_stats.csv"
 
-    context = Context(
+    context = RaveToMpasRegridContext(
         src_path=src_path,
         dst_path=dst_path,
         new_dst_path=new_dst_path,
         desc_stats_out=desc_stats_out,
     )
-    processor = RegridProcessor(context=context)
+    processor = RaveToMpasRegridProcessor(context=context)
     processor.initialize()
     processor.run()
     processor.finalize()
