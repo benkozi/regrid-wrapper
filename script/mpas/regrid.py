@@ -1,3 +1,4 @@
+from abc import abstractmethod, ABC
 from functools import cached_property
 from pathlib import Path
 from typing import Literal, Iterable, Any
@@ -26,20 +27,75 @@ from regrid_wrapper.esmpy.field_wrapper import (
 _LOGGER = LOGGER.getChild("mpas-regrid")
 
 
-class RaveField(BaseModel):
+class AbstractRaveField(ABC, BaseModel):
     name: str
     attrs: dict[str, Any]
     fill_value: float
     dtype: Any
     dim_names: tuple[str, ...]
 
+    @computed_field
+    @cached_property
+    def time_dimension(self) -> Dimension:
+        return Dimension(
+            name=("Time",),
+            size=1,
+            lower=0,
+            upper=1,
+            staggerloc=esmpy.StaggerLoc.CENTER,
+            coordinate_type="time",
+        )
 
-class RaveField2d(RaveField):
-    dim_names: tuple[str, ...] = ("Time", "nCells")
+    @computed_field
+    @cached_property
+    def nkfire_dimension(self) -> Dimension:
+        return Dimension(
+            name=("nkfire",),
+            size=1,
+            lower=0,
+            upper=1,
+            staggerloc=esmpy.StaggerLoc.CENTER,
+            coordinate_type="level",
+        )
+
+    def create_ncells_dimension(self, bounds: tuple[int, int]) -> Dimension:
+        return Dimension(
+            name=("nCells",),
+            size=130333,  # tdk: pull from origin,
+            lower=bounds[0],
+            upper=bounds[1],
+            staggerloc=esmpy.MeshLoc.ELEMENT,
+            coordinate_type="cell",
+        )
+
+    @abstractmethod
+    def create_dimension_collection(
+        self, ncells_bounds: tuple[int, int]
+    ) -> DimensionCollection: ...
 
 
-class RaveField3d(RaveField):
-    dim_names: tuple[str, ...] = ("Time", "nCells", "nkfire")
+class RaveField2d(AbstractRaveField):
+
+    def create_dimension_collection(
+        self, ncells_bounds: tuple[int, int]
+    ) -> DimensionCollection:
+        return DimensionCollection(
+            value=(self.time_dimension, self.create_ncells_dimension(ncells_bounds))
+        )
+
+
+class RaveField3d(AbstractRaveField):
+
+    def create_dimension_collection(
+        self, ncells_bounds: tuple[int, int]
+    ) -> DimensionCollection:
+        return DimensionCollection(
+            value=(
+                self.time_dimension,
+                self.create_ncells_dimension(ncells_bounds),
+                self.nkfire_dimension,
+            )
+        )
 
 
 class RaveToMpasRegridContext(BaseModel):
@@ -48,7 +104,7 @@ class RaveToMpasRegridContext(BaseModel):
     new_dst_path: Path
     desc_stats_out: Path
     tmp_path: Path
-    # fields: tuple[RaveField, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2") #tdk:rm
+    # fields: tuple[AbstractRaveField, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2") #tdk:rm
     rank: int = COMM.rank
 
     @computed_field
@@ -57,7 +113,7 @@ class RaveToMpasRegridContext(BaseModel):
 
     @computed_field
     @cached_property
-    def rave_fields(self) -> tuple[RaveField, ...]:
+    def rave_fields(self) -> tuple[AbstractRaveField, ...]:
         field_names = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2")
         rave_fields = []
         with open_nc(self.src_path, mode="r") as ds:
@@ -156,9 +212,11 @@ class RaveToMpasRegridProcessor:
         _LOGGER.info("apply regridding")
 
         _LOGGER.info("create output file")
-        ncells_size = 130333
+        ncells_size = 130333  # tdk: pull from origin
         with open_nc(self.context.new_dst_path, mode="w") as ds:
             ds.createDimension("nCells", ncells_size)
+            ds.createDimension("nkfire", 1)
+            ds.createDimension("Time")
 
         regridder = self.get_regridder()
         for rave_field in self.context.rave_fields:
@@ -172,22 +230,14 @@ class RaveToMpasRegridProcessor:
             # tdk: support NcToMesh
             local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
-            dim_ncells = Dimension(
-                name=("nCells",),
-                size=ncells_size,  # tdk: pull from origin
-                lower=reconciled_bounds[0],
-                upper=reconciled_bounds[1],
-                staggerloc=esmpy.MeshLoc.ELEMENT,
-                coordinate_type="cell",
-            )
-            dims = DimensionCollection(value=(dim_ncells,))
+            dims = rave_field.create_dimension_collection(reconciled_bounds)
             _LOGGER.info(f"{dims=}")
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 var = ds.createVariable(
                     rave_field.name,
                     rave_field.dtype,
-                    ("nCells",),
+                    [dim.name for dim in dims.value],
                     fill_value=rave_field.fill_value,
                 )
                 for k, v in rave_field.attrs.items():

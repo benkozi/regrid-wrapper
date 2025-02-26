@@ -97,7 +97,7 @@ class Dimension(BaseModel):
     lower: int
     upper: int
     staggerloc: int
-    coordinate_type: Literal["y", "x", "time", "cell"]
+    coordinate_type: Literal["y", "x", "time", "cell", "level"]
 
 
 class DimensionCollection(BaseModel):
