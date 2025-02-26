@@ -399,7 +399,7 @@ def main() -> None:
 
     if COMM.rank == 0:
         subprocess.check_call(
-            f"mv {str(tmp_path)}*.log {str(tmp_path)}*.ESMF_LogFile {str(log_dir)}"
+            f"mv {str(tmp_path)}/*.log {str(tmp_path)}/*.ESMF_LogFile {str(log_dir)}"
         )
 
     _LOGGER.info("success")
