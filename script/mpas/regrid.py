@@ -170,6 +170,7 @@ class RaveToMpasRegridProcessor:
         self._src_gwrap: GridWrapper | None = None
 
     def initialize(self) -> None:
+        _LOGGER.info(f"initialize: {self.context=}")
         esmpy.Manager(debug=True)
 
         if not self.context.scrip_path.exists() and self.context.rank == 0:
