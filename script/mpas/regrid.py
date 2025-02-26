@@ -236,7 +236,7 @@ class RaveToMpasRegridProcessor:
                 var = ds.createVariable(
                     rave_field.name,
                     rave_field.dtype,
-                    [dim.name for dim in dims.value],
+                    [dim.name[0] for dim in dims.value],
                     fill_value=rave_field.fill_value,
                 )
                 for k, v in rave_field.attrs.items():
