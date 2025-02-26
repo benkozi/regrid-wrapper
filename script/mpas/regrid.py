@@ -1,3 +1,4 @@
+import re
 from abc import abstractmethod, ABC
 from datetime import datetime, timezone
 from functools import cached_property
@@ -115,11 +116,8 @@ class RaveToMpasRegridContext(BaseModel):
     desc_stats_out: Path
     tmp_path: Path
     weight_path: Path
+    scrip_path: Path
     rank: int = COMM.rank
-
-    @computed_field
-    def scrip_path(self) -> Path:
-        return self.tmp_path / "mpas_scrip.nc"
 
     @computed_field
     @cached_property
@@ -174,7 +172,7 @@ class RaveToMpasRegridProcessor:
     def initialize(self) -> None:
         esmpy.Manager(debug=True)
 
-        if self.context.rank == 0:
+        if not self.context.scrip_path.exists() and self.context.rank == 0:
             _LOGGER.info("writing mpas scrip grid")
             mpas_desc = MpasCellMeshDescriptor(
                 str(self.context.dst_path), "na15km.init"
@@ -210,14 +208,23 @@ class RaveToMpasRegridProcessor:
         )
 
         _LOGGER.info("create regridder")
-        self._regridder = esmpy.Regrid(
-            srcfield=src_fwrap.value,
-            dstfield=self._dst_field,
-            regrid_method=esmpy.RegridMethod.CONSERVE,
-            unmapped_action=esmpy.UnmappedAction.ERROR,
-            ignore_degenerate=False,
-            filename=str(self.context.weight_path),
-        )
+        if self.context.weight_path.exists():
+            _LOGGER.info("create regridder from file")
+            self._regridder = esmpy.RegridFromFile(
+                srcfield=src_fwrap.value,
+                dstfield=self._dst_field,
+                filename=str(self.context.weight_path),
+            )
+        else:
+            _LOGGER.info("create regridder in-memory")
+            self._regridder = esmpy.Regrid(
+                srcfield=src_fwrap.value,
+                dstfield=self._dst_field,
+                regrid_method=esmpy.RegridMethod.CONSERVE,
+                unmapped_action=esmpy.UnmappedAction.ERROR,
+                ignore_degenerate=False,
+                filename=str(self.context.weight_path),
+            )
 
     def run(self) -> None:
         _LOGGER.info("apply regridding")
@@ -230,6 +237,8 @@ class RaveToMpasRegridProcessor:
                 dst_nc.createDimension("nkfire", 1)
                 dst_nc.createDimension("Time")
                 dst_nc.setncattr("created_at", str(datetime.now(timezone.utc)))
+                dst_nc.setncattr("src_path", str(self.context.src_path))
+                dst_nc.setncattr("dst_path", str(self.context.dst_path))
                 with open_nc(self.context.dst_path, mode="r", parallel=False) as src_nc:
                     for varname in ("latCell", "lonCell"):
                         copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
@@ -353,28 +362,36 @@ class RaveToMpasRegridProcessor:
 
 def main() -> None:
     data_dir = Path("/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/data/mpas")
-    src_path = (
-        data_dir
-        / "RAVE-HrlyEmiss-3km_v1r3_blend_s202407240000000_e202407240059590_c202407240203140.nc"
-    )
-    dst_path = data_dir / "na15km.init.nc"
     tmp_path = Path("/home/Benjamin.Koziol/htmp/out")
-    new_dst_path = tmp_path / "na15km_with_fields.nc"
-    desc_stats_out = tmp_path / "desc_stats.csv"
+    rave_src_dir = data_dir / "rave"
+    dst_path = data_dir / "na15km.init.nc"
+    output_dir = tmp_path / "rave_regridded"
+    output_dir.mkdir(exist_ok=False)
     weight_path = tmp_path / "weights_rave-to-na15km_mpas.nc"
+    scrip_path = tmp_path / "mpas_scrip.nc"
 
-    context = RaveToMpasRegridContext(
-        src_path=src_path,
-        dst_path=dst_path,
-        new_dst_path=new_dst_path,
-        desc_stats_out=desc_stats_out,
-        tmp_path=tmp_path,
-        weight_path=weight_path,
-    )
-    processor = RaveToMpasRegridProcessor(context=context)
-    processor.initialize()
-    processor.run()
-    processor.finalize()
+    for rave_path in rave_src_dir.glob("RAVE-HrlyEmiss-3km*nc"):
+        cycle = re.match(
+            "RAVE-HrlyEmiss-3km_v1r3_blend_s([0-9]+)_e[0-9]+_c[0-9]+.nc", rave_path.name
+        ).group(1)
+        new_dst_path = tmp_path / f"na15km-RAVE-{cycle}.nc"
+        desc_stats_out = tmp_path / f"desc_stats-{cycle}.csv"
+
+        context = RaveToMpasRegridContext(
+            src_path=rave_path,
+            dst_path=dst_path,
+            new_dst_path=new_dst_path,
+            desc_stats_out=desc_stats_out,
+            tmp_path=tmp_path,
+            weight_path=weight_path,
+            scrip_path=scrip_path,
+        )
+        processor = RaveToMpasRegridProcessor(context=context)
+        processor.initialize()
+        processor.run()
+        processor.finalize()
+
+        return
 
 
 if __name__ == "__main__":
