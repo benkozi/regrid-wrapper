@@ -361,7 +361,7 @@ def main() -> None:
     tmp_path = Path("/home/Benjamin.Koziol/htmp/out")
     new_dst_path = tmp_path / "na15km_with_fields.nc"
     desc_stats_out = tmp_path / "desc_stats.csv"
-    weight_path = tmp_path / "rave-to-na15km_mpas.nc"
+    weight_path = tmp_path / "weights_rave-to-na15km_mpas.nc"
 
     context = RaveToMpasRegridContext(
         src_path=src_path,
