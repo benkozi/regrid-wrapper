@@ -1,4 +1,5 @@
 import re
+import subprocess
 from abc import abstractmethod, ABC
 from datetime import datetime, timezone
 from functools import cached_property
@@ -370,13 +371,15 @@ def main() -> None:
     output_dir.mkdir(exist_ok=True)
     weight_path = tmp_path / "weights_rave-to-na15km_mpas.nc"
     scrip_path = tmp_path / "mpas_scrip.nc"
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir(exist_ok=True)
 
     for rave_path in rave_src_dir.glob("RAVE-HrlyEmiss-3km*nc"):
         cycle = re.match(
             "RAVE-HrlyEmiss-3km_v1r3_blend_s([0-9]+)_e[0-9]+_c[0-9]+.nc", rave_path.name
         ).group(1)
-        new_dst_path = tmp_path / f"na15km-RAVE-{cycle}.nc"
-        desc_stats_out = tmp_path / f"desc_stats-{cycle}.csv"
+        new_dst_path = output_dir / f"na15km-RAVE-{cycle}.nc"
+        desc_stats_out = output_dir / f"desc_stats-{cycle}.csv"
 
         context = RaveToMpasRegridContext(
             src_path=rave_path,
@@ -392,7 +395,12 @@ def main() -> None:
         processor.run()
         processor.finalize()
 
+        if context.rank == 0:
+            subprocess.check_call(f"mv *.log *.ESMF_LogFile {str(log_dir)}")
+
         return
+
+    _LOGGER.info("success")
 
 
 if __name__ == "__main__":
