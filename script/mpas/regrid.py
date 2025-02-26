@@ -1,4 +1,5 @@
 import re
+import shutil
 import subprocess
 from abc import abstractmethod, ABC
 from datetime import datetime, timezone
@@ -398,14 +399,8 @@ def main() -> None:
         break
 
     if COMM.rank == 0:
-        subprocess.check_call(
-            [
-                "mv",
-                f"{str(tmp_path)}/*.log",
-                f"{str(tmp_path)}/*.ESMF_LogFile",
-                str(log_dir),
-            ]
-        )
+        shutil.move(f"{str(tmp_path)}/*.log", log_dir)
+        shutil.move(f"{str(tmp_path)}/*.ESMF_LogFile", log_dir)
 
     _LOGGER.info("success")
 
