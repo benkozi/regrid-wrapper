@@ -395,10 +395,12 @@ def main() -> None:
         processor.run()
         processor.finalize()
 
-        if context.rank == 0:
-            subprocess.check_call(f"mv *.log *.ESMF_LogFile {str(log_dir)}")
+        break
 
-        return
+    if COMM.rank == 0:
+        subprocess.check_call(
+            f"mv {str(tmp_path)}*.log {str(tmp_path)}*.ESMF_LogFile {str(log_dir)}"
+        )
 
     _LOGGER.info("success")
 
