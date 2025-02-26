@@ -13,13 +13,12 @@
 #SBATCH --ntasks-per-node=24 # Assuming 24 cores per node, utilize them fully
 #SBATCH --ntasks=24  # Total tasks should be nodes * tasks-per-node
 
-set -xue
+set -xe
 
 export REGRID_WRAPPER_LOG_DIR=/home/Benjamin.Koziol/htmp/out
 SCRIPT=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/script/mpas/regrid.py
 PYTHONDIR=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/sandbox/regrid-wrapper/src
 CONDAENV=/scratch1/NCEPDEV/stmp2/Benjamin.Koziol/miniconda3/envs/regrid-wrapper
-export PYTHONPATH=${PYTHONPATH} || PYTHONPATH=""
 
 export PATH=${CONDAENV}/bin:${PATH}
 export ESMFMKFILE=${CONDAENV}/lib/esmf.mk
