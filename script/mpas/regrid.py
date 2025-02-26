@@ -183,10 +183,14 @@ class RaveToMpasRegridProcessor:
             _LOGGER.info(f"{dims=}")
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
-                # tdk: copy variable attributes
                 var = ds.createVariable(
-                    rave_field.name, float, ("nCells",), fill_value=-1.0
+                    rave_field.name,
+                    rave_field.dtype,
+                    ("nCells",),
+                    fill_value=rave_field.fill_value,
                 )
+                for k, v in rave_field.attrs.items():
+                    setattr(var, k, v)
                 set_variable_data(
                     var,
                     dims,
@@ -197,16 +201,17 @@ class RaveToMpasRegridProcessor:
             del src_fwrap
 
         if self.context.rank == 0:
+            field_names = tuple(ii.name for ii in self.context.rave_fields)
             targets = [
                 FileDesc(
                     path=self.context.new_dst_path,
                     origin="dst",
-                    field_names=self.context.field_names,
+                    field_names=field_names,
                 ),
                 FileDesc(
                     path=self.context.src_path,
                     origin="src",
-                    field_names=self.context.field_names,
+                    field_names=field_names,
                 ),
             ]
             data_frame = self.create_desc_stuff(targets)
