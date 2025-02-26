@@ -1,10 +1,11 @@
+from functools import cached_property
 from pathlib import Path
-from typing import Literal, Iterable
+from typing import Literal, Iterable, Any
 
 import esmpy
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from pyremap import MpasCellMeshDescriptor
 
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
@@ -19,9 +20,26 @@ from regrid_wrapper.esmpy.field_wrapper import (
     Dimension,
     DimensionCollection,
     set_variable_data,
+    HasNcAttrsType,
 )
 
 _LOGGER = LOGGER.getChild("mpas-regrid")
+
+
+class RaveField(BaseModel):
+    name: str
+    attrs: dict[str, Any]
+    fill_value: float
+    dtype: int
+    dim_names: tuple[str, ...]
+
+
+class RaveField2d(RaveField):
+    dim_names: tuple[str, ...] = ("Time", "nCells")
+
+
+class RaveField3d(RaveField):
+    dim_names: tuple[str, ...] = ("Time", "nCells", "nkfire")
 
 
 class RaveToMpasRegridContext(BaseModel):
@@ -29,8 +47,44 @@ class RaveToMpasRegridContext(BaseModel):
     dst_path: Path
     new_dst_path: Path
     desc_stats_out: Path
-    field_names: tuple[str, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2")
+    tmp_path: Path
+    # fields: tuple[RaveField, ...] = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2") #tdk:rm
     rank: int = COMM.rank
+
+    @computed_field
+    def scrip_path(self) -> Path:
+        return self.tmp_path / "mpas_scrip.nc"
+
+    @computed_field
+    @cached_property
+    def rave_fields(self) -> tuple[RaveField, ...]:
+        field_names = ("FRE", "FRP_MEAN", "PM25", "NH3", "SO2")
+        rave_fields = []
+        with open_nc(self.src_path, mode="r") as ds:
+            for field_name in field_names:
+                var = ds.variables[field_name]
+                init_data = {
+                    "name": field_name,
+                    "attrs": self._get_nc_attrs_(var),
+                    "fill_value": var.fill_value,
+                    "dtype": var.dtype,
+                }
+                if field_name in ("FRE", "FRP_MEAN"):
+                    app = RaveField2d.model_validate(init_data)
+                elif field_name in ("PM25", "NH3", "SO2"):
+                    app = RaveField3d.model_validate(init_data)
+                rave_fields.append(app)
+        _LOGGER.debug(f"{rave_fields=}")
+        return tuple(rave_fields)
+
+    @staticmethod
+    def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
+        exclude = ("coordinates",)
+        return {
+            ii: getattr(src, ii)
+            for ii in src.ncattrs()
+            if not ii.startswith("_") or ii in exclude
+        }
 
 
 class FileDesc(BaseModel):
@@ -56,7 +110,7 @@ class RaveToMpasRegridProcessor:
             mpas_desc = MpasCellMeshDescriptor(
                 str(self.context.dst_path), "na15km.init"
             )
-            mpas_desc.to_scrip(str(self.context.new_dst_path))
+            mpas_desc.to_scrip(str(self.context.scrip_path))
 
         print("create source grid")
         self._src_gwrap = NcToGrid(
@@ -78,7 +132,7 @@ class RaveToMpasRegridProcessor:
 
         _LOGGER.info("create destination mesh")
         dst_mesh = esmpy.Mesh(
-            filename=str(self.context.new_dst_path), filetype=esmpy.FileFormat.SCRIP
+            filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.SCRIP
         )
 
         _LOGGER.info("create destination field")
@@ -98,10 +152,15 @@ class RaveToMpasRegridProcessor:
     def run(self) -> None:
         _LOGGER.info("apply regridding")
 
+        _LOGGER.info("create output file")
+        ncells_size = 130333
+        with open_nc(self.context.new_dst_path, mode="w") as ds:
+            ds.createDimension("nCells", ncells_size)
+
         regridder = self.get_regridder()
-        for field_name in self.context.field_names:
-            _LOGGER.info(f"regridding {field_name=}")
-            src_fwrap = self.create_src_field_wrapper(field_name=field_name)
+        for rave_field in self.context.rave_fields:
+            _LOGGER.info(f"regridding {rave_field.name=}")
+            src_fwrap = self.create_src_field_wrapper(field_name=rave_field.name)
             dst_field = self.get_dst_field()
             # tdk: any more qa stuff? minimum threshold?
             dst_field.data.fill(0.0)
@@ -111,8 +170,8 @@ class RaveToMpasRegridProcessor:
             local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
             dim_ncells = Dimension(
-                name=("grid_size",),
-                size=130333,  # tdk: pull from origin
+                name=("nCells",),
+                size=ncells_size,  # tdk: pull from origin
                 lower=reconciled_bounds[0],
                 upper=reconciled_bounds[1],
                 staggerloc=esmpy.MeshLoc.ELEMENT,
@@ -124,7 +183,7 @@ class RaveToMpasRegridProcessor:
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 # tdk: copy variable attributes
                 var = ds.createVariable(
-                    field_name, float, ("grid_size",), fill_value=-1.0
+                    rave_field.name, float, ("nCells",), fill_value=-1.0
                 )
                 set_variable_data(
                     var,
@@ -233,6 +292,7 @@ def main() -> None:
         dst_path=dst_path,
         new_dst_path=new_dst_path,
         desc_stats_out=desc_stats_out,
+        tmp_path=tmp_path,
     )
     processor = RaveToMpasRegridProcessor(context=context)
     processor.initialize()
