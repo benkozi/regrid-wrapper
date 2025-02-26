@@ -30,7 +30,7 @@ class RaveField(BaseModel):
     name: str
     attrs: dict[str, Any]
     fill_value: float
-    dtype: int
+    dtype: str
     dim_names: tuple[str, ...]
 
 
@@ -66,7 +66,7 @@ class RaveToMpasRegridContext(BaseModel):
                 init_data = {
                     "name": field_name,
                     "attrs": self._get_nc_attrs_(var),
-                    "fill_value": var.get_fill_value(),
+                    "fill_value": -1.0,
                     "dtype": var.dtype,
                 }
                 if field_name in ("FRE", "FRP_MEAN"):
