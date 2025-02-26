@@ -254,6 +254,7 @@ class RaveToMpasRegridProcessor:
                     var,
                     dims,
                     rave_field.reshape_field_data(dst_field.data),
+                    collective=True,
                 )
 
             src_fwrap.value.destroy()

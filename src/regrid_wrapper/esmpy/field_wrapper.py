@@ -138,8 +138,13 @@ def load_variable_data(
 
 
 def set_variable_data(
-    var: nc.Variable, target_dims: DimensionCollection, target_data: np.ndarray
+    var: nc.Variable,
+    target_dims: DimensionCollection,
+    target_data: np.ndarray,
+    collective: bool = False,
 ) -> np.ndarray:
+    if collective:
+        var.set_collective(True)
     dim_map = create_dimension_map(target_dims)
     axes = [get_aliased_key(dim_map, ii) for ii in var.dimensions]
     transposed_data = target_data.transpose(axes)
@@ -151,6 +156,8 @@ def set_variable_data(
     _LOGGER.debug(f"transposed_data.shape: {transposed_data.shape}")
     _LOGGER.debug(f"slices: {slices}")
     var[*slices] = transposed_data
+    if collective:
+        var.set_collective(False)
     return transposed_data
 
 
