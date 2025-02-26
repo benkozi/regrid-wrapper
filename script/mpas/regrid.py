@@ -32,7 +32,6 @@ class AbstractRaveField(ABC, BaseModel):
     attrs: dict[str, Any]
     fill_value: float
     dtype: Any
-    dim_names: tuple[str, ...]
 
     @computed_field
     @cached_property
