@@ -85,7 +85,7 @@ class RaveToMpasRegridContext(BaseModel):
         return {
             ii: getattr(src, ii)
             for ii in src.ncattrs()
-            if not ii.startswith("_") or ii not in exclude
+            if not ii.startswith("_") and ii not in exclude
         }
 
 
