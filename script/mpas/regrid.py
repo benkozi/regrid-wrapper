@@ -81,6 +81,7 @@ class RaveToMpasRegridContext(BaseModel):
 
     @staticmethod
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
+        # tdk: does valid_range matter?
         exclude = ("coordinates", "valid_range")
         return {
             ii: getattr(src, ii)
