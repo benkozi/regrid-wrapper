@@ -36,10 +36,17 @@ spack stack create env --name ${env_name} --template empty --site ${site} --comp
 cd ./envs/${env_name}
 spack env activate .
 
-spack add py-netcdf4 esmf+python@8.9.1 py-pytest py-xarray prod-util py-pydantic@2.10.1 nccmp
-#spack add py-netcdf4 esmf+python@8.9.1 py-pydantic py-pytest py-xarray prod-util
+spack add \
+  py-netcdf4 \
+  esmf+python@8.9.1 \
+  py-pytest \
+  py-xarray \
+  prod-util \
+  py-pydantic@2.10.1 \
+  py-pydantic-settings \
+  nccmp
 spack concretize --force --fresh
 spack clean -a
-spack install --verbose
+spack install --verbose --fail-fast
 spack module lmod refresh --upstream-modules
 spack stack setup-meta-modules
