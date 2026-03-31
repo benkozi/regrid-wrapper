@@ -67,6 +67,8 @@ def main() -> None:
         from regrid_wrapper.app.verify.verify_cli import verify_cli
 
         verify_cli(args)
+    elif args.command == "chem-regrid":
+        chem_regrid_cli(args)
 
 
 if __name__ == "__main__":
