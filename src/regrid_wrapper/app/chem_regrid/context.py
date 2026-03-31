@@ -18,5 +18,6 @@ class RwBaseModel(ABC, BaseModel):
         yaml_data = yaml.safe_load(string_data)
         return cls.from_yaml(yaml_data)
 
+
 class ChemRegridContext(RwBaseModel):
     path: Path
