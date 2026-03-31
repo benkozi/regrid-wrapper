@@ -9,3 +9,11 @@ RUN <<INSTALL_PRECOMMIT
   spack env activate regrid-wrapper
   pip install mypy ruff pre-commit types-PyYAML pandas-stubs
 INSTALL_PRECOMMIT
+
+RUN cat <<EOF >> /home/rw/.bashrc
+# enable spack env by default
+source /opt/regrid-wrapper/spack-stack/setup.sh
+spack env activate regrid-wrapper
+EOF
+
+CMD ["/bin/bash"]

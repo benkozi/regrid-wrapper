@@ -1,10 +1,10 @@
 import logging
-import os
-from dataclasses import dataclass
 from enum import StrEnum, unique
 from pathlib import Path
 
 from mpi4py import MPI
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 @unique
@@ -13,8 +13,9 @@ class Platform(StrEnum):
     GAEAC6 = "gaeac6"
 
 
-@dataclass
-class Environment:
+class Environment(BaseSettings):
+    model_config = SettingsConfigDict(frozen=True)
+
     REGRID_WRAPPER_LOG_DIR: Path = Path(".")
     REGRID_WRAPPER_LOG_PREFIX: str = "Regrid-Wrapper"
     REGRID_WRAPPER_LOG_LEVEL: int = logging.INFO
@@ -25,19 +26,30 @@ class Environment:
         comm = MPI.COMM_WORLD
         return Path(self.REGRID_WRAPPER_LOG_DIR) / f"{self.REGRID_WRAPPER_LOG_PREFIX}-{str(comm.Get_rank()).zfill(4)}.log"
 
-    def __post_init__(self) -> None:
-        platform = os.environ.get("REGRID_WRAPPER_PLATFORM", "URSA")
-        self.REGRID_WRAPPER_PLATFORM = Platform(platform.lower())
+    @field_validator("REGRID_WRAPPER_PLATFORM", mode="before")
+    @classmethod
+    def _validate_platform_(cls, v: str) -> Platform:
+        return Platform(v.lower())
 
-        key = "REGRID_WRAPPER_LOG_DIR"
-        log_dir = os.environ.get(key, Path(".").resolve())
-        self.REGRID_WRAPPER_LOG_DIR = Path(log_dir)
+    @field_validator("REGRID_WRAPPER_LOG_DIR", mode="before")
+    @classmethod
+    def _validate_log_dir_(cls, v: str | None) -> Path:
+        if v is None:
+            p = Path(".")
+        else:
+            p = Path(v)
+        p = p.resolve()
+        return p
 
-        test_tmpdir = os.environ.get("REGRID_WRAPPER_TEST_TMPDIR", None)
-        if test_tmpdir is not None:
-            self.REGRID_WRAPPER_TEST_TMPDIR = Path(test_tmpdir)
-            assert self.REGRID_WRAPPER_TEST_TMPDIR.exists()
-            assert self.REGRID_WRAPPER_TEST_TMPDIR.is_dir()
+    @field_validator("REGRID_WRAPPER_TEST_TMPDIR", mode="before")
+    @classmethod
+    def _validate_test_tmpdir_(cls, v: str | None) -> Path | None:
+        p = None
+        if v is not None:
+            p = Path(v).resolve()
+            assert p.exists()
+            assert p.is_dir()
+        return p
 
 
 ENV = Environment()
