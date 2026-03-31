@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+from regrid_wrapper.app.chem_regrid.chem_regrid_cli import chem_regrid_cli
 from regrid_wrapper.context.logging import LOGGER
 
 
