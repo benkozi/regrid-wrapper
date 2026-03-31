@@ -76,3 +76,15 @@ RUN chown -R rw:rw /opt/regrid-wrapper
 
 # 3. Switch to the non-root user
 USER rw
+
+WORKDIR /opt/regrid-wrapper/spack-stack
+RUN <<INSTALL_PYDANTIC_SETTINGS
+  set -eu
+  . ./setup.sh
+  spack env activate regrid-wrapper
+  spack add py-pydantic-settings
+  spack concretize
+  spack install --fail-fast
+  spack gc -y
+  spack clean --all
+INSTALL_PYDANTIC_SETTINGS
