@@ -1,10 +1,10 @@
 from abc import ABC
-from enum import unique, StrEnum
+from enum import StrEnum, unique
 from functools import cached_property
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 
 
 class RwBaseModel(ABC, BaseModel):
@@ -37,14 +37,6 @@ class ChemRegridContext(RwBaseModel):
     scrip_path: Path | None
     dst_path: Path | None
     ebb_dcycle: int
-
-    def finalize_paths(self):
-        """Replicates the path logic from your original script."""
-        if str(self.scrip_path) == ".":  # Path("") often resolves to "."
-            self.scrip_path = self.workdir / f"mpas_{self.dataset_name}-{self.mesh_name}_scrip.nc"
-
-        if str(self.dst_path) == ".":
-            self.dst_path = self.workdir / "init.nc"
 
     @cached_property
     def rw_scrip_path(self) -> Path:
