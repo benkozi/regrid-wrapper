@@ -21,8 +21,7 @@ if [[ ${run_chem_regrid} == "TRUE" ]]; then
     ${cr_input_dir} \
     ${cr_output_dir} \
     ${cr_weight_dir} \
-    ${cr_cycle} \
-    ${cr_mesh_name} \
+    ${cr_cycle}
     ${cr_scrip_path} \
     ${cr_dst_path}
 fi

@@ -93,7 +93,9 @@ cr_workdir=${cr_output_dir}
 # directory for storing regrid weights
 cr_weight_dir=${cr_output_dir}
 # name of the mesh/domain
-cr_mesh_name=1_25
+export MESH_NAME=1_25
+# forecast length (doesn't seem to do anything in script currently)
+export FCST_LENGTH=6
 
 # ---------------------------------------------
 # set up modules and regrid-wrapper environment
