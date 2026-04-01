@@ -16,7 +16,7 @@ def chem_regrid_cli(args: argparse.Namespace) -> None:
     else:
         config = {}
 
-    overrides = args.override
+    overrides = args.overrides
     if overrides:
         apply_overrides(overrides, config)
 

@@ -59,7 +59,7 @@ def main() -> None:
         "--root-key", type=str, default="rw-chem-regrid", help="If provided, use this key when extracting the root configuration"
     )
     parser_chem_regrid.add_argument(
-        "--override", nargs="+", help="If provided, override arbitrary key+values (e.g. --override key1:nest=val1 key2=val2)"
+        "--overrides", nargs="+", help="If provided, override arbitrary key+values (e.g. --override key1:nest=val1 key2=val2)"
     )
 
     args = parser.parse_args()
