@@ -23,7 +23,8 @@ if [[ ${run_chem_regrid} == "TRUE" ]]; then
                 weight_dir=${cr_weight_dir} \
                 scrip_path=${cr_scrip_path} \
                 dst_path=${cr_dst_path} \
-                cycle=${cr_cycle}
+                cycle=${cr_cycle} \
+                mesh_name=${cr_mesh_name}
 #    ${cr_dataset_name} \
 #    ${cr_workdir} \
 #    ${cr_input_dir} \
