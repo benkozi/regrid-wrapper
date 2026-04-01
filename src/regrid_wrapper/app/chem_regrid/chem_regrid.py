@@ -1212,7 +1212,7 @@ def main(ctx: ChemRegridContext) -> None:
         time_size = 1
         InterpMethod = "BILINEAR"
 
-    weight_path = Path(weight_dir + "/weights_" + dataset_name + "-to-" + "mpas_" + mesh_name + "_" + InterpMethod + ".nc")
+    weight_path = ctx.get_weight_path(InterpMethod)
 
     if dataset_name == "RAVE":
         processor = None
