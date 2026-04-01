@@ -1,10 +1,14 @@
 import pytest
 from pathlib import Path
+from pydantic import BaseModel
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext, DatasetName
 
-def generate_chem_regrid_context(
-    root_path: Path, use_scrip: bool = True, use_dst: bool = True
-) -> ChemRegridContext:
+class ContextForTest(BaseModel):
+    root_path: Path
+    use_scrip: bool
+    use_dst: bool
+
+def generate_chem_regrid_context(test_context: ContextForTest) -> ChemRegridContext:
     """
     Generate a ChemRegridContext object.
     If a field has a None type, it should generate both with the provided value and without it.
@@ -13,10 +17,10 @@ def generate_chem_regrid_context(
     # Required fields with example values
     base_params = {
         "dataset_name": DatasetName.RAVE,
-        "workdir": root_path / "workdir",
-        "input_dir": root_path / "input_dir",
-        "output_dir": root_path / "output_dir",
-        "weight_dir": root_path / "weight_dir",
+        "workdir": test_context.root_path / "workdir",
+        "input_dir": test_context.root_path / "input_dir",
+        "output_dir": test_context.root_path / "output_dir",
+        "weight_dir": test_context.root_path / "weight_dir",
         "cycle": "2026033114",
         "mesh_name": "test_mesh",
         "ebb_dcycle": 1,
@@ -24,25 +28,44 @@ def generate_chem_regrid_context(
 
     # Fields that can be None
     params = base_params.copy()
-    params["scrip_path"] = root_path / "scrip.nc" if use_scrip else None
-    params["dst_path"] = root_path / "dst.nc" if use_dst else None
+    params["scrip_path"] = test_context.root_path / "scrip.nc" if test_context.use_scrip else None
+    params["dst_path"] = test_context.root_path / "dst.nc" if test_context.use_dst else None
     
     return ChemRegridContext(**params)
 
-@pytest.mark.parametrize("use_scrip", [True, False], ids=["scrip_path", "no_scrip_path"])
-@pytest.mark.parametrize("use_dst", [True, False], ids=["dst_path", "no_dst_path"])
-def test_generate_chem_regrid_context(use_scrip: bool, use_dst: bool):
-    root_path = Path("/tmp")
-    context = generate_chem_regrid_context(root_path, use_scrip=use_scrip, use_dst=use_dst)
+@pytest.fixture(
+    params=[
+        (True, True),
+        (True, False),
+        (False, True),
+        (False, False),
+    ],
+    ids=[
+        "scrip-dst",
+        "scrip-no_dst",
+        "no_scrip-dst",
+        "no_scrip-no_dst",
+    ]
+)
+def context_for_test(request) -> ContextForTest:
+    use_scrip, use_dst = request.param
+    return ContextForTest(
+        root_path=Path("/tmp"),
+        use_scrip=use_scrip,
+        use_dst=use_dst
+    )
+
+def test_generate_chem_regrid_context(context_for_test: ContextForTest):
+    context = generate_chem_regrid_context(context_for_test)
     
     assert isinstance(context, ChemRegridContext)
     
-    if use_scrip:
-        assert context.scrip_path == root_path / "scrip.nc"
+    if context_for_test.use_scrip:
+        assert context.scrip_path == context_for_test.root_path / "scrip.nc"
     else:
         assert context.scrip_path is None
         
-    if use_dst:
-        assert context.dst_path == root_path / "dst.nc"
+    if context_for_test.use_dst:
+        assert context.dst_path == context_for_test.root_path / "dst.nc"
     else:
         assert context.dst_path is None
