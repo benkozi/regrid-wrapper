@@ -971,10 +971,6 @@ def main(ctx: ChemRegridContext) -> None:
     ebb_dcycle = ctx.ebb_dcycle
     fcst_length = ctx.fcst_length
 
-    ebb_dcycle = int(os.getenv('EBB_DCYCLE'))
-    fcst_length= int(os.getenv('FCST_LENGTH'))
-    mesh_name  = os.getenv('MESH_NAME')
-
     desc_stats_out = ctx.desc_stats_out
     #
     YYYY = cycle[0:4]
