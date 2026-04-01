@@ -45,7 +45,7 @@ def find_latest_rave_file(input_dir, target_time_str, ebb_dcycle, max_lookback_h
         elif ebb_dcycle == 1:
            this_time = target_time + timedelta(hours=h)
         else:
-           _LOGGER.info("unrecognized ebb_dcycle, reverting to same-day, ebb_dcycle = 1")
+           _LOGGER.warning("unrecognized ebb_dcycle, reverting to same-day, ebb_dcycle = 1")
            this_time = target_time + timedelta(hours=h)
 
         this_str = this_time.strftime(fmt)
