@@ -81,11 +81,11 @@ fi
 # if TRUE, remove all files in cr_output_dir before running
 cr_clean_output_dir=TRUE
 # number of MPI tasks for srun
-cr_ntasks=1
-#cr_ntasks=192
+#cr_ntasks=1
+cr_ntasks=192
 # wall time for srun
-#cr_wtime=00:15:00
-cr_wtime=00:01:00
+cr_wtime=00:15:00
+#cr_wtime=00:01:00
 # emissions cycle type
 #export EBB_DCYCLE=1
 # name of the input dataset to regrid
