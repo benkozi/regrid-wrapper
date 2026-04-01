@@ -15,7 +15,7 @@ if [[ ${run_chem_regrid} == "TRUE" ]]; then
   if [[ ${cr_clean_output_dir} == "TRUE" ]]; then
     rm -rf ${cr_output_dir:?}/* || "nothing to remove in cr_output_dir"
   fi
-  srun --export=ALL --account ${account} --ntasks ${cr_ntasks} --time ${cr_wtime} ${cluster} ${partition} python ${rw_dir}/src/regrid_wrapper/rw_cli.py chem-regrid --yaml-path ./config.yml
+  srun --export=ALL --account ${account} --ntasks ${cr_ntasks} --time ${cr_wtime} ${cluster} ${partition} python ${rw_dir}/src/regrid_wrapper/app/rw_cli.py chem-regrid --yaml-path ./config.yml
 #    ${cr_dataset_name} \
 #    ${cr_workdir} \
 #    ${cr_input_dir} \
