@@ -23,7 +23,7 @@ class RwBaseModel(ABC, BaseModel):
 
 @unique
 class DatasetName(StrEnum):
-    RAVE = "rave"
+    RAVE = "RAVE"
 
 
 class ChemRegridContext(RwBaseModel):
@@ -37,6 +37,7 @@ class ChemRegridContext(RwBaseModel):
     scrip_path: Path | None
     dst_path: Path | None
     ebb_dcycle: int
+    fcst_length: int
 
     @cached_property
     def rw_scrip_path(self) -> Path:

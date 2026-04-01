@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 
+from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.esmpy.field_wrapper import (
@@ -957,38 +958,24 @@ class RaveToMpasRegridProcessor:
         src_mesh.destroy()
 
 
-def main() -> None:
-    dataset_name = sys.argv[1]  # Which dataset are we interpolating?
-    workdir = sys.argv[2]  # Directory where operations will be processed
-    input_dir = sys.argv[3]  # Top directory of input data
-    output_dir = sys.argv[4]  # Top directory of output data
-    weight_dir = sys.argv[5]  # Directory that contains the regrid weights
-    cycle = sys.argv[6]  # Cycle Time, YYYYMMDDHH
-    try:
-        scrip_path = Path(sys.argv[7])  # Path to the input SCRIP/UGRID domain grid file
-        dst_path = Path(sys.argv[8])  # Path to the destination grid (e.g., init.nc)
-    except IndexError:
-        scrip_path = None
-        dst_path = None
+def main(ctx: ChemRegridContext) -> None:
+    dataset_name = ctx.dataset_name.value  # Which dataset are we interpolating?
+    workdir = ctx.workdir  # Directory where operations will be processed
+    input_dir = ctx.input_dir  # Top directory of input data
+    output_dir = ctx.output_dir  # Top directory of output data
+    weight_dir = ctx.weight_dir  # Directory that contains the regrid weights
+    cycle = ctx.cycle
+    scrip_path = ctx.rw_scrip_path # Cycle Time, YYYYMMDDHH
+    dst_path = ctx.dst_path
+    mesh_name = ctx.mesh_name
+    ebb_dcycle = ctx.ebb_dcycle
+    fcst_length = ctx.fcst_length
 
-    #mesh_name  = os.getenv('MESH_NAME')
     ebb_dcycle = int(os.getenv('EBB_DCYCLE'))
     fcst_length= int(os.getenv('FCST_LENGTH'))
     mesh_name  = os.getenv('MESH_NAME')
-    #
-    # Test to see if scrip files exist
-    # testpath = Path(weight_dir + "/scrip_files/mpas_" + mesh_name + "_scrip.nc")
-    # If we have the file set the path, otherwise it will be built in the workdir
-    # if testpath.exists():
-    #    scrip_path = testpath
-    # else:
-    # FOR NOW, ALWAYS CREATE SCRIP
-    if scrip_path is None:
-        scrip_path = Path(workdir + "/mpas_" + dataset_name + "-" + mesh_name + "_scrip.nc")
-    #
-    if dst_path is None:
-        dst_path = Path(workdir + "/init.nc")
-    desc_stats_out = Path(workdir + "/desc_stats-" + cycle + ".csv")
+
+    desc_stats_out = ctx.desc_stats_out
     #
     YYYY = cycle[0:4]
     MM = cycle[4:6]
@@ -1519,7 +1506,3 @@ def main() -> None:
         processor.finalize()
 
         _LOGGER.info("success")
-
-
-if __name__ == "__main__":
-    main()

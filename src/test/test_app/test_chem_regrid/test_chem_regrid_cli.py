@@ -30,6 +30,7 @@ def create_chem_regrid_context(test_context: ContextForTest) -> ChemRegridContex
         "cycle": "2026033114",
         "mesh_name": "test_mesh",
         "ebb_dcycle": 1,
+        "fcst_length": 6,
     }
 
     # Fields that can be None
