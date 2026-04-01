@@ -8,7 +8,7 @@ class ContextForTest(BaseModel):
     use_scrip: bool
     use_dst: bool
 
-def generate_chem_regrid_context(test_context: ContextForTest) -> ChemRegridContext:
+def create_chem_regrid_context(test_context: ContextForTest) -> ChemRegridContext:
     """
     Generate a ChemRegridContext object.
     If a field has a None type, it should generate both with the provided value and without it.
@@ -56,7 +56,7 @@ def context_for_test(request) -> ContextForTest:
     )
 
 def test_generate_chem_regrid_context(context_for_test: ContextForTest):
-    context = generate_chem_regrid_context(context_for_test)
+    context = create_chem_regrid_context(context_for_test)
     
     assert isinstance(context, ChemRegridContext)
     
