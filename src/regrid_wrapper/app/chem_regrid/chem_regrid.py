@@ -971,7 +971,7 @@ def main(ctx: ChemRegridContext) -> None:
     ebb_dcycle = ctx.ebb_dcycle
     fcst_length = ctx.fcst_length
 
-    desc_stats_out = ctx.desc_stats_out
+    desc_stats_out = ctx.rw_desc_stats_out
     #
     YYYY = cycle[0:4]
     MM = cycle[4:6]
