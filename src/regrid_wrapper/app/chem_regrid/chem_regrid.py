@@ -1231,7 +1231,7 @@ def main(ctx: ChemRegridContext) -> None:
 
             _LOGGER.info(f'Reading RAVE file: {rave_paths=}')
             rave_path = rave_paths[0]
-            new_dst_path = Path(output_dir + "/" + mesh_name + "-RAVE-" + date_to_process + ".nc")
+            new_dst_path = output_dir / (mesh_name + "-RAVE-" + date_to_process + ".nc")
 
             # --- OPTIMIZATION START ---
             if processor is None:
