@@ -49,7 +49,7 @@ def find_latest_rave_file(input_dir, target_time_str, ebb_dcycle, max_lookback_h
            this_time = target_time + timedelta(hours=h)
 
         this_str = this_time.strftime(fmt)
-        paths = glob.glob(input_dir + "/RAVE-HrlyEmiss-3km_v2r0_blend_s"+this_str+"*")
+        paths = glob.glob(str(input_dir) + "/RAVE-HrlyEmiss-3km_v2r0_blend_s"+this_str+"*")
         if paths:
             if h > 0:
                 print(f"Missing RAVE file for {target_time_str}, using {this_str} instead")
