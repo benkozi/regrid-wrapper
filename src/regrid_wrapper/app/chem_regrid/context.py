@@ -27,6 +27,16 @@ class RwBaseModel(ABC, BaseModel):
 @unique
 class DatasetName(StrEnum):
     RAVE = "RAVE"
+    GRA2PES = "GRA2PES"
+    NEMO_RWC = "NEMO_RWC"
+    NEMO_ANTHRO = "NEMO_ANTHRO"
+    FMC = "FMC"
+    PECM = "PECM"
+    NARR = "NARR"
+    ECOREGION = "ECOREGION"
+    FENGSHA_2D = "FENGSHA_2D"
+    FENGSHA_2D_Time = "FENGSHA_2D_Time"
+    NGFS = "NGFS"
 
 
 class ChemRegridContext(RwBaseModel):
