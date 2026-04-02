@@ -1,5 +1,0 @@
-rw-chem-regrid:
-  ebb_dcycle: 1
-  dataset_name: RAVE
-  mesh_name: 1_25
-  fcst_length: 6
