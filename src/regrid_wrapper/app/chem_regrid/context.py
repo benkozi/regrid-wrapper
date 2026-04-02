@@ -56,5 +56,7 @@ class ChemRegridContext(RwBaseModel):
         return self.workdir / f"desc_stats-{self.cycle}.csv"
 
     def get_weight_path(self, interp_method: str) -> Path:
-        weight_path = self.weight_dir / ("weights_" + self.dataset_name.value + "-to-" + "mpas_" + self.mesh_name + "_" + interp_method + ".nc")
+        weight_path = self.weight_dir / (
+            "weights_" + self.dataset_name.value + "-to-" + "mpas_" + self.mesh_name + "_" + interp_method + ".nc"
+        )
         return weight_path

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from regrid_wrapper.app.rw_cli import mpas_to_ugrid_cli
+from regrid_wrapper.app.mpas_to_ugrid_cli import mpas_to_ugrid_cli
 
 
 @pytest.mark.parametrize("clobber", [True, False])
