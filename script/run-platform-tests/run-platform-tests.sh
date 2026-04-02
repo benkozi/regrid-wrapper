@@ -25,6 +25,6 @@ if [[ ${run_chem_regrid} == "TRUE" ]]; then
                 cycle=${cr_cycle} \
                 mesh_name=${cr_mesh_name} \
                 ebb_dcycle=1 \
-                dataaset_name=RAVE \
+                dataset_name=RAVE \
                 fcst_length=6
 fi
