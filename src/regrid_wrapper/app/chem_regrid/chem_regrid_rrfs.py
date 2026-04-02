@@ -1,6 +1,5 @@
 import os
 import sys
-from pathlib import Path
 
 from regrid_wrapper.app.chem_regrid import chem_regrid
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
@@ -28,3 +27,6 @@ def main() -> None:
 
     ctx = ChemRegridContext.model_validate(data)
     chem_regrid.main(ctx)
+
+if __name__ == "__main__":
+    main()
