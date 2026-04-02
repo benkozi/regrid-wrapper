@@ -2,20 +2,23 @@ from abc import ABC
 from enum import StrEnum, unique
 from functools import cached_property
 from pathlib import Path
+from typing import TypeVar
 
 import yaml
 from pydantic import BaseModel, Field
+
+T = TypeVar("T", bound="RwBaseModel")
 
 
 class RwBaseModel(ABC, BaseModel):
     model_config = {"frozen": True}
 
     @classmethod
-    def from_yaml(cls, data: dict) -> "RwBaseModel":
+    def from_yaml(cls: type[T], data: dict) -> T:
         return cls.model_validate(data)
 
     @classmethod
-    def from_yaml_file(cls, path: Path) -> "RwBaseModel":
+    def from_yaml_file(cls: type[T], path: Path) -> T:
         string_data = path.read_text()
         yaml_data = yaml.safe_load(string_data)
         return cls.from_yaml(yaml_data)
