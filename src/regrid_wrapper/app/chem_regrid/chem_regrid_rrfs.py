@@ -39,7 +39,7 @@ def main() -> None:
     LOGGER.info(f"{ctx.model_dump_json(indent=2)=}")
     t1 = time.perf_counter()
     chem_regrid_impl.main(ctx)
-    LOGGER.info(f"chem_regrid.main elapsed time: {time.perf_counter() - t1} s")
+    LOGGER.info(f"chem_regrid_impl.main elapsed time: {time.perf_counter() - t1} s")
 
 
 if __name__ == "__main__":
