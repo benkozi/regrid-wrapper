@@ -44,5 +44,5 @@ repos:
 exclude: |
   (?x)^(
     \.venv/|
-    src/regrid_wrapper/app/chem_regrid/chem_regrid\.py
+    src/regrid_wrapper/app/chem_regrid/chem_regrid_impl\.py
   )

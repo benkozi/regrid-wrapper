@@ -3,7 +3,7 @@ import time
 
 from pydantic_settings import BaseSettings
 
-from regrid_wrapper.app.chem_regrid import chem_regrid
+from regrid_wrapper.app.chem_regrid import chem_regrid_impl
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
 from regrid_wrapper.context.logging import LOGGER
 
@@ -38,7 +38,7 @@ def main() -> None:
     ctx = ChemRegridContext.model_validate(data)
     LOGGER.info(f"{ctx.model_dump_json(indent=2)=}")
     t1 = time.perf_counter()
-    chem_regrid.main(ctx)
+    chem_regrid_impl.main(ctx)
     LOGGER.info(f"chem_regrid.main elapsed time: {time.perf_counter() - t1} s")
 
 
