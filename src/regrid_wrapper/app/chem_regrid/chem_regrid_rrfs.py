@@ -26,6 +26,8 @@ def main() -> None:
         "ebb_dcycle": env.ebb_dcycle,
         "fcst_length": env.fcst_length,
         "mesh_name": env.mesh_name,
+        "scrip_path": None,
+        "dst_path": None,
     }
 
     try:
@@ -33,9 +35,9 @@ def main() -> None:
         try:
             data["dst_path"] = sys.argv[8]  # Path to the destination grid (e.g., init.nc)
         except IndexError:
-            data["dst_path"] = None
+            pass
     except IndexError:
-        data["scrip_path"] = None
+        pass
 
     ctx = ChemRegridContext.model_validate(data)
     LOGGER.info(f"{ctx.model_dump_json(indent=2)=}")
