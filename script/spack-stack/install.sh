@@ -36,6 +36,8 @@ spack stack create env --name ${env_name} --template empty --site ${site} --comp
 cd ./envs/${env_name}
 spack env activate .
 
+spack config add packages:py-netcdf4:require:+mpi
+
 spack add \
   py-netcdf4+mpi@1.7.2 \
   esmf+python@8.9.1 \
