@@ -6,7 +6,7 @@
 # ----------
 
 # if TRUE, run unit tests using pytest
-run_unit_tests=FALSE
+run_unit_tests=TRUE
 # if TRUE, run the chem_regrid application test
 run_chem_regrid=TRUE
 
