@@ -1218,12 +1218,7 @@ def main(ctx: ChemRegridContext) -> None:
         processor = None
         for date_to_process in dates_needed:
             _LOGGER.info(f"RAVE processing {date_to_process=}")
-            rave_paths = find_latest_rave_file(input_dir, date_to_process, ebb_dcycle,
-                                               max_lookback_hours=24)
-            # rave_paths = glob.glob(input_dir + "/RAVE-HrlyEmiss-3km_v2r0_blend_s" + date_to_process + "*")
-            # if len(rave_paths) == 0:
-            #    print("No matching files found for " + input_dir + "/RAVE-HrlyEmiss-3km_v2r0_blend_s" + date_to_process + "*")
-            #    continue
+            rave_paths = find_latest_rave_file(input_dir, date_to_process, ebb_dcycle, max_lookback_hours=24)
             if not rave_paths:
                 _LOGGER.warn(
                     f"No matching files found for {date_to_process} (even after lookback).")
