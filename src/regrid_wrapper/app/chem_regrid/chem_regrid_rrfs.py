@@ -30,10 +30,12 @@ def main() -> None:
 
     try:
         data["scrip_path"] = sys.argv[7]  # Path to the input SCRIP/UGRID domain grid file
-        data["dst_path"] = sys.argv[8]  # Path to the destination grid (e.g., init.nc)
+        try:
+            data["dst_path"] = sys.argv[8]  # Path to the destination grid (e.g., init.nc)
+        except IndexError:
+            data["dst_path"] = None
     except IndexError:
         data["scrip_path"] = None
-        data["dst_path"] = None
 
     ctx = ChemRegridContext.model_validate(data)
     LOGGER.info(f"{ctx.model_dump_json(indent=2)=}")
