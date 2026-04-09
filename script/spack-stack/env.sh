@@ -18,5 +18,6 @@ spack_stack_dirname=spack-stack-v2
 
 site=ursa
 sandbox=/scratch3/NCEPDEV/stmp/Benjamin.Koziol/sandbox
-upstream="--upstream /contrib/spack-stack/spack-stack-2.1.0/envs/ue-oneapi-2025.3.1/install"
+upstream_env=/contrib/spack-stack/spack-stack-2.1.0/envs/ue-oneapi-2025.3.1/install
+upstream="--upstream ${upstream_env}"
 spack_stack_branch=""
