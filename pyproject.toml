@@ -35,5 +35,4 @@ convention = "numpy"
 quote-style = "double"
 
 [tool.mypy]
-exclude = ["src/regrid_wrapper/app/chem_regrid/chem_regrid_impl.py"]
 disable_error_code = ["import-untyped"]

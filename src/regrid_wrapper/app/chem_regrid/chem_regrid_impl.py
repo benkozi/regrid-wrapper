@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import sys
 import glob
 from abc import abstractmethod, ABC
