@@ -118,3 +118,4 @@ module load regrid-wrapper-spack-stack.${platform}
 module list
 # include project src in PYTHONPATH
 export PYTHONPATH=${rw_dir}/src:${PYTHONPATH:-}
+python -c "import dask"
