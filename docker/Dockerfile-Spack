@@ -40,6 +40,8 @@ RUN git clone --depth=1 --recurse-submodules https://github.com/JCSDA/spack-stac
 WORKDIR spack-stack
 ENV SPACK_ROOT=/opt/regrid-wrapper/spack-stack/spack
 
+COPY spack.yaml /opt/regrid-wrapper/spack-stack/spack.yaml
+
 SHELL ["/bin/bash", "-c"]
 
 RUN <<INSTALL_ALL
@@ -47,19 +49,8 @@ RUN <<INSTALL_ALL
   . ./setup.sh
   spack compiler find
   spack external find rust curl perl git python cmake gettext findutils tar
-  spack config add "packages:rust:buildable:false"
-  spack config add "packages:curl:buildable:false"
-  spack config add "packages:perl:buildable:false"
-  spack config add "packages:git:buildable:false"
-  spack config add "packages:python:buildable:false"
-  spack config add "packages:cmake:buildable:false"
-  spack config add "packages:gettext:buildable:false"
-  spack config add "packages:findutils:buildable:false"
-  spack config add "packages:tar:buildable:false"
-  spack env create regrid-wrapper
+  spack env create regrid-wrapper spack.yaml
   spack env activate regrid-wrapper
-  spack config add "concretizer:unify:when_possible"
-  spack add esmf@8.9.1+python py-netcdf4+mpi py-pytest py-pydantic@2.10.1 nccmp py-xarray
   spack concretize
   spack install --fail-fast
   spack gc -y
@@ -78,13 +69,3 @@ RUN chown -R rw:rw /opt/regrid-wrapper
 USER rw
 
 WORKDIR /opt/regrid-wrapper/spack-stack
-RUN <<INSTALL_PYDANTIC_SETTINGS
-  set -eu
-  . ./setup.sh
-  spack env activate regrid-wrapper
-  spack add py-pydantic-settings
-  spack concretize
-  spack install --fail-fast
-  spack gc -y
-  spack clean --all
-INSTALL_PYDANTIC_SETTINGS

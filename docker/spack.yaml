@@ -1,0 +1,32 @@
+spack:
+  specs:
+  - esmf+python@8.9.1
+  - py-netcdf4+mpi@1.7.2
+  - py-pytest@8.2.1
+  - py-pydantic@2.10.1
+  - py-pydantic-settings@2.6.1
+  - py-xarray@2024.7.0
+  - nccmp
+  config:
+    concretizer:
+      unify: when_possible
+  packages:
+    rust:
+      buildable: false
+    curl:
+      buildable: false
+    perl:
+      buildable: false
+    git:
+      buildable: false
+    python:
+      buildable: false
+    cmake:
+      buildable: false
+    gettext:
+      buildable: false
+    findutils:
+      buildable: false
+    tar:
+      buildable: false
+  view: true
