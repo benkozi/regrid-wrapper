@@ -39,7 +39,7 @@ def test_main_calls_chem_regrid_main(tmp_path: Path) -> None:
     with (
         patch.dict("os.environ", env_vars),
         patch("sys.argv", mock_argv),
-        patch("regrid_wrapper.app.chem_regrid.chem_regrid_impl.main") as mock_chem_regrid_main,
+        patch("regrid_wrapper.app.chem_regrid.chem_regrid_rrfs.chem_regrid_impl_main") as mock_chem_regrid_main,
     ):
         chem_regrid_rrfs.main()
         mock_chem_regrid_main.assert_called_once()
