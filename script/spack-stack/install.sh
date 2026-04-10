@@ -37,12 +37,13 @@ cd ./envs/${env_name}
 spack env activate .
 
 spack config add packages:py-netcdf4:require:+mpi
+spack config add packages:py-xarray:require:+parallel
 
 spack add \
   py-netcdf4+mpi@1.7.2 \
   esmf+python@8.9.1 \
   py-pytest@8.2.1 \
-  py-xarray@2024.7.0 \
+  py-xarray+parallel@2024.7.0 \
   prod-util \
   py-pydantic@2.10.1 \
   py-pydantic-settings@2.6.1 \

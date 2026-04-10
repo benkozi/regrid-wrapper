@@ -5,7 +5,7 @@ spack:
   - py-pytest@8.2.1
   - py-pydantic@2.10.1
   - py-pydantic-settings@2.6.1
-  - py-xarray@2024.7.0
+  - py-xarray+parallel@2024.7.0
   - nccmp
   config:
     concretizer:
