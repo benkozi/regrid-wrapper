@@ -1208,7 +1208,6 @@ def main(ctx: ChemRegridContext) -> None:
         time_name = "time"
         time_size = 1
         InterpMethod = "BILINEAR"
-        InterpMethod = "CONSERVE"
     elif dataset_name == "GOES":
         field_names = ("AOD",)
         x_center = "longitude"
