@@ -340,7 +340,7 @@ class RaveToMpasRegridProcessor:
 
 # JLS - temporary fix for coords not in file
         if self.context.dataset_name == "GOES":
-           pathsrc="/scratch4/BMC/acomp/cheMPAS-Fire/input/grids/domain_latlons/goes19_abi_conus_interpolated_lat_lon.nc"
+           pathsrc=workdir+"/goes19_abi_conus_interpolated_lat_lon.nc"
         else:
            pathsrc=self.context.src_path
         _LOGGER.info("create source grid")
@@ -1353,17 +1353,10 @@ def main(ctx: ChemRegridContext) -> None:
 
     elif dataset_name == "GOES":
         processor = None
-        #files_to_cat = []
-        #for date_to_process in dates_needed:
-        #   print("date to process = ")
-        #   print(date_to_process)
         date_to_process = dates_needed[0]
         rave_paths = find_latest_rave_file(input_dir, date_to_process, -1, dataset_name, max_lookback_hours=2)
-        #   files_to_cat.append(rave_paths)
-        # Unique
         files_to_cat = rave_paths
-        print("will cat files: ")
-        print(files_to_cat)
+        _LOGGER.info(f"will cat files: {files_to_cat=}")
         if COMM.rank == 0:
            ds = xr.open_mfdataset(files_to_cat, combine='nested', concat_dim='file')
            # 2. Calculate the nanmean across the new 'file' dimension
@@ -1377,8 +1370,8 @@ def main(ctx: ChemRegridContext) -> None:
            ds_averaged.to_netcdf(Path(output_dir + '/test_goes_aod_merged.nc'))
 
         if not rave_paths:
-            print(f"No matching GOES files found for {date_to_process} (even after lookback).")
-            exit()
+            _LOGGER.info(f"No matching GOES files found for {date_to_process} (even after lookback).")
+            raise ValueError
 
         print('Reading merged GOES file:', 'test_goes_aod_merged.nc')
         #rave_path = rave_paths[0]

@@ -37,6 +37,7 @@ class DatasetName(StrEnum):
     FENGSHA_2D = "FENGSHA_2D"
     FENGSHA_2D_Time = "FENGSHA_2D_Time"
     NGFS = "NGFS"
+    GOES = "GOES"
 
 
 class ChemRegridContext(RwBaseModel):
