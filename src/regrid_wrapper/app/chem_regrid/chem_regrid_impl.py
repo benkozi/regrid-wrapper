@@ -347,35 +347,21 @@ class RaveToMpasRegridProcessor:
            pathsrc=self.context.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
         else:
            pathsrc=self.context.src_path
+
         _LOGGER.info("create source grid")
-        if self.context.x_corner_dim is None:
-            self._src_gwrap = NcToGrid(
-                path=pathsrc,
-                spec=GridSpec(
-                    x_center=self.context.x_center,
-                    y_center=self.context.y_center,
-                    x_dim=(self.context.x_dim,),
-                    y_dim=(self.context.y_dim,),
-                    x_corner=self.context.x_corner,
-                    y_corner=self.context.y_corner,
-                    x_corner_dim=self.context.x_corner_dim,
-                    y_corner_dim=self.context.y_corner_dim,
-                ),
-            ).create_grid_wrapper()
-        else:
-            self._src_gwrap = NcToGrid(
-                path=pathsrc,
-                spec=GridSpec(
-                    x_center=self.context.x_center,
-                    y_center=self.context.y_center,
-                    x_dim=(self.context.x_dim,),
-                    y_dim=(self.context.y_dim,),
-                    x_corner=self.context.x_corner,
-                    y_corner=self.context.y_corner,
-                    x_corner_dim=(self.context.x_corner_dim,),
-                    y_corner_dim=(self.context.y_corner_dim,),
-                ),
-            ).create_grid_wrapper()
+        self._src_gwrap = NcToGrid(
+            path=pathsrc,
+            spec=GridSpec(
+                x_center=self.context.x_center,
+                y_center=self.context.y_center,
+                x_dim=self.context.x_dim,
+                y_dim=self.context.y_dim,
+                x_corner=self.context.x_corner,
+                y_corner=self.context.y_corner,
+                x_corner_dim=self.context.x_corner_dim,
+                y_corner_dim=self.context.y_corner_dim,
+            ),
+        ).create_grid_wrapper()
 
         _LOGGER.info("create source field")
         src_fwrap = self.create_src_field_wrapper(self.context.rave_fields[0].name)

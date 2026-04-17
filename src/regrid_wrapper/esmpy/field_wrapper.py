@@ -2,13 +2,13 @@ import abc
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Iterator, Literal, Sequence, Tuple, Union
+from typing import Annotated, Any, Dict, Iterator, List, Literal, Sequence, Tuple, Union
 
 import esmpy
 import netCDF4 as nc
 import numpy as np
 from mpi4py import MPI
-from pydantic import ConfigDict, model_validator
+from pydantic import BeforeValidator, ConfigDict, model_validator
 
 from regrid_wrapper.common import RwBaseModel
 from regrid_wrapper.context.comm import COMM, Tag, reconcile_bounds
@@ -72,7 +72,15 @@ def copy_nc_variable(src: nc.Dataset, dst: nc.Dataset, varname: str, copy_data: 
         new_var[:] = var[:]
 
 
-NameListType = Tuple[str, ...]
+def _coerce_to_tuple_(v: str | List[str] | Tuple[str, ...]) -> Tuple[str, ...]:
+    if isinstance(v, str):
+        return (v,)
+    if isinstance(v, list):
+        return tuple(v)
+    return v
+
+
+NameListType = Annotated[Tuple[str, ...], BeforeValidator(_coerce_to_tuple_)]
 
 
 def get_aliased_key(source: Dict, keys: NameListType | str) -> Any:
