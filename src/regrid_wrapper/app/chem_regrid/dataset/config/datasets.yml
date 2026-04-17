@@ -17,9 +17,216 @@ RAVE:
   y_corner: grid_lat
   x_corner_dim: grid_x
   y_corner_dim: grid_y
-  level_in_name: "None"
+  level_in_name: null
   level_out_name: nkwildfire
   level_out_size: 1
   time_name: time
   time_size: 1
   InterpMethod: CONSERVE
+NGFS:
+  field_names:
+    - FRE
+    - FRP_MEAN
+    - PM25
+  x_center: lon
+  y_center: lat
+  x_dim: point
+  y_dim: point
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: nkwildfire
+  level_out_size: 1
+  time_name: time
+  time_size: 1
+  InterpMethod: CONSERVE
+GRA2PES:
+  field_names:
+    - PM25-PRI
+    - PM10-PRI
+    - SO2
+    - CO
+    - NOX
+    - NH3
+    - h_agl
+  x_center: XLONG
+  y_center: XLAT
+  x_dim: west_east
+  y_dim: south_north
+  x_corner: XLONG_C
+  y_corner: XLAT_C
+  x_corner_dim: west_east_stag
+  y_corner_dim: south_north_stag
+  level_in_name: bottom_top
+  level_out_name: nkanthro
+  level_out_size: 20
+  time_name: Time
+  time_size: 12
+  InterpMethod: CONSERVE
+NEMO_ANTHRO:
+  field_names:
+    - POC
+    - PEC
+    - PMOTHR
+    - PMC
+  x_center: lon
+  y_center: lat
+  x_dim: COL
+  y_dim: ROW
+  x_corner: lonc
+  y_corner: latc
+  x_corner_dim: COLC
+  y_corner_dim: ROWC
+  level_in_name: LAY
+  level_out_name: nkanthro
+  level_out_size: 1
+  time_name: TSTEP
+  time_size: 1
+  InterpMethod: CONSERVE
+NEMO_RWC:
+  field_names:
+    - POC
+    - PEC
+    - PMOTHR
+    - PMC
+  x_center: lon
+  y_center: lat
+  x_dim: COL
+  y_dim: ROW
+  x_corner: lonc
+  y_corner: latc
+  x_corner_dim: COLC
+  y_corner_dim: ROWC
+  level_in_name: null
+  level_out_name: null
+  level_out_size: 0
+  time_name: Time
+  time_size: 1
+  InterpMethod: CONSERVE
+PECM:
+  field_names:
+    - DBL_POLL
+    - ENL_POLL
+    - GRA_POLL
+    - RAG_POLL
+  x_center: lon
+  y_center: lat
+  x_dim: COL
+  y_dim: ROW
+  x_corner: lonc
+  y_corner: latc
+  x_corner_dim: COLC
+  y_corner_dim: ROWC
+  level_in_name: null
+  level_out_name: nkbiogenic
+  level_out_size: 1
+  time_name: time
+  time_size: 1
+  InterpMethod: CONSERVE
+ECOREGION:
+  field_names:
+    - ecoregion_ID
+  x_center: geolon
+  y_center: geolat
+  x_dim: lon
+  y_dim: lat
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: nkwildfire
+  level_out_size: 1
+  time_name: time
+  time_size: 1
+  InterpMethod: NEAREST_STOD
+NARR:
+  field_names:
+    - RWC_denominator
+  x_center: lon
+  y_center: lat
+  x_dim: x
+  y_dim: y
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: null
+  level_out_size: 0
+  time_name: Time
+  time_size: 1
+  InterpMethod: BILINEAR
+FENGSHA_2D:
+  field_names:
+    - clayfrac
+    - sandfrac
+    - uthres
+    - ssm
+  x_center: longitude
+  y_center: latitude
+  x_dim: lon
+  y_dim: lat
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: null
+  level_out_size: 0
+  time_name: null
+  time_size: 0
+  InterpMethod: BILINEAR
+FENGSHA_2D_Time:
+  field_names:
+    - rdrag
+  x_center: longitude
+  y_center: latitude
+  x_dim: lon
+  y_dim: lat
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: null
+  level_out_size: 0
+  time_name: time
+  time_size: 12
+  InterpMethod: BILINEAR
+FMC:
+  field_names:
+    - 10h_dead_fuel_moisture_content
+  x_center: longitude
+  y_center: latitude
+  x_dim: nx
+  y_dim: ny
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: nkwildfire
+  level_out_size: 1
+  time_name: time
+  time_size: 1
+  InterpMethod: BILINEAR
+GOES:
+  field_names:
+    - AOD
+  x_center: longitude
+  y_center: latitude
+  x_dim: x
+  y_dim: y
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: null
+  level_out_size: 0
+  time_name: null
+  time_size: 0
+  InterpMethod: BILINEAR

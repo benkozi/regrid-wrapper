@@ -27,15 +27,15 @@ class ChemRegridDataset(RwBaseModel):
     y_center: str
     x_dim: str
     y_dim: str
-    x_corner: str
-    y_corner: str
-    x_corner_dim: str
-    y_corner_dim: str
-    level_in_name: str
-    level_out_name: str
-    level_out_size: int
-    time_name: str
-    time_size: int
+    x_corner: str | None
+    y_corner: str | None
+    x_corner_dim: str | None
+    y_corner_dim: str | None
+    level_in_name: str | None
+    level_out_name: str | None
+    level_out_size: int | None
+    time_name: str | None
+    time_size: int | None
     InterpMethod: str
 
     @classmethod

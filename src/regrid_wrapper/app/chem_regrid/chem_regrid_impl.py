@@ -131,7 +131,7 @@ class AbstractRaveField(ABC, BaseModel):
     fill_value: float
     dtype: Any
     num_cells: int
-    level_out_name: str
+    level_out_name: str | None
     level_out_size: int
     time_size: int
 
@@ -254,11 +254,11 @@ class RaveToMpasRegridContext(BaseModel):
     y_corner: Union[str, None]
     x_corner_dim: Union[str, None]
     y_corner_dim: Union[str, None]
-    level_in_name: str
+    level_in_name: str | None
     # level_in_size: int
-    level_out_name: str
+    level_out_name: str | None
     level_out_size: int
-    time_name: str
+    time_name: str | None
     time_size: int
     # InterpMask: float
 
@@ -479,7 +479,7 @@ class RaveToMpasRegridProcessor:
         if self.context.rank == 0:
             with open_nc(self.context.new_dst_path, mode="w", clobber=True, parallel=False) as dst_nc:
                 dst_nc.createDimension("nCells", self.context.num_cells)
-                if self.context.level_out_name != "None":
+                if self.context.level_out_name is not None:
                     dst_nc.createDimension(self.context.level_out_name, self.context.level_out_size)
                 dst_nc.createDimension("StrLen", 64)
                 if self.context.time_size > 1:
@@ -698,8 +698,8 @@ class RaveToMpasRegridProcessor:
                dim_time=(self.context.time_name,),
                dim_level=('bottom_top_stag',),
            ).create_field_wrapper()
-        elif self.context.level_in_name == "None":
-           if self.context.time_name == "None":
+        elif self.context.level_in_name is None:
+           if self.context.time_name is None:
               src_fwrap = NcToField(
                   path=self.context.src_path,
                   name=field_name,
@@ -716,7 +716,7 @@ class RaveToMpasRegridProcessor:
                   dim_level=None,
               ).create_field_wrapper()
         else:
-           if self.context.time_name == "None":
+           if self.context.time_name is None:
               src_fwrap = NcToField(
                   path=self.context.src_path,
                   name=field_name,
@@ -1056,7 +1056,7 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = None
         x_corner_dim = None
         y_corner_dim = None
-        level_in_name = "None"
+        level_in_name = None
         level_out_name = "nkwildfire"
         level_out_size = 1
         time_name = "time"
@@ -1106,8 +1106,8 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = "latc"
         x_corner_dim = "COLC"
         y_corner_dim = "ROWC"
-        level_in_name = "None"
-        level_out_name = "None"
+        level_in_name = None
+        level_out_name = None
         level_out_size = 0
         time_name = "Time"
         time_size = 1
@@ -1123,7 +1123,7 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = "latc"
         x_corner_dim = "COLC"
         y_corner_dim = "ROWC"
-        level_in_name = "None"
+        level_in_name = None
         level_out_name = "nkbiogenic"
         level_out_size = 1
         time_name = "time"
@@ -1139,7 +1139,7 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = None
         x_corner_dim = None
         y_corner_dim = None
-        level_in_name = "None"
+        level_in_name = None
         level_out_name = "nkwildfire"
         level_out_size = 1
         time_name = "time"
@@ -1155,8 +1155,8 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = None
         x_corner_dim = None
         y_corner_dim = None
-        level_in_name = "None"
-        level_out_name = "None"
+        level_in_name = None
+        level_out_name = None
         level_out_size = 0
         time_name = "Time"
         time_size = 1
@@ -1171,10 +1171,10 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = None
         x_corner_dim = None
         y_corner_dim = None
-        level_in_name = "None"
-        level_out_name = "None"
+        level_in_name = None
+        level_out_name = None
         level_out_size = 0
-        time_name = "None"
+        time_name = None
         time_size = 0
         InterpMethod = "BILINEAR"
     elif dataset_name == "FENGSHA_2D_Time":
@@ -1187,8 +1187,8 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = None
         x_corner_dim = None
         y_corner_dim = None
-        level_in_name = "None"
-        level_out_name = "None"
+        level_in_name = None
+        level_out_name = None
         level_out_size = 0
         time_name = "time"
         time_size = 12
@@ -1208,7 +1208,7 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = None
         x_corner_dim = None
         y_corner_dim = None
-        level_in_name = "None"
+        level_in_name = None
         level_out_name = "nkwildfire"
         level_out_size = 1
         time_name = "time"
@@ -1224,10 +1224,10 @@ def main(ctx: ChemRegridContext) -> None:
         y_corner = None
         x_corner_dim = None
         y_corner_dim = None
-        level_in_name = "None"
-        level_out_name = "None"
+        level_in_name = None
+        level_out_name = None
         level_out_size = 0
-        time_name = "None"
+        time_name = None
         time_size = 0
         InterpMethod = "BILINEAR"
         dates_needed = []
