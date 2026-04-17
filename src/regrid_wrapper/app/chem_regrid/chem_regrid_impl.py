@@ -452,10 +452,9 @@ class ChemRegridProcessor:
             src_fwrap = self.create_src_field_wrapper(field_name=src_field.name)
 
             dst_field = self.get_dst_field()
-            # tdk: any more qa stuff? minimum threshold?
             dst_field.data.fill(0.0)
             regridder(src_fwrap.value, dst_field)
-            # tdk: support NcToMesh
+
             local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
             dims = src_field.create_dimension_collection(reconciled_bounds)
