@@ -17,7 +17,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
-from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset
+from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset, DatasetName
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.esmpy.field_wrapper import (
@@ -234,7 +234,7 @@ class RaveField3d_plusTime(AbstractRaveField):
         return target.reshape(-1, self.level_out_size, self.time_size)
 
 class RaveToMpasRegridContext(BaseModel):
-    dataset_name: str
+    dataset_name: DatasetName
     workdir: Path
     src_path: Path
     dst_path: Path
@@ -962,7 +962,7 @@ class RaveToMpasRegridProcessor:
 
 
 def main(ctx: ChemRegridContext) -> None:
-    dataset_name = ctx.dataset_name.value  # Which dataset are we interpolating?
+    dataset_name = ctx.dataset_name  # Which dataset are we interpolating?
     workdir = ctx.workdir  # Directory where operations will be processed
     input_dir = ctx.input_dir  # Top directory of input data
     output_dir = ctx.output_dir  # Top directory of output data
