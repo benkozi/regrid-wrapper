@@ -880,24 +880,10 @@ class RaveToMpasRegridProcessor:
 
 
 def main(ctx: ChemRegridContext) -> None:
-    dataset_name = ctx.dataset_name  # Which dataset are we interpolating?
-    workdir = ctx.workdir  # Directory where operations will be processed
-    input_dir = ctx.input_dir  # Top directory of input data
-    output_dir = ctx.output_dir  # Top directory of output data
-    weight_dir = ctx.weight_dir  # Directory that contains the regrid weights
-    cycle = ctx.cycle
-    scrip_path = ctx.rw_scrip_path # Cycle Time, YYYYMMDDHH
-    dst_path = ctx.dst_path
-    mesh_name = ctx.mesh_name
-    ebb_dcycle = ctx.ebb_dcycle
-    fcst_length = ctx.fcst_length
-
-    desc_stats_out = ctx.rw_desc_stats_out
-    #
-    YYYY = cycle[0:4]
-    MM = cycle[4:6]
-    DD = cycle[6:8]
-    HH = cycle[8:10]
+    YYYY = ctx.cycle[0:4]
+    MM = ctx.cycle[4:6]
+    DD = ctx.cycle[6:8]
+    HH = ctx.cycle[8:10]
     x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0)
     JJJ = x.strftime("%j")
     DOWh = int(x.strftime("%u"))
@@ -909,36 +895,20 @@ def main(ctx: ChemRegridContext) -> None:
         DOWs = "sundy"
 
     # Calculate the number of cells in the
-    with open_nc(dst_path, mode="r", parallel=False) as src_nc:
+    with open_nc(ctx.dst_path, mode="r", parallel=False) as src_nc:
         foo = src_nc.variables['latCell']
         num_cells = len(foo)
         # xland = src_nc.variables['xland']
         # lmask[:] = np.where(xland > 0,1,0)
 
-    field_names = ctx.rw_dataset.field_names
-    x_center = ctx.rw_dataset.x_center
-    y_center = ctx.rw_dataset.y_center
-    x_dim = ctx.rw_dataset.x_dim
-    y_dim = ctx.rw_dataset.y_dim
-    x_corner = ctx.rw_dataset.x_corner
-    y_corner = ctx.rw_dataset.y_corner
-    x_corner_dim = ctx.rw_dataset.x_corner_dim
-    y_corner_dim = ctx.rw_dataset.y_corner_dim
-    level_in_name = ctx.rw_dataset.level_in_name
-    level_out_name = ctx.rw_dataset.level_out_name
-    level_out_size = ctx.rw_dataset.level_out_size
-    time_name = ctx.rw_dataset.time_name
-    time_size = ctx.rw_dataset.time_size
-    InterpMethod = ctx.rw_dataset.InterpMethod
-
-    if dataset_name == "RAVE":
+    if ctx.dataset_name == "RAVE":
         # JLS, TODO - NEED TO ACCOUNT FOR EBB1, MORE THAN 24, ETC.
         # Determine the cycle dates to process +%Y%m%d%H
         dates_needed = []
         for i in range(25):
-            if ebb_dcycle == 1: # Same-day emissions
+            if ctx.ebb_dcycle == 1: # Same-day emissions
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
-            elif ebb_dcycle == -1 or ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours 
+            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
@@ -947,32 +917,32 @@ def main(ctx: ChemRegridContext) -> None:
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
 
-    elif dataset_name == "NGFS":
+    elif ctx.dataset_name == "NGFS":
         # Determine the cycle dates to process +%Y%m%d%H
         # This is for RETROS (using current datetime, not day before)
         dates_needed = []
         for i in range(25): # GAF retro current day emissions
-            if ebb_dcycle == 1: # Same-day emissions
+            if ctx.ebb_dcycle == 1: # Same-day emissions
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
-            elif ebb_dcycle == -1 or ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours
+            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
-    elif dataset_name == "FMC":  # fuel moisture content
+    elif ctx.dataset_name == "FMC":  # fuel moisture content
         dates_needed = []
         for i in range(25):
             x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
-    elif dataset_name == "GOES":
+    elif ctx.dataset_name == "GOES":
         dates_needed = []
         for i in range(25):
-            if ebb_dcycle == 1: # Same-day emissions
+            if ctx.ebb_dcycle == 1: # Same-day emissions
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
-            elif ebb_dcycle == -1 or ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours 
+            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
@@ -980,41 +950,39 @@ def main(ctx: ChemRegridContext) -> None:
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
 
-    weight_path = ctx.get_weight_path(InterpMethod)
-
     regrid_context = DatasetRegridContext(
-        dataset_name=dataset_name,
-        workdir=workdir,
+        dataset_name=ctx.dataset_name,
+        workdir=ctx.workdir,
         src_path=Path("dummy"),
-        dst_path=dst_path,
+        dst_path=ctx.dst_path,
         new_dst_path=Path("dummy"),
-        desc_stats_out=desc_stats_out,
-        weight_path=weight_path,
-        InterpMethod=InterpMethod,
-        scrip_path=scrip_path,
+        desc_stats_out=ctx.rw_desc_stats_out,
+        weight_path=ctx.rw_weight_path,
+        InterpMethod=ctx.rw_dataset.InterpMethod,
+        scrip_path=ctx.scrip_path,
         num_cells=num_cells,
-        mesh_name=mesh_name,
-        field_names=field_names,
-        x_center=x_center,
-        y_center=y_center,
-        x_dim=x_dim,
-        y_dim=y_dim,
-        x_corner=x_corner,
-        y_corner=y_corner,
-        x_corner_dim=x_corner_dim,
-        y_corner_dim=y_corner_dim,
-        level_in_name=level_in_name,
-        level_out_name=level_out_name,
-        level_out_size=level_out_size,
-        time_name=time_name,
-        time_size=time_size
+        mesh_name=ctx.mesh_name,
+        field_names=ctx.rw_dataset.field_names,
+        x_center=ctx.rw_dataset.x_center,
+        y_center=ctx.rw_dataset.y_center,
+        x_dim=ctx.rw_dataset.x_dim,
+        y_dim=ctx.rw_dataset.y_dim,
+        x_corner=ctx.rw_dataset.x_corner,
+        y_corner=ctx.rw_dataset.y_corner,
+        x_corner_dim=ctx.rw_dataset.x_corner_dim,
+        y_corner_dim=ctx.rw_dataset.y_corner_dim,
+        level_in_name=ctx.rw_dataset.level_in_name,
+        level_out_name=ctx.rw_dataset.level_out_name,
+        level_out_size=ctx.rw_dataset.level_out_size,
+        time_name=ctx.rw_dataset.time_name,
+        time_size=ctx.rw_dataset.time_size
     )
 
-    if dataset_name == "RAVE":
+    if ctx.dataset_name == "RAVE":
         processor = None
         for date_to_process in dates_needed:
             _LOGGER.info(f"RAVE processing {date_to_process=}")
-            rave_paths = find_latest_rave_file(input_dir, date_to_process, ebb_dcycle, dataset_name, max_lookback_hours=24)
+            rave_paths = find_latest_rave_file(ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24)
             if not rave_paths:
                 _LOGGER.warn(
                     f"No matching files found for {date_to_process} (even after lookback).")
@@ -1022,7 +990,7 @@ def main(ctx: ChemRegridContext) -> None:
 
             _LOGGER.info(f'Reading RAVE file: {rave_paths=}')
             rave_path = rave_paths[0]
-            new_dst_path = output_dir / (mesh_name + "-RAVE-" + date_to_process + ".nc")
+            new_dst_path = ctx.output_dir / (ctx.mesh_name + "-RAVE-" + date_to_process + ".nc")
 
             # --- OPTIMIZATION START ---
             if processor is None:
@@ -1049,13 +1017,13 @@ def main(ctx: ChemRegridContext) -> None:
 
             _LOGGER.info("success")
 
-    elif dataset_name == "NGFS":
+    elif ctx.dataset_name == "NGFS":
         processor = RaveToMpasRegridProcessor(context=regrid_context)
 
         for date_to_process in dates_needed:
             # Construct the filename (Adjust the prefix 'ngfs_' if your files are named differently)
             # print("GAF debug: attempting to read: " + input_dir + "/NGFS_v0.31_" + date_to_process + "_0p01.nc")
-            ngfs_paths = glob.glob(str(input_dir) + "/NGFS_v0.31_0p01_" + date_to_process + "0000.nc")
+            ngfs_paths = glob.glob(str(ctx.input_dir) + "/NGFS_v0.31_0p01_" + date_to_process + "0000.nc")
 
             if not ngfs_paths:
                 print(f"ERROR: Missing NGFS file for {date_to_process}. Skipping.")
@@ -1065,7 +1033,7 @@ def main(ctx: ChemRegridContext) -> None:
                 continue
 
             ngfs_path = Path(ngfs_paths[0])
-            new_dst_path = Path(str(output_dir) + "/" + mesh_name + "-NGFS-" + date_to_process + ".nc")
+            new_dst_path = Path(str(ctx.output_dir) + "/" + ctx.mesh_name + "-NGFS-" + date_to_process + ".nc")
             print(f"GAF reading NGFS file: {ngfs_path}")
 
             # Update context paths for the current hour
@@ -1078,10 +1046,10 @@ def main(ctx: ChemRegridContext) -> None:
 
         _LOGGER.info("NGFS success")
 
-    elif dataset_name == "GOES":
+    elif ctx.dataset_name == "GOES":
         processor = None
         date_to_process = dates_needed[0]
-        rave_paths = find_latest_rave_file(input_dir, date_to_process, -1, dataset_name, max_lookback_hours=2)
+        rave_paths = find_latest_rave_file(ctx.input_dir, date_to_process, -1, ctx.dataset_name, max_lookback_hours=2)
         files_to_cat = rave_paths
         _LOGGER.info(f"will cat files: {files_to_cat=}")
         if COMM.rank == 0:
@@ -1094,7 +1062,7 @@ def main(ctx: ChemRegridContext) -> None:
               'dtype': 'float32',
               '_FillValue': -999
            })
-           ds_averaged.to_netcdf(output_dir / 'test_goes_aod_merged.nc')
+           ds_averaged.to_netcdf(ctx.output_dir / 'test_goes_aod_merged.nc')
 
         if not rave_paths:
             msg = f"No matching GOES files found for {date_to_process} (even after lookback)."
@@ -1103,8 +1071,8 @@ def main(ctx: ChemRegridContext) -> None:
 
         _LOGGER.info('Reading merged GOES file: test_goes_aod_merged.nc')
         #rave_path = rave_paths[0]
-        rave_path = output_dir / "test_goes_aod_merged.nc"
-        new_dst_path = output_dir / (mesh_name + "-GOES-" + date_to_process + ".nc")
+        rave_path = ctx.output_dir / "test_goes_aod_merged.nc"
+        new_dst_path = ctx.output_dir / (ctx.mesh_name + "-GOES-" + date_to_process + ".nc")
         # --- OPTIMIZATION START ---
         if processor is None:
             # FIRST PASS: Full Initialization
@@ -1130,11 +1098,11 @@ def main(ctx: ChemRegridContext) -> None:
 
         _LOGGER.info("success")
 
-    elif dataset_name == "FMC":
+    elif ctx.dataset_name == "FMC":
         for date_to_process in dates_needed:
-            rave_paths = glob.glob(str(input_dir / ("fmc_" + date_to_process + ".nc")))
+            rave_paths = glob.glob(str(ctx.input_dir / ("fmc_" + date_to_process + ".nc")))
             rave_path = Path(rave_paths[0])
-            new_dst_path = output_dir / ("fmc_" + date_to_process + "_" + mesh_name + ".nc")
+            new_dst_path = ctx.output_dir / ("fmc_" + date_to_process + "_" + ctx.mesh_name + ".nc")
 
             regrid_context.src_path = rave_path
             regrid_context.new_dst_path = new_dst_path
@@ -1146,9 +1114,9 @@ def main(ctx: ChemRegridContext) -> None:
 
             _LOGGER.info("success")
 #
-    elif dataset_name == "GRA2PES":
-        rave_path = input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_00to11Z.nc")
-        new_dst_path = output_dir / (dataset_name + "v1.0_total_" + mesh_name + "_00to11Z.nc")
+    elif ctx.dataset_name == "GRA2PES":
+        rave_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_00to11Z.nc")
+        new_dst_path = ctx.output_dir / (ctx.dataset_name + "v1.0_total_" + ctx.mesh_name + "_00to11Z.nc")
 
         regrid_context.src_path = rave_path
         regrid_context.new_dst_path = new_dst_path
@@ -1160,8 +1128,8 @@ def main(ctx: ChemRegridContext) -> None:
 
         _LOGGER.info("success")
 
-        rave_path = input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_12to23Z.nc")
-        new_dst_path = output_dir / (dataset_name + "v1.0_total_" + mesh_name + "_12to23Z.nc")
+        rave_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_12to23Z.nc")
+        new_dst_path = ctx.output_dir / (ctx.dataset_name + "v1.0_total_" + ctx.mesh_name + "_12to23Z.nc")
 
         regrid_context.src_path = rave_path
         regrid_context.new_dst_path = new_dst_path
@@ -1174,27 +1142,27 @@ def main(ctx: ChemRegridContext) -> None:
         _LOGGER.info("success")
 
     else:
-        if dataset_name == "PECM":
-            rave_path = input_dir / ("pollen_obs_" + YYYY + "_BELD6_ef_T_" + JJJ + ".nc")
-            new_dst_path = output_dir / ("pollen_ef_" + mesh_name + "_" + YYYY + "_" + JJJ + ".nc")
-        elif dataset_name == "NEMO_RWC":
-            rave_path = input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
-            new_dst_path = output_dir / ("NEMO_RWC_ANNUAL_TOTAL_" + mesh_name + ".nc")
-        elif dataset_name == "NEMO_ANTHRO":
-            rave_path = input_dir / ("NEMO_ANTHRO_" + mesh_name + "_" + YYYY + MM + DD + HH + "_SECTORSUM.nc")
-            new_dst_path = output_dir / ("NEMO_ANTHRO_" + mesh_name + ".nc")
-        elif dataset_name == "NARR":
-            rave_path = input_dir / "rwc_emission_denominator.2017.nc"
-            new_dst_path = output_dir / ("NEMO_RWC_DENOMINATOR_2017_" + mesh_name + ".nc")
-        elif dataset_name == "ECOREGION":
-            rave_path = input_dir / "veg_map.nc"
-            new_dst_path = output_dir / ("ecoregions_" + mesh_name + "_mpas.nc")
-        elif dataset_name == "FENGSHA_2D":
-            rave_path = input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"
-            new_dst_path = output_dir / ("fengsha_dust_inputs.2D."+ mesh_name + ".nc")
-        elif dataset_name == "FENGSHA_2D_Time":
-            rave_path = input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
-            new_dst_path = output_dir / ("fengsha_dust_inputs.2D_Time."+ mesh_name + ".nc")
+        if ctx.dataset_name == "PECM":
+            rave_path = ctx.input_dir / ("pollen_obs_" + YYYY + "_BELD6_ef_T_" + JJJ + ".nc")
+            new_dst_path = ctx.output_dir / ("pollen_ef_" + ctx.mesh_name + "_" + YYYY + "_" + JJJ + ".nc")
+        elif ctx.dataset_name == "NEMO_RWC":
+            rave_path = ctx.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
+            new_dst_path = ctx.output_dir / ("NEMO_RWC_ANNUAL_TOTAL_" + ctx.mesh_name + ".nc")
+        elif ctx.dataset_name == "NEMO_ANTHRO":
+            rave_path = ctx.input_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + "_" + YYYY + MM + DD + HH + "_SECTORSUM.nc")
+            new_dst_path = ctx.output_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + ".nc")
+        elif ctx.dataset_name == "NARR":
+            rave_path = ctx.input_dir / "rwc_emission_denominator.2017.nc"
+            new_dst_path = ctx.output_dir / ("NEMO_RWC_DENOMINATOR_2017_" + ctx.mesh_name + ".nc")
+        elif ctx.dataset_name == "ECOREGION":
+            rave_path = ctx.input_dir / "veg_map.nc"
+            new_dst_path = ctx.output_dir / ("ecoregions_" + ctx.mesh_name + "_mpas.nc")
+        elif ctx.dataset_name == "FENGSHA_2D":
+            rave_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"
+            new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D."+ ctx.mesh_name + ".nc")
+        elif ctx.dataset_name == "FENGSHA_2D_Time":
+            rave_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
+            new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D_Time."+ ctx.mesh_name + ".nc")
 
         regrid_context.src_path = rave_path
         regrid_context.new_dst_path = new_dst_path

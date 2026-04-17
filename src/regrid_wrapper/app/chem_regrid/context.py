@@ -41,8 +41,9 @@ class ChemRegridContext(RwBaseModel):
     def rw_dataset(self) -> ChemRegridDataset:
         return ChemRegridDataset.from_key(self.datasets_yml_path, self.dataset_name)
 
-    def get_weight_path(self, interp_method: str) -> Path:
+    @cached_property
+    def rw_weight_path(self) -> Path:
         weight_path = self.weight_dir / (
-            "weights_" + self.dataset_name.value + "-to-" + "mpas_" + self.mesh_name + "_" + interp_method + ".nc"
+            "weights_" + self.dataset_name.value + "-to-" + "mpas_" + self.mesh_name + "_" + self.rw_dataset.InterpMethod + ".nc"
         )
         return weight_path
