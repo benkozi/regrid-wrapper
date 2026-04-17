@@ -1,16 +1,16 @@
 # mypy: ignore-errors
 
 import glob
-from abc import abstractmethod, ABC
-from datetime import datetime, timezone, timedelta
+from abc import ABC, abstractmethod
+from datetime import datetime, timedelta, timezone
 from functools import cached_property
 from pathlib import Path
-from typing import Literal, Iterable, Any, Union
+from typing import Any, Iterable, Literal, Union
 
 import esmpy
 import numpy as np
-import xarray as xr
 import pandas as pd
+import xarray as xr
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
@@ -18,52 +18,55 @@ from regrid_wrapper.app.chem_regrid.dataset.model import DatasetName, InterpMeth
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.esmpy.field_wrapper import (
-    GridSpec,
-    NcToGrid,
-    NcToField,
-    FieldWrapper,
-    GridWrapper,
-    open_nc,
     Dimension,
     DimensionCollection,
-    set_variable_data,
+    FieldWrapper,
+    GridSpec,
+    GridWrapper,
     HasNcAttrsType,
+    NcToField,
+    NcToGrid,
     copy_nc_variable,
+    open_nc,
+    set_variable_data,
 )
 
 _LOGGER = LOGGER.getChild("mpas-regrid")
+
 
 # Try to find the latest RAVE file available up to max_lookback_hours before target_time_str
 # to avoid setting zeroes when a particular hour file is missing.
 def find_latest_src_file(input_dir, target_time_str, ebb_dcycle, dataset_name, max_lookback_hours=24):
     """Return list of files for the latest time <= target_time_str."""
-    fmt = "%Y%m%d%H"  #RAVE
-    fmt2= "%Y%j%H"  # GOES
+    fmt = "%Y%m%d%H"  # RAVE
+    fmt2 = "%Y%j%H"  # GOES
     target_time = datetime.strptime(target_time_str, fmt)
 
     input_dir_str = str(input_dir)
 
     for h in range(max_lookback_hours + 1):
         if ebb_dcycle == -1 or ebb_dcycle == 2:
-           this_time = target_time - timedelta(hours=h)
+            this_time = target_time - timedelta(hours=h)
         elif ebb_dcycle == 1:
-           this_time = target_time + timedelta(hours=h)
+            this_time = target_time + timedelta(hours=h)
         else:
-           _LOGGER.warning("unrecognized ebb_dcycle, reverting to same-day, ebb_dcycle = 1")
-           this_time = target_time + timedelta(hours=h)
+            _LOGGER.warning("unrecognized ebb_dcycle, reverting to same-day, ebb_dcycle = 1")
+            this_time = target_time + timedelta(hours=h)
 
         if dataset_name == "RAVE":
-           this_str = this_time.strftime(fmt)
-           paths = glob.glob(input_dir_str + "/RAVE-HrlyEmiss-3km_v2r0_blend_s"+this_str+"*")
+            this_str = this_time.strftime(fmt)
+            paths = glob.glob(input_dir_str + "/RAVE-HrlyEmiss-3km_v2r0_blend_s" + this_str + "*")
         elif dataset_name == "GOES":
-           this_str = this_time.strftime(fmt2)
-           paths = glob.glob(input_dir_str + "/OR_ABI-L2-AODC-M6_G18_s"+this_str+"*")
+            this_str = this_time.strftime(fmt2)
+            paths = glob.glob(input_dir_str + "/OR_ABI-L2-AODC-M6_G18_s" + this_str + "*")
         if paths:
             if h > 0:
                 print(f"Missing {dataset_name} file for {target_time_str}, using {this_str} instead")
             return paths
     # nothing found within lookback window
     return []
+
+
 #
 def create_ngfs_sparse_mesh(lat_1d, lon_1d, resolution=0.01):
     """
@@ -82,13 +85,9 @@ def create_ngfs_sparse_mesh(lat_1d, lon_1d, resolution=0.01):
     num_nodes = num_cells * 4
     d = resolution / 2.0
 
-    node_lons = np.column_stack([
-        lon_1d - d, lon_1d + d, lon_1d + d, lon_1d - d
-    ]).flatten()
+    node_lons = np.column_stack([lon_1d - d, lon_1d + d, lon_1d + d, lon_1d - d]).flatten()
 
-    node_lats = np.column_stack([
-        lat_1d - d, lat_1d - d, lat_1d + d, lat_1d + d
-    ]).flatten()
+    node_lats = np.column_stack([lat_1d - d, lat_1d - d, lat_1d + d, lat_1d + d]).flatten()
 
     node_coords = np.empty(num_nodes * 2, dtype=np.float64)
     node_coords[0::2] = node_lons
@@ -106,21 +105,13 @@ def create_ngfs_sparse_mesh(lat_1d, lon_1d, resolution=0.01):
     # Explicitly set spherical coordinates
     mesh = esmpy.Mesh(parametric_dim=2, spatial_dim=2, coord_sys=esmpy.CoordSys.SPH_DEG)
 
-    mesh.add_nodes(
-        node_count=num_nodes,
-        node_ids=node_ids,
-        node_coords=node_coords,
-        node_owners=node_owners
-    )
+    mesh.add_nodes(node_count=num_nodes, node_ids=node_ids, node_coords=node_coords, node_owners=node_owners)
 
-    mesh.add_elements(
-        element_count=num_cells,
-        element_ids=element_ids,
-        element_types=element_types,
-        element_conn=element_conn
-    )
+    mesh.add_elements(element_count=num_cells, element_ids=element_ids, element_types=element_types, element_conn=element_conn)
 
     return mesh
+
+
 #
 class AbstractSrcField(ABC, BaseModel):
     name: str
@@ -165,46 +156,30 @@ class AbstractSrcField(ABC, BaseModel):
         )
 
     @abstractmethod
-    def create_dimension_collection(
-        self, ncells_bounds: tuple[int, int]
-    ) -> DimensionCollection:
-        ...
+    def create_dimension_collection(self, ncells_bounds: tuple[int, int]) -> DimensionCollection: ...
 
     @abstractmethod
-    def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
-        ...
+    def reshape_field_data(self, target: np.ndarray) -> np.ndarray: ...
 
 
 class SrcField2d(AbstractSrcField):
-
-    def create_dimension_collection(
-        self, ncells_bounds: tuple[int, int]
-    ) -> DimensionCollection:
-        return DimensionCollection(
-            value=(self.create_ncells_dimension(ncells_bounds),)
-        )
+    def create_dimension_collection(self, ncells_bounds: tuple[int, int]) -> DimensionCollection:
+        return DimensionCollection(value=(self.create_ncells_dimension(ncells_bounds),))
 
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
         return target.reshape(-1)
 
 
 class SrcField2d_plusTime(AbstractSrcField):
-
-    def create_dimension_collection(
-        self, ncells_bounds: tuple[int, int]
-    ) -> DimensionCollection:
-        return DimensionCollection(
-            value=(self.time_dimension, self.create_ncells_dimension(ncells_bounds))
-        )
+    def create_dimension_collection(self, ncells_bounds: tuple[int, int]) -> DimensionCollection:
+        return DimensionCollection(value=(self.time_dimension, self.create_ncells_dimension(ncells_bounds)))
 
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
         return target.reshape(self.time_size, -1)
 
-class SrcField3d(AbstractSrcField):
 
-    def create_dimension_collection(
-        self, ncells_bounds: tuple[int, int]
-    ) -> DimensionCollection:
+class SrcField3d(AbstractSrcField):
+    def create_dimension_collection(self, ncells_bounds: tuple[int, int]) -> DimensionCollection:
         return DimensionCollection(
             value=(
                 self.create_ncells_dimension(ncells_bounds),
@@ -215,11 +190,9 @@ class SrcField3d(AbstractSrcField):
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
         return target.reshape(-1, self.level_out_size)
 
-class SrcField3d_plusTime(AbstractSrcField):
 
-    def create_dimension_collection(
-        self, ncells_bounds: tuple[int, int]
-    ) -> DimensionCollection:
+class SrcField3d_plusTime(AbstractSrcField):
+    def create_dimension_collection(self, ncells_bounds: tuple[int, int]) -> DimensionCollection:
         return DimensionCollection(
             value=(
                 self.create_ncells_dimension(ncells_bounds),
@@ -227,8 +200,10 @@ class SrcField3d_plusTime(AbstractSrcField):
                 self.time_dimension,
             )
         )
+
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
         return target.reshape(-1, self.level_out_size, self.time_size)
+
 
 class DatasetRegridContext(BaseModel):
     dataset_name: DatasetName
@@ -272,9 +247,7 @@ class DatasetRegridContext(BaseModel):
                     read_name = "EMIS_PM25"
 
                 if read_name not in ds.variables:
-                    raise KeyError(
-                        f"Source variable '{read_name}' not found for field '{field_name}' in {self.src_path}"
-                    )
+                    raise KeyError(f"Source variable '{read_name}' not found for field '{field_name}' in {self.src_path}")
                 var = ds.variables[read_name]
                 init_data = {
                     "name": field_name,
@@ -287,15 +260,15 @@ class DatasetRegridContext(BaseModel):
                     "num_cells": self.num_cells,
                 }
                 if self.level_out_size == 0:
-                   if self.time_size == 0:
-                      app = SrcField2d.model_validate(init_data)
-                   else:
-                      app = SrcField2d_plusTime.model_validate(init_data)
+                    if self.time_size == 0:
+                        app = SrcField2d.model_validate(init_data)
+                    else:
+                        app = SrcField2d_plusTime.model_validate(init_data)
                 else:
-                   if self.time_size == 0:
-                      app = SrcField3d.model_validate(init_data)
-                   else:
-                      app = SrcField3d_plusTime.model_validate(init_data)
+                    if self.time_size == 0:
+                        app = SrcField3d.model_validate(init_data)
+                    else:
+                        app = SrcField3d_plusTime.model_validate(init_data)
                 src_fields.append(app)
         _LOGGER.debug(f"{src_fields=}")
         return tuple(src_fields)
@@ -303,11 +276,7 @@ class DatasetRegridContext(BaseModel):
     @staticmethod
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
         exclude = ("coordinates", "valid_range")
-        return {
-            ii: getattr(src, ii)
-            for ii in src.ncattrs()
-            if not ii.startswith("_") and ii not in exclude
-        }
+        return {ii: getattr(src, ii) for ii in src.ncattrs() if not ii.startswith("_") and ii not in exclude}
 
 
 class FileDesc(BaseModel):
@@ -332,9 +301,9 @@ class ChemRegridProcessor:
 
         # JLS - temporary fix for coords not in file
         if self.context.dataset_name == "GOES":
-           pathsrc=self.context.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
+            pathsrc = self.context.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
         else:
-           pathsrc=self.context.src_path
+            pathsrc = self.context.src_path
 
         _LOGGER.info("create source grid")
         self._src_gwrap = NcToGrid(
@@ -450,11 +419,11 @@ class ChemRegridProcessor:
             reconciled_bounds = reconcile_bounds(local_bounds)
             dims = src_field.create_dimension_collection(reconciled_bounds)
             _LOGGER.info(f"{dims=}")
-            _LOGGER.info(f"writing field to netcdf")
+            _LOGGER.info("writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
-                    area = np.asarray(ds.variables['areaCell'])
-                    area_subset = area[reconciled_bounds[0]:reconciled_bounds[1]].reshape(dims.shape_local)
+                    area = np.asarray(ds.variables["areaCell"])
+                    area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]].reshape(dims.shape_local)
                 _LOGGER.info(f"creating variable {src_field.name=}")
                 var = ds.createVariable(
                     src_field.name,
@@ -463,12 +432,9 @@ class ChemRegridProcessor:
                     fill_value=src_field.fill_value,
                 )
                 # Don't carry over fill value and datatype
-                if self.context.dataset_name != 'GOES':
-                    type_to_use = src_field.dtype
+                if self.context.dataset_name != "GOES":
                     for k, v in src_field.attrs.items():
-                       setattr(var, k, v)
-                else:
-                    type_to_use = np.float32
+                        setattr(var, k, v)
 
                 _LOGGER.info(f"setting variable data {src_field.name=}")
                 # Multiply FRE/FRP by output area so it is back to W or J*s
@@ -492,14 +458,14 @@ class ChemRegridProcessor:
 
             if src_field.name == "ENL_POLL":
                 with open_nc(self.context.new_dst_path, mode="a") as ds:
-                    _LOGGER.info(f"renaming and combining tree fields")
+                    _LOGGER.info("renaming and combining tree fields")
 
-                    src_fwrap_enl = self.create_src_field_wrapper(field_name='ENL_POLL')
+                    src_fwrap_enl = self.create_src_field_wrapper(field_name="ENL_POLL")
                     dst_field_enl = self.get_dst_field()
                     dst_field_enl.data.fill(0.0)
                     regridder(src_fwrap_enl.value, dst_field_enl)
 
-                    src_fwrap_dbl = self.create_src_field_wrapper(field_name='DBL_POLL')
+                    src_fwrap_dbl = self.create_src_field_wrapper(field_name="DBL_POLL")
                     dst_field_dbl = self.get_dst_field()
                     dst_field_dbl.data.fill(0.0)
                     regridder(src_fwrap_dbl.value, dst_field_dbl)
@@ -507,7 +473,7 @@ class ChemRegridProcessor:
                     src_field = self.context.src_fields[0]
 
                     var = ds.createVariable(
-                        'TREE_POLL',
+                        "TREE_POLL",
                         src_field.dtype,
                         [dim.name[0] for dim in dims.value],
                         fill_value=src_field.fill_value,
@@ -526,9 +492,9 @@ class ChemRegridProcessor:
                 del src_fwrap_dbl
             if src_field.name == "TPM":
                 with open_nc(self.context.new_dst_path, mode="a") as ds:
-                    _LOGGER.info(f"calculating PM10 as TPM - PM25")
-                    src_fwrap_ttl = self.create_src_field_wrapper(field_name='TPM')
-                    src_fwrap_p25 = self.create_src_field_wrapper(field_name='PM25')
+                    _LOGGER.info("calculating PM10 as TPM - PM25")
+                    src_fwrap_ttl = self.create_src_field_wrapper(field_name="TPM")
+                    src_fwrap_p25 = self.create_src_field_wrapper(field_name="PM25")
 
                     dst_field_ttl = self.get_dst_field()
                     dst_field_ttl.data.fill(0.0)
@@ -541,7 +507,7 @@ class ChemRegridProcessor:
                     src_field = self.context.src_fields[0]
 
                     var = ds.createVariable(
-                        'PM10',
+                        "PM10",
                         src_field.dtype,
                         [dim.name[0] for dim in dims.value],
                         fill_value=src_field.fill_value,
@@ -609,9 +575,7 @@ class ChemRegridProcessor:
                     desc = pd.concat(
                         [
                             desc,
-                            pd.DataFrame(
-                                data=adds, index=["sum", "count_null", "origin", "path"]
-                            ),
+                            pd.DataFrame(data=adds, index=["sum", "count_null", "origin", "path"]),
                         ]
                     )
                     to_concat.append(desc)
@@ -626,10 +590,20 @@ class ChemRegridProcessor:
         src_fwrap = self._create_raw_src_field_wrapper_(field_name)
 
         # Get the area from the RAVE file, need to convert from /grid to /m2
-        if (self.context.dataset_name == "RAVE" and field_name in ("PM25", "NH3", "SO2", "FRE", "FRP_MEAN", "TPM", "CH4", "CO", "NOx")):
+        if self.context.dataset_name == "RAVE" and field_name in (
+            "PM25",
+            "NH3",
+            "SO2",
+            "FRE",
+            "FRP_MEAN",
+            "TPM",
+            "CH4",
+            "CO",
+            "NOx",
+        ):
             area_fwrap = NcToField(
                 path=self.context.src_path,
-                name='area',
+                name="area",
                 gwrap=self.get_src_gwrap(),
                 dim_time=None,
             ).create_field_wrapper()
@@ -637,26 +611,26 @@ class ChemRegridProcessor:
 
         # GRA2PES PM, convert from metric tons/km2/hr to ug/m2/s
         if self.context.dataset_name == "GRA2PES" and field_name in ("PM25-PRI", "PM10-PRI"):
-            conv_aer = 1.e6 / 3600.
+            conv_aer = 1.0e6 / 3600.0
         # GRA2PES methane, convert from moles/km2/hr to ug/m2/s
         elif self.context.dataset_name == "GRA2PES" and field_name in ("HC01", "SO2", "CO", "NH3", "NOX"):
-            conv_aer = 1.e-6 / 3600.
+            conv_aer = 1.0e-6 / 3600.0
         # RAVE methane, convert from kg/hr to mol/m2/s
         elif self.context.dataset_name == "RAVE":
             if field_name == "CH4":
-                conv_aer = (1.0 / 16.0) * 1000.
+                conv_aer = (1.0 / 16.0) * 1000.0
             elif field_name == "CO":
-                conv_aer = (1.0 / 28.0) * 1000.
+                conv_aer = (1.0 / 28.0) * 1000.0
             elif field_name == "NH3":
-                conv_aer = (1.0 / 17.0) * 1000.
+                conv_aer = (1.0 / 17.0) * 1000.0
             elif field_name == "NOx":
-                conv_aer = ( (1.0 / 30.0) + (1.0 / 46.0) ) / 2. * 1000. 
+                conv_aer = ((1.0 / 30.0) + (1.0 / 46.0)) / 2.0 * 1000.0
             else:
                 conv_aer = 1.0
-        elif self.context.dataset_name == "NEMO_RWC" and field_name in ("PEC","POC","PMOTHR","PMC"):
+        elif self.context.dataset_name == "NEMO_RWC" and field_name in ("PEC", "POC", "PMOTHR", "PMC"):
             # Convert g/s/km2 (on 1km grid) to ug/m2/s -->
             conv_aer = 1.0
-        elif self.context.dataset_name == "NEMO_ANTHRO" and field_name in ("PEC","POC","PMOTHR","PMC"):
+        elif self.context.dataset_name == "NEMO_ANTHRO" and field_name in ("PEC", "POC", "PMOTHR", "PMC"):
             # Convert g/s/km2 to ug/m2/s -->
             conv_aer = 1.0
         else:
@@ -665,10 +639,10 @@ class ChemRegridProcessor:
         src_data = src_fwrap.value.data
         if self.context.dataset_name == "RAVE" and field_name in ("PM25", "TPM"):
             # If RAVE aerosol emissions, convert from kg/hr to ug/m2/s
-            src_data[:] = np.where(src_data < 0.0, 0.0, src_data * 1.e3 / area_data[:, :, np.newaxis] / 3600.)
+            src_data[:] = np.where(src_data < 0.0, 0.0, src_data * 1.0e3 / area_data[:, :, np.newaxis] / 3600.0)
         elif self.context.dataset_name == "RAVE" and field_name in ("CH4", "NH3", "SO2", "CO", "NOx"):
             # If RAVE gas emissions, convert from kg/hr to mol/m2/s
-            src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data / area_data[:, :, np.newaxis] / 3600.)
+            src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data / area_data[:, :, np.newaxis] / 3600.0)
         elif self.context.dataset_name == "RAVE" and field_name in ("FRE", "FRP_MEAN"):
             # For FRE, FRP, don't multiply area by 1.e6, cancelled out by MW to W conversion
             src_data[:] = np.where(src_data < 0.0, 0.0, src_data / (area_data[:, :, np.newaxis]))
@@ -722,16 +696,17 @@ class ChemRegridProcessor:
         #     mpas_desc.to_scrip(str(self.context.scrip_path))
 
         _LOGGER.info("create destination mesh")
-        dst_mesh = esmpy.Mesh(
-            filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.UGRID,
-            meshname="grid_topology"
-        )
+        dst_mesh = esmpy.Mesh(filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology")
 
         # Create destination field (using logic from your original initialize method)
         if self.context.level_out_size > 1 and self.context.time_size > 1:
-            self._dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size, self.context.time_size))
+            self._dst_field = esmpy.Field(
+                dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size, self.context.time_size)
+            )
         elif self.context.level_out_size > 1 and self.context.time_size == 1:
-            self._dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size,))
+            self._dst_field = esmpy.Field(
+                dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size,)
+            )
         elif self.context.level_out_size == 1 and self.context.time_size > 1:
             self._dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.time_size,))
         else:
@@ -743,12 +718,12 @@ class ChemRegridProcessor:
 
         # 1. Read NGFS Coordinates AND Area
         with open_nc(file_path, mode="r") as ds:
-            lats = ds.variables['lat'][:].filled(np.nan)
-            lons = ds.variables['lon'][:].filled(np.nan)
+            lats = ds.variables["lat"][:].filled(np.nan)
+            lons = ds.variables["lon"][:].filled(np.nan)
 
             # Read the NGFS area (in km2)
-            if 'GRID_AREA' in ds.variables:
-                grid_area = ds.variables['GRID_AREA'][:].filled(np.nan)
+            if "GRID_AREA" in ds.variables:
+                grid_area = ds.variables["GRID_AREA"][:].filled(np.nan)
             else:
                 _LOGGER.warning("GRID_AREA not found! Defaulting to 1.0 km2.")
                 grid_area = np.ones_like(lats)
@@ -790,7 +765,6 @@ class ChemRegridProcessor:
                     for varname in ("latCell", "lonCell", "areaCell", "xland", "xtime"):
                         copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
 
-
         # 4. Process Each Variable
         for src_field in self.context.src_fields:
             _LOGGER.info(f"regridding NGFS {src_field.name=}")
@@ -817,7 +791,7 @@ class ChemRegridProcessor:
             # ---------------------------------------------------------
             if src_field.name in ("PM25", "TPM"):
                 # Convert from kg/hr to ug/m2/s (1e3 handles the km2 to m2 and kg to ug ratio)
-                src_data = np.where(raw_data < 0.0, 0.0, raw_data * 1.e3 / grid_area / 3600.0)
+                src_data = np.where(raw_data < 0.0, 0.0, raw_data * 1.0e3 / grid_area / 3600.0)
             elif src_field.name in ("FRE", "FRP_MEAN"):
                 # For FRE, FRP: MW to W (1e6) cancels out with km2 to m2 (1e6)
                 src_data = np.where(raw_data < 0.0, 0.0, raw_data / grid_area)
@@ -831,7 +805,7 @@ class ChemRegridProcessor:
                 srcfield=src_field,
                 dstfield=self._dst_field,
                 regrid_method=esmpy.RegridMethod.CONSERVE,
-                unmapped_action=esmpy.UnmappedAction.IGNORE
+                unmapped_action=esmpy.UnmappedAction.IGNORE,
             )
 
             # Apply Regridding
@@ -845,7 +819,7 @@ class ChemRegridProcessor:
 
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 var = ds.createVariable(
-                    src_field.name, # Keep it as standard name in output!
+                    src_field.name,  # Keep it as standard name in output!
                     src_field.dtype,
                     [dim.name[0] for dim in dims.value],
                     fill_value=src_field.fill_value,
@@ -855,8 +829,8 @@ class ChemRegridProcessor:
 
                 # Multiply by areaCell for Power/Energy variables (back to total W in cell)
                 if src_field.name in ("FRP_MEAN", "FRE"):
-                    area = np.asarray(ds.variables['areaCell'])
-                    area_subset = area[reconciled_bounds[0]:reconciled_bounds[1]]
+                    area = np.asarray(ds.variables["areaCell"])
+                    area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]]
                     set_variable_data(var, dims, src_field.reshape_field_data(self._dst_field.data * area_subset), collective=True)
                 else:
                     set_variable_data(var, dims, src_field.reshape_field_data(self._dst_field.data), collective=True)
@@ -886,7 +860,7 @@ def main(ctx: ChemRegridContext) -> None:
 
     # Calculate the number of cells in the
     with open_nc(ctx.dst_path, mode="r", parallel=False) as src_nc:
-        foo = src_nc.variables['latCell']
+        foo = src_nc.variables["latCell"]
         num_cells = len(foo)
         # xland = src_nc.variables['xland']
         # lmask[:] = np.where(xland > 0,1,0)
@@ -896,14 +870,14 @@ def main(ctx: ChemRegridContext) -> None:
         # Determine the cycle dates to process +%Y%m%d%H
         dates_needed = []
         for i in range(25):
-            if ctx.ebb_dcycle == 1: # Same-day emissions
+            if ctx.ebb_dcycle == 1:  # Same-day emissions
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
-            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours
+            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
-                
+
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
 
@@ -911,10 +885,10 @@ def main(ctx: ChemRegridContext) -> None:
         # Determine the cycle dates to process +%Y%m%d%H
         # This is for RETROS (using current datetime, not day before)
         dates_needed = []
-        for i in range(25): # GAF retro current day emissions
-            if ctx.ebb_dcycle == 1: # Same-day emissions
+        for i in range(25):  # GAF retro current day emissions
+            if ctx.ebb_dcycle == 1:  # Same-day emissions
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
-            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours
+            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
@@ -930,9 +904,9 @@ def main(ctx: ChemRegridContext) -> None:
     elif ctx.dataset_name == "GOES":
         dates_needed = []
         for i in range(25):
-            if ctx.ebb_dcycle == 1: # Same-day emissions
+            if ctx.ebb_dcycle == 1:  # Same-day emissions
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
-            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2: # Persistence (-1) or forecasted (2) needs prev 24 hours
+            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
@@ -965,20 +939,21 @@ def main(ctx: ChemRegridContext) -> None:
         level_out_name=ctx.rw_dataset.level_out_name,
         level_out_size=ctx.rw_dataset.level_out_size,
         time_name=ctx.rw_dataset.time_name,
-        time_size=ctx.rw_dataset.time_size
+        time_size=ctx.rw_dataset.time_size,
     )
 
     if ctx.dataset_name == "RAVE":
         processor = None
         for date_to_process in dates_needed:
             _LOGGER.info(f"RAVE processing {date_to_process=}")
-            src_paths = find_latest_src_file(ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24)
+            src_paths = find_latest_src_file(
+                ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24
+            )
             if not src_paths:
-                _LOGGER.warn(
-                    f"No matching files found for {date_to_process} (even after lookback).")
+                _LOGGER.warn(f"No matching files found for {date_to_process} (even after lookback).")
                 continue
 
-            _LOGGER.info(f'Reading RAVE file: {src_paths=}')
+            _LOGGER.info(f"Reading RAVE file: {src_paths=}")
             src_path = src_paths[0]
             new_dst_path = ctx.output_dir / (ctx.mesh_name + "-RAVE-" + date_to_process + ".nc")
 
@@ -1043,24 +1018,21 @@ def main(ctx: ChemRegridContext) -> None:
         files_to_cat = src_paths
         _LOGGER.info(f"will cat files: {files_to_cat=}")
         if COMM.rank == 0:
-           with xr.open_mfdataset(files_to_cat, combine='nested', concat_dim='file') as ds:
-               # 2. Calculate the nanmean across the new 'file' dimension
-               # skipna=True (default) ensures it behaves like np.nanmean
-               ds_averaged = ds['AOD'].mean(dim='file', skipna=True)
-           # _LOGGER.debug(ds_averaged)
-           ds_averaged.encoding.update({
-              'dtype': 'float32',
-              '_FillValue': -999
-           })
-           ds_averaged.to_netcdf(ctx.output_dir / 'test_goes_aod_merged.nc')
+            with xr.open_mfdataset(files_to_cat, combine="nested", concat_dim="file") as ds:
+                # 2. Calculate the nanmean across the new 'file' dimension
+                # skipna=True (default) ensures it behaves like np.nanmean
+                ds_averaged = ds["AOD"].mean(dim="file", skipna=True)
+            # _LOGGER.debug(ds_averaged)
+            ds_averaged.encoding.update({"dtype": "float32", "_FillValue": -999})
+            ds_averaged.to_netcdf(ctx.output_dir / "test_goes_aod_merged.nc")
 
         if not src_paths:
             msg = f"No matching GOES files found for {date_to_process} (even after lookback)."
             _LOGGER.error(msg)
             raise ValueError(msg)
 
-        _LOGGER.info('Reading merged GOES file: test_goes_aod_merged.nc')
-        #src_path = src_paths[0]
+        _LOGGER.info("Reading merged GOES file: test_goes_aod_merged.nc")
+        # src_path = src_paths[0]
         src_path = ctx.output_dir / "test_goes_aod_merged.nc"
         new_dst_path = ctx.output_dir / (ctx.mesh_name + "-GOES-" + date_to_process + ".nc")
         # --- OPTIMIZATION START ---
@@ -1082,7 +1054,7 @@ def main(ctx: ChemRegridContext) -> None:
         # Run the regridding (Fast)
         processor.run()
         # --- OPTIMIZATION END ---
-                # Only finalize after ALL files are done
+        # Only finalize after ALL files are done
         if processor:
             processor.finalize()
 
@@ -1103,7 +1075,7 @@ def main(ctx: ChemRegridContext) -> None:
             processor.finalize()
 
             _LOGGER.info("success")
-#
+    #
     elif ctx.dataset_name == "GRA2PES":
         src_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_00to11Z.nc")
         new_dst_path = ctx.output_dir / (ctx.dataset_name + "v1.0_total_" + ctx.mesh_name + "_00to11Z.nc")
@@ -1149,10 +1121,10 @@ def main(ctx: ChemRegridContext) -> None:
             new_dst_path = ctx.output_dir / ("ecoregions_" + ctx.mesh_name + "_mpas.nc")
         elif ctx.dataset_name == "FENGSHA_2D":
             src_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"
-            new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D."+ ctx.mesh_name + ".nc")
+            new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D." + ctx.mesh_name + ".nc")
         elif ctx.dataset_name == "FENGSHA_2D_Time":
             src_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
-            new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D_Time."+ ctx.mesh_name + ".nc")
+            new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D_Time." + ctx.mesh_name + ".nc")
 
         regrid_context.src_path = src_path
         regrid_context.new_dst_path = new_dst_path
