@@ -339,16 +339,7 @@ class ChemRegridProcessor:
         _LOGGER.info("create source grid")
         self._src_gwrap = NcToGrid(
             path=pathsrc,
-            spec=GridSpec(
-                x_center=self.context.x_center,
-                y_center=self.context.y_center,
-                x_dim=self.context.x_dim,
-                y_dim=self.context.y_dim,
-                x_corner=self.context.x_corner,
-                y_corner=self.context.y_corner,
-                x_corner_dim=self.context.x_corner_dim,
-                y_corner_dim=self.context.y_corner_dim,
-            ),
+            spec=GridSpec.model_validate(self.context.model_dump()),
         ).create_grid_wrapper()
 
         _LOGGER.info("create source field")
