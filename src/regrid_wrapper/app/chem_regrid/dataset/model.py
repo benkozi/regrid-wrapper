@@ -20,6 +20,14 @@ class DatasetName(StrEnum):
     GOES = "GOES"
 
 
+@unique
+class InterpMethod(StrEnum):
+    CONSERVE = "CONSERVE"
+    CONSERVE_2ND = "CONSERVE_2ND"
+    BILINEAR = "BILINEAR"
+    NEAREST_STOD = "NEAREST_STOD"
+
+
 class ChemRegridDataset(RwBaseModel):
     key: DatasetName
     field_names: tuple[str, ...]
@@ -36,7 +44,7 @@ class ChemRegridDataset(RwBaseModel):
     level_out_size: int | None
     time_name: str | None
     time_size: int | None
-    InterpMethod: str
+    InterpMethod: InterpMethod
 
     @classmethod
     def from_key(cls, yaml_path: Path, key: DatasetName) -> "ChemRegridDataset":

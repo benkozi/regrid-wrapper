@@ -1,14 +1,11 @@
 # mypy: ignore-errors
 
-import sys
 import glob
 from abc import abstractmethod, ABC
 from datetime import datetime, timezone, timedelta
 from functools import cached_property
 from pathlib import Path
 from typing import Literal, Iterable, Any, Union
-
-import os
 
 import esmpy
 import numpy as np
@@ -17,7 +14,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
-from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset, DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.model import DatasetName, InterpMethod
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.esmpy.field_wrapper import (
@@ -241,7 +238,7 @@ class RaveToMpasRegridContext(BaseModel):
     new_dst_path: Path
     desc_stats_out: Path
     weight_path: Path
-    InterpMethod: str
+    InterpMethod: InterpMethod
     scrip_path: Path
     num_cells: int
     mesh_name: str
@@ -413,7 +410,7 @@ class RaveToMpasRegridProcessor:
             )
         else:
             _LOGGER.info("create regridder in-memory")
-            if self.context.InterpMethod == "CONSERVE":
+            if self.context.InterpMethod == InterpMethod.CONSERVE:
                 _LOGGER.info("using 1st order conservative interp")
                 self._regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
@@ -424,7 +421,7 @@ class RaveToMpasRegridProcessor:
                     large_file=True,
                     filename=str(self.context.weight_path),
                 )
-            elif self.context.InterpMethod == "CONSERVE_2ND":
+            elif self.context.InterpMethod == InterpMethod.CONSERVE_2ND:
                 _LOGGER.info("using 2nd order conservative interp")
                 self._regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
@@ -435,7 +432,7 @@ class RaveToMpasRegridProcessor:
                     large_file=True,
                     filename=str(self.context.weight_path),
                 )
-            elif self.context.InterpMethod == "BILINEAR":
+            elif self.context.InterpMethod == InterpMethod.BILINEAR:
                 _LOGGER.info("using bilinear interp")
                 self._regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
