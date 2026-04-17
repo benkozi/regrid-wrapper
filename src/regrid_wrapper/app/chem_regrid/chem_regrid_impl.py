@@ -301,7 +301,6 @@ class DatasetRegridContext(BaseModel):
 
     @staticmethod
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
-        # tdk: does valid_range matter?
         exclude = ("coordinates", "valid_range")
         return {
             ii: getattr(src, ii)
@@ -316,7 +315,7 @@ class FileDesc(BaseModel):
     field_names: tuple[str, ...]
 
 
-class RaveToMpasRegridProcessor:
+class ChemRegridProcessor:
     _dst_mesh: esmpy.Mesh | None = None
 
     def __init__(self, context: DatasetRegridContext) -> None:
@@ -1000,7 +999,7 @@ def main(ctx: ChemRegridContext) -> None:
                 regrid_context.src_path = rave_path
                 regrid_context.new_dst_path = new_dst_path
 
-                processor = RaveToMpasRegridProcessor(context=regrid_context)
+                processor = ChemRegridProcessor(context=regrid_context)
                 processor.initialize()
             else:
                 _LOGGER.info("SUBSEQUENT PASSES: Hot Swap")
@@ -1018,7 +1017,7 @@ def main(ctx: ChemRegridContext) -> None:
             _LOGGER.info("success")
 
     elif ctx.dataset_name == "NGFS":
-        processor = RaveToMpasRegridProcessor(context=regrid_context)
+        processor = ChemRegridProcessor(context=regrid_context)
 
         for date_to_process in dates_needed:
             # Construct the filename (Adjust the prefix 'ngfs_' if your files are named differently)
@@ -1081,7 +1080,7 @@ def main(ctx: ChemRegridContext) -> None:
             regrid_context.src_path = rave_path
             regrid_context.new_dst_path = new_dst_path
 
-            processor = RaveToMpasRegridProcessor(context=regrid_context)
+            processor = ChemRegridProcessor(context=regrid_context)
             processor.initialize()
         else:
             # SUBSEQUENT PASSES: Hot Swap
@@ -1107,7 +1106,7 @@ def main(ctx: ChemRegridContext) -> None:
             regrid_context.src_path = rave_path
             regrid_context.new_dst_path = new_dst_path
 
-            processor = RaveToMpasRegridProcessor(context=regrid_context)
+            processor = ChemRegridProcessor(context=regrid_context)
             processor.initialize()
             processor.run()
             processor.finalize()
@@ -1121,7 +1120,7 @@ def main(ctx: ChemRegridContext) -> None:
         regrid_context.src_path = rave_path
         regrid_context.new_dst_path = new_dst_path
 
-        processor = RaveToMpasRegridProcessor(context=regrid_context)
+        processor = ChemRegridProcessor(context=regrid_context)
         processor.initialize()
         processor.run()
         processor.finalize()
@@ -1134,7 +1133,7 @@ def main(ctx: ChemRegridContext) -> None:
         regrid_context.src_path = rave_path
         regrid_context.new_dst_path = new_dst_path
 
-        processor = RaveToMpasRegridProcessor(context=regrid_context)
+        processor = ChemRegridProcessor(context=regrid_context)
         processor.initialize()
         processor.run()
         processor.finalize()
@@ -1167,7 +1166,7 @@ def main(ctx: ChemRegridContext) -> None:
         regrid_context.src_path = rave_path
         regrid_context.new_dst_path = new_dst_path
 
-        processor = RaveToMpasRegridProcessor(context=regrid_context)
+        processor = ChemRegridProcessor(context=regrid_context)
         processor.initialize()
         processor.run()
         processor.finalize()
