@@ -258,6 +258,7 @@ class DatasetRegridContext(BaseModel):
     time_name: str | None
     time_size: int
     # InterpMask: float
+    write_desc_stats: bool = False
 
     rank: int = COMM.rank
 
@@ -571,22 +572,22 @@ class ChemRegridProcessor:
                 src_fwrap_p25.value.destroy()
                 del src_fwrap_p25
 
-        # if self.context.rank == 0:
-        #     field_names = tuple(ii.name for ii in self.context.rave_fields)
-        #     targets = [
-        #         FileDesc(
-        #             path=self.context.new_dst_path,
-        #             origin="dst",
-        #             field_names=field_names,
-        #         ),
-        #         FileDesc(
-        #             path=self.context.src_path,
-        #             origin="src",
-        #             field_names=field_names,
-        #         ),
-        #     ]
-        #     data_frame = self.create_desc_stuff(targets)
-        #     data_frame.to_csv(self.context.desc_stats_out, index=False)
+        if self.context.write_desc_stats and self.context.rank == 0:
+            field_names = tuple(ii.name for ii in self.context.rave_fields)
+            targets = [
+                FileDesc(
+                    path=self.context.new_dst_path,
+                    origin="dst",
+                    field_names=field_names,
+                ),
+                FileDesc(
+                    path=self.context.src_path,
+                    origin="src",
+                    field_names=field_names,
+                ),
+            ]
+            data_frame = self.create_desc_stuff(targets)
+            data_frame.to_csv(self.context.desc_stats_out, index=False)
 
     def finalize(self) -> None:
         _LOGGER.info("finalizing")
