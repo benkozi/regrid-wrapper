@@ -61,7 +61,7 @@ def find_latest_src_file(input_dir, target_time_str, ebb_dcycle, dataset_name, m
             paths = glob.glob(input_dir_str + "/OR_ABI-L2-AODC-M6_G18_s" + this_str + "*")
         if paths:
             if h > 0:
-                print(f"Missing {dataset_name} file for {target_time_str}, using {this_str} instead")
+                _LOGGER.warning(f"Missing {dataset_name} file for {target_time_str}, using {this_str} instead")
             return paths
     # nothing found within lookback window
     return []
