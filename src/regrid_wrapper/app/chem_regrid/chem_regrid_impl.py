@@ -35,7 +35,7 @@ _LOGGER = LOGGER.getChild("mpas-regrid")
 
 # Try to find the latest RAVE file available up to max_lookback_hours before target_time_str
 # to avoid setting zeroes when a particular hour file is missing.
-def find_latest_rave_file(input_dir, target_time_str, ebb_dcycle, dataset_name, max_lookback_hours=24):
+def find_latest_src_file(input_dir, target_time_str, ebb_dcycle, dataset_name, max_lookback_hours=24):
     """Return list of files for the latest time <= target_time_str."""
     fmt = "%Y%m%d%H"  #RAVE
     fmt2= "%Y%j%H"  # GOES
@@ -263,8 +263,8 @@ class DatasetRegridContext(BaseModel):
     rank: int = COMM.rank
 
     @cached_property
-    def rave_fields(self) -> tuple[AbstractRaveField, ...]:
-        rave_fields = []
+    def src_fields(self) -> tuple[AbstractRaveField, ...]:
+        src_fields = []
         with open_nc(self.src_path, mode="r") as ds:
             for field_name in self.field_names:
                 read_name = field_name
@@ -296,9 +296,9 @@ class DatasetRegridContext(BaseModel):
                       app = RaveField3d.model_validate(init_data)
                    else:
                       app = RaveField3d_plusTime.model_validate(init_data)
-                rave_fields.append(app)
-        _LOGGER.debug(f"{rave_fields=}")
-        return tuple(rave_fields)
+                src_fields.append(app)
+        _LOGGER.debug(f"{src_fields=}")
+        return tuple(src_fields)
 
     @staticmethod
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
@@ -352,7 +352,7 @@ class ChemRegridProcessor:
         ).create_grid_wrapper()
 
         _LOGGER.info("create source field")
-        src_fwrap = self.create_src_field_wrapper(self.context.rave_fields[0].name)
+        src_fwrap = self.create_src_field_wrapper(self.context.src_fields[0].name)
 
         if self._dst_mesh is None:
             _LOGGER.info("create destination mesh")
@@ -447,9 +447,9 @@ class ChemRegridProcessor:
                             copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
 
         regridder = self.get_regridder()
-        for rave_field in self.context.rave_fields:
-            _LOGGER.info(f"regridding {rave_field.name=}")
-            src_fwrap = self.create_src_field_wrapper(field_name=rave_field.name)
+        for src_field in self.context.src_fields:
+            _LOGGER.info(f"regridding {src_field.name=}")
+            src_fwrap = self.create_src_field_wrapper(field_name=src_field.name)
 
             dst_field = self.get_dst_field()
             # tdk: any more qa stuff? minimum threshold?
@@ -458,49 +458,49 @@ class ChemRegridProcessor:
             # tdk: support NcToMesh
             local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
-            dims = rave_field.create_dimension_collection(reconciled_bounds)
+            dims = src_field.create_dimension_collection(reconciled_bounds)
             _LOGGER.info(f"{dims=}")
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
-                if self.context.dataset_name == "RAVE" and rave_field.name in ("FRP_MEAN", "FRE"):
+                if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
                     area = np.asarray(ds.variables['areaCell'])
                     area_subset = area[reconciled_bounds[0]:reconciled_bounds[1]].reshape(dims.shape_local)
-                _LOGGER.info(f"creating variable {rave_field.name=}")
+                _LOGGER.info(f"creating variable {src_field.name=}")
                 var = ds.createVariable(
-                    rave_field.name,
-                    rave_field.dtype,
+                    src_field.name,
+                    src_field.dtype,
                     [dim.name[0] for dim in dims.value],
-                    fill_value=rave_field.fill_value,
+                    fill_value=src_field.fill_value,
                 )
                 # Don't carry over fill value and datatype
                 if self.context.dataset_name != 'GOES':
-                    type_to_use = rave_field.dtype
-                    for k, v in rave_field.attrs.items():
+                    type_to_use = src_field.dtype
+                    for k, v in src_field.attrs.items():
                        setattr(var, k, v)
                 else:
                     type_to_use = np.float32
 
-                _LOGGER.info(f"setting variable data {rave_field.name=}")
+                _LOGGER.info(f"setting variable data {src_field.name=}")
                 # Multiply FRE/FRP by output area so it is back to W or J*s
-                if self.context.dataset_name == "RAVE" and rave_field.name in ("FRP_MEAN", "FRE"):
+                if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
                     set_variable_data(
                         var,
                         dims,
-                        rave_field.reshape_field_data(dst_field.data * area_subset),
+                        src_field.reshape_field_data(dst_field.data * area_subset),
                         collective=True,
                     )
                 else:
                     set_variable_data(
                         var,
                         dims,
-                        rave_field.reshape_field_data(dst_field.data),
+                        src_field.reshape_field_data(dst_field.data),
                         collective=True,
                     )
-            _LOGGER.info(f"finished writing field to netcdf {rave_field.name=}")
+            _LOGGER.info(f"finished writing field to netcdf {src_field.name=}")
             src_fwrap.value.destroy()
             del src_fwrap
 
-            if rave_field.name == "ENL_POLL":
+            if src_field.name == "ENL_POLL":
                 with open_nc(self.context.new_dst_path, mode="a") as ds:
                     _LOGGER.info(f"renaming and combining tree fields")
 
@@ -514,27 +514,27 @@ class ChemRegridProcessor:
                     dst_field_dbl.data.fill(0.0)
                     regridder(src_fwrap_dbl.value, dst_field_dbl)
 
-                    rave_field = self.context.rave_fields[0]
+                    src_field = self.context.src_fields[0]
 
                     var = ds.createVariable(
                         'TREE_POLL',
-                        rave_field.dtype,
+                        src_field.dtype,
                         [dim.name[0] for dim in dims.value],
-                        fill_value=rave_field.fill_value,
+                        fill_value=src_field.fill_value,
                     )
-                    for k, v in self.context.rave_fields[0].attrs.items():
+                    for k, v in self.context.src_fields[0].attrs.items():
                         setattr(var, k, v)
                     set_variable_data(
                         var,
                         dims,
-                        rave_field.reshape_field_data(dst_field_enl.data + dst_field_dbl.data),
+                        src_field.reshape_field_data(dst_field_enl.data + dst_field_dbl.data),
                         collective=True,
                     )
                 src_fwrap_enl.value.destroy()
                 del src_fwrap_enl
                 src_fwrap_dbl.value.destroy()
                 del src_fwrap_dbl
-            if rave_field.name == "TPM":
+            if src_field.name == "TPM":
                 with open_nc(self.context.new_dst_path, mode="a") as ds:
                     _LOGGER.info(f"calculating PM10 as TPM - PM25")
                     src_fwrap_ttl = self.create_src_field_wrapper(field_name='TPM')
@@ -548,18 +548,18 @@ class ChemRegridProcessor:
                     dst_field_p25.data.fill(0.0)
                     regridder(src_fwrap_p25.value, dst_field_p25)
 
-                    rave_field = self.context.rave_fields[0]
+                    src_field = self.context.src_fields[0]
 
                     var = ds.createVariable(
                         'PM10',
-                        rave_field.dtype,
+                        src_field.dtype,
                         [dim.name[0] for dim in dims.value],
-                        fill_value=rave_field.fill_value,
+                        fill_value=src_field.fill_value,
                     )
-                    for k, v in self.context.rave_fields[0].attrs.items():
+                    for k, v in self.context.src_fields[0].attrs.items():
                         setattr(var, k, v)
-                    data1 = rave_field.reshape_field_data(dst_field_ttl.data)
-                    data2 = rave_field.reshape_field_data(dst_field_p25.data)
+                    data1 = src_field.reshape_field_data(dst_field_ttl.data)
+                    data2 = src_field.reshape_field_data(dst_field_p25.data)
                     data3 = data1 - data2
                     set_variable_data(
                         var,
@@ -573,7 +573,7 @@ class ChemRegridProcessor:
                 del src_fwrap_p25
 
         if self.context.write_desc_stats and self.context.rank == 0:
-            field_names = tuple(ii.name for ii in self.context.rave_fields)
+            field_names = tuple(ii.name for ii in self.context.src_fields)
             targets = [
                 FileDesc(
                     path=self.context.new_dst_path,
@@ -802,17 +802,17 @@ class ChemRegridProcessor:
 
 
         # 4. Process Each Variable
-        for rave_field in self.context.rave_fields:
-            _LOGGER.info(f"regridding NGFS {rave_field.name=}")
+        for src_field in self.context.src_fields:
+            _LOGGER.info(f"regridding NGFS {src_field.name=}")
 
             # Create Source Field dynamically
-            src_field = esmpy.Field(src_mesh, name=rave_field.name, meshloc=esmpy.MeshLoc.ELEMENT)
+            src_field = esmpy.Field(src_mesh, name=src_field.name, meshloc=esmpy.MeshLoc.ELEMENT)
 
             # Map MPAS expected name to NGFS actual name
-            if rave_field.name == "PM25":
+            if src_field.name == "PM25":
                 ngfs_var_name = "EMIS_PM25"
             else:
-                ngfs_var_name = rave_field.name
+                ngfs_var_name = src_field.name
 
             # Load the raw data
             with open_nc(file_path, mode="r") as ds:
@@ -825,10 +825,10 @@ class ChemRegridProcessor:
             # ---------------------------------------------------------
             # UNIT CONVERSIONS (Identical to RAVE logic)
             # ---------------------------------------------------------
-            if rave_field.name in ("PM25", "TPM"):
+            if src_field.name in ("PM25", "TPM"):
                 # Convert from kg/hr to ug/m2/s (1e3 handles the km2 to m2 and kg to ug ratio)
                 src_data = np.where(raw_data < 0.0, 0.0, raw_data * 1.e3 / grid_area / 3600.0)
-            elif rave_field.name in ("FRE", "FRP_MEAN"):
+            elif src_field.name in ("FRE", "FRP_MEAN"):
                 # For FRE, FRP: MW to W (1e6) cancels out with km2 to m2 (1e6)
                 src_data = np.where(raw_data < 0.0, 0.0, raw_data / grid_area)
             else:
@@ -851,25 +851,25 @@ class ChemRegridProcessor:
             # Write to Output NetCDF
             local_bounds = (self._dst_field.lower_bounds[0], self._dst_field.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
-            dims = rave_field.create_dimension_collection(reconciled_bounds)
+            dims = src_field.create_dimension_collection(reconciled_bounds)
 
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 var = ds.createVariable(
-                    rave_field.name, # Keep it as standard name in output!
-                    rave_field.dtype,
+                    src_field.name, # Keep it as standard name in output!
+                    src_field.dtype,
                     [dim.name[0] for dim in dims.value],
-                    fill_value=rave_field.fill_value,
+                    fill_value=src_field.fill_value,
                 )
-                for k, v in rave_field.attrs.items():
+                for k, v in src_field.attrs.items():
                     setattr(var, k, v)
 
                 # Multiply by areaCell for Power/Energy variables (back to total W in cell)
-                if rave_field.name in ("FRP_MEAN", "FRE"):
+                if src_field.name in ("FRP_MEAN", "FRE"):
                     area = np.asarray(ds.variables['areaCell'])
                     area_subset = area[reconciled_bounds[0]:reconciled_bounds[1]]
-                    set_variable_data(var, dims, rave_field.reshape_field_data(self._dst_field.data * area_subset), collective=True)
+                    set_variable_data(var, dims, src_field.reshape_field_data(self._dst_field.data * area_subset), collective=True)
                 else:
-                    set_variable_data(var, dims, rave_field.reshape_field_data(self._dst_field.data), collective=True)
+                    set_variable_data(var, dims, src_field.reshape_field_data(self._dst_field.data), collective=True)
 
             # Clean up memory
             regridder.destroy()
@@ -982,7 +982,7 @@ def main(ctx: ChemRegridContext) -> None:
         processor = None
         for date_to_process in dates_needed:
             _LOGGER.info(f"RAVE processing {date_to_process=}")
-            src_paths = find_latest_rave_file(ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24)
+            src_paths = find_latest_src_file(ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24)
             if not src_paths:
                 _LOGGER.warn(
                     f"No matching files found for {date_to_process} (even after lookback).")
@@ -1049,7 +1049,7 @@ def main(ctx: ChemRegridContext) -> None:
     elif ctx.dataset_name == "GOES":
         processor = None
         date_to_process = dates_needed[0]
-        src_paths = find_latest_rave_file(ctx.input_dir, date_to_process, -1, ctx.dataset_name, max_lookback_hours=2)
+        src_paths = find_latest_src_file(ctx.input_dir, date_to_process, -1, ctx.dataset_name, max_lookback_hours=2)
         files_to_cat = src_paths
         _LOGGER.info(f"will cat files: {files_to_cat=}")
         if COMM.rank == 0:
