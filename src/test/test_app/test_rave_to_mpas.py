@@ -65,6 +65,7 @@ class _TestDataColl:
 @pytest.mark.integration
 @pytest.mark.mpi
 def test() -> None:
+    pytest.skip("This is a platform integration test. It was used for development and left in in case it proved useful.")
     test_data = _TestDataColl().value[ENV.REGRID_WRAPPER_PLATFORM]
     weight_filename = test_data.output_root / "weights.nc"
     output_file = test_data.output_root / "rave_to_mpas.nc"

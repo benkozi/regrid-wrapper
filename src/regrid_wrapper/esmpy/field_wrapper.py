@@ -105,6 +105,14 @@ class Dimension:
 class DimensionCollection:
     value: Tuple[Dimension, ...]
 
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return tuple(dim.size for dim in self.value)
+
+    @property
+    def shape_local(self) -> tuple[int, ...]:
+        return tuple(dim.upper - dim.lower for dim in self.value)
+
     def get(self, name: str | NameListType) -> Dimension:
         if isinstance(name, str):
             name_to_find: NameListType = (name,)

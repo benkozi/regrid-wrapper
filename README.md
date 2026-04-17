@@ -23,3 +23,27 @@ options:
                         Output UGRID path
   --clobber             Overwrite output file if it exists (default is False)
 ```
+
+# Docker Testing Instructions
+
+Install Docker desktop: https://docs.docker.com/get-started/get-docker/
+
+Start the container environment:
+
+```
+rw_root=<path to regrid-wrapper root> && \
+  docker run --rm -it -v ${rw_root}:/opt/project deckyfre/regrid-wrapper-ci bash
+```
+
+Now inside the container:
+
+```
+cd /opt/project && \
+  pytest src/test
+```
+
+... or mpi tests:
+
+```
+mpirun -n 8 pytest -m mpi src/test
+```
