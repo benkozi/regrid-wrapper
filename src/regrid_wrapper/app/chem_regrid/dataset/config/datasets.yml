@@ -30,10 +30,10 @@ NGFS:
     - PM25
   x_center: lon
   y_center: lat
-  x_dim: point
-  y_dim: point
-  x_corner: null
-  y_corner: null
+  x_dim: point # Dummy dimension name for context
+  y_dim: point # Dummy dimension name for context
+  x_corner: null # We set corners to None because the helper calculates them in memory
+  y_corner: null # We set corners to None because the helper calculates them in memory
   x_corner_dim: null
   y_corner_dim: null
   level_in_name: null

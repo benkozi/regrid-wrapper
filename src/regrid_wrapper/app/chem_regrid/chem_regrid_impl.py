@@ -997,9 +997,23 @@ def main(ctx: ChemRegridContext) -> None:
         # xland = src_nc.variables['xland']
         # lmask[:] = np.where(xland > 0,1,0)
 
+    field_names = ctx.rw_dataset.field_names
+    x_center = ctx.rw_dataset.x_center
+    y_center = ctx.rw_dataset.y_center
+    x_dim = ctx.rw_dataset.x_dim
+    y_dim = ctx.rw_dataset.y_dim
+    x_corner = ctx.rw_dataset.x_corner
+    y_corner = ctx.rw_dataset.y_corner
+    x_corner_dim = ctx.rw_dataset.x_corner_dim
+    y_corner_dim = ctx.rw_dataset.y_corner_dim
+    level_in_name = ctx.rw_dataset.level_in_name
+    level_out_name = ctx.rw_dataset.level_out_name
+    level_out_size = ctx.rw_dataset.level_out_size
+    time_name = ctx.rw_dataset.time_name
+    time_size = ctx.rw_dataset.time_size
+    InterpMethod = ctx.rw_dataset.InterpMethod
+
     if dataset_name == "RAVE":
-        rave = ctx.rw_dataset
-        field_names = rave.field_names
         # JLS, TODO - NEED TO ACCOUNT FOR EBB1, MORE THAN 24, ETC.
         # Determine the cycle dates to process +%Y%m%d%H
         dates_needed = []
@@ -1014,25 +1028,8 @@ def main(ctx: ChemRegridContext) -> None:
                 
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
-        #
-        x_center = rave.x_center
-        y_center = rave.y_center
-        x_dim = rave.x_dim
-        y_dim = rave.y_dim
-        x_corner = rave.x_corner
-        y_corner = rave.y_corner
-        x_corner_dim = rave.x_corner_dim
-        y_corner_dim = rave.y_corner_dim
-        level_in_name = rave.level_in_name
-        # level_in_size = None
-        level_out_name = rave.level_out_name
-        level_out_size = rave.level_out_size
-        time_name = rave.time_name
-        time_size = rave.time_size
-        InterpMethod = rave.InterpMethod
-    elif dataset_name == "NGFS":
-        field_names = ("FRE", "FRP_MEAN", "PM25")
 
+    elif dataset_name == "NGFS":
         # Determine the cycle dates to process +%Y%m%d%H
         # This is for RETROS (using current datetime, not day before)
         dates_needed = []
@@ -1046,190 +1043,13 @@ def main(ctx: ChemRegridContext) -> None:
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
-        #
-        x_center = "lon"
-        y_center = "lat"
-        x_dim = "point" # Dummy dimension name for context
-        y_dim = "point" # Dummy dimension name for context
-        # We set corners to None because the helper calculates them in memory
-        x_corner = None
-        y_corner = None
-        x_corner_dim = None
-        y_corner_dim = None
-        level_in_name = None
-        level_out_name = "nkwildfire"
-        level_out_size = 1
-        time_name = "time"
-        time_size = 1
-        InterpMethod = "CONSERVE"
-    elif dataset_name == "GRA2PES":
-        field_names = ("PM25-PRI", "PM10-PRI","SO2","CO","NOX","NH3","h_agl")  # ,"HC01"=methane BAQMS, summer, 2025
-        x_center = "XLONG"  # "XLONG_M"
-        y_center = "XLAT"  # "XLAT_M"
-        x_dim = "west_east"
-        y_dim = "south_north"
-        x_corner = "XLONG_C"
-        y_corner = "XLAT_C"
-        x_corner_dim = "west_east_stag"
-        y_corner_dim = "south_north_stag"
-        level_in_name = "bottom_top"
-        level_out_name = "nkanthro"
-        level_out_size = 20
-        time_name = "Time"
-        time_size = 12
-        InterpMethod = "CONSERVE"
-        # InterpMethod = "BILINEAR"
-    elif dataset_name == "NEMO_ANTHRO":
-        field_names = ("POC", "PEC", "PMOTHR", "PMC")
-        x_center = "lon"
-        y_center = "lat"
-        x_dim = "COL"
-        y_dim = "ROW"
-        x_corner = "lonc"
-        y_corner = "latc"
-        x_corner_dim = "COLC"
-        y_corner_dim = "ROWC"
-        level_in_name = "LAY"
-        level_out_name = "nkanthro"
-        level_out_size = 1
-        time_name = "TSTEP"
-        time_size = 1
-        InterpMethod = "CONSERVE"
-#       InterpMethod = "BILINEAR"
-    elif dataset_name == "NEMO_RWC":
-        field_names = ("POC", "PEC", "PMOTHR", "PMC")
-        x_center = "lon"
-        y_center = "lat"
-        x_dim = "COL"
-        y_dim = "ROW"
-        x_corner = "lonc"
-        y_corner = "latc"
-        x_corner_dim = "COLC"
-        y_corner_dim = "ROWC"
-        level_in_name = None
-        level_out_name = None
-        level_out_size = 0
-        time_name = "Time"
-        time_size = 1
-        InterpMethod = "CONSERVE"
-#       InterpMethod = "BILINEAR"
-    elif dataset_name == "PECM":
-        field_names = ("DBL_POLL", "ENL_POLL", "GRA_POLL", "RAG_POLL")
-        x_center = "lon"
-        y_center = "lat"
-        x_dim = "COL"
-        y_dim = "ROW"
-        x_corner = "lonc"
-        y_corner = "latc"
-        x_corner_dim = "COLC"
-        y_corner_dim = "ROWC"
-        level_in_name = None
-        level_out_name = "nkbiogenic"
-        level_out_size = 1
-        time_name = "time"
-        time_size = 1
-        InterpMethod = "CONSERVE"
-    elif dataset_name == "ECOREGION":
-        field_names = ("ecoregion_ID",)
-        x_center = "geolon"
-        y_center = "geolat"
-        x_dim = "lon"
-        y_dim = "lat"
-        x_corner = None
-        y_corner = None
-        x_corner_dim = None
-        y_corner_dim = None
-        level_in_name = None
-        level_out_name = "nkwildfire"
-        level_out_size = 1
-        time_name = "time"
-        time_size = 1
-        InterpMethod = "NEAREST_STOD"
-    elif dataset_name == "NARR":
-        field_names = ("RWC_denominator",)
-        x_center = "lon"
-        y_center = "lat"
-        x_dim = "x"
-        y_dim = "y"
-        x_corner = None
-        y_corner = None
-        x_corner_dim = None
-        y_corner_dim = None
-        level_in_name = None
-        level_out_name = None
-        level_out_size = 0
-        time_name = "Time"
-        time_size = 1
-        InterpMethod = "BILINEAR"
-    elif dataset_name == "FENGSHA_2D":
-        field_names = ("clayfrac", "sandfrac", "uthres", "ssm")
-        x_center = "longitude"
-        y_center = "latitude"
-        x_dim = "lon"
-        y_dim = "lat"
-        x_corner = None
-        y_corner = None
-        x_corner_dim = None
-        y_corner_dim = None
-        level_in_name = None
-        level_out_name = None
-        level_out_size = 0
-        time_name = None
-        time_size = 0
-        InterpMethod = "BILINEAR"
-    elif dataset_name == "FENGSHA_2D_Time":
-        field_names = ("rdrag",)
-        x_center = "longitude"
-        y_center = "latitude"
-        x_dim = "lon"
-        y_dim = "lat"
-        x_corner = None
-        y_corner = None
-        x_corner_dim = None
-        y_corner_dim = None
-        level_in_name = None
-        level_out_name = None
-        level_out_size = 0
-        time_name = "time"
-        time_size = 12
-        InterpMethod = "BILINEAR"
     elif dataset_name == "FMC":  # fuel moisture content
-        field_names = ("10h_dead_fuel_moisture_content",)
         dates_needed = []
         for i in range(25):
             x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
-        x_center = "longitude"
-        y_center = "latitude"
-        x_dim = "nx"
-        y_dim = "ny"
-        x_corner = None
-        y_corner = None
-        x_corner_dim = None
-        y_corner_dim = None
-        level_in_name = None
-        level_out_name = "nkwildfire"
-        level_out_size = 1
-        time_name = "time"
-        time_size = 1
-        InterpMethod = "BILINEAR"
     elif dataset_name == "GOES":
-        field_names = ("AOD",)
-        x_center = "longitude"
-        y_center = "latitude"
-        x_dim = "x"
-        y_dim = "y"
-        x_corner = None
-        y_corner = None
-        x_corner_dim = None
-        y_corner_dim = None
-        level_in_name = None
-        level_out_name = None
-        level_out_size = 0
-        time_name = None
-        time_size = 0
-        InterpMethod = "BILINEAR"
         dates_needed = []
         for i in range(25):
             if ebb_dcycle == 1: # Same-day emissions
