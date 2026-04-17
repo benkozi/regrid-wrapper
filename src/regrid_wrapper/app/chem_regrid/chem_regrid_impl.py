@@ -11,7 +11,7 @@ import esmpy
 import numpy as np
 import xarray as xr
 import pandas as pd
-from esmpy import RegridFromFile
+from esmpy import RegridFromFile, Mesh
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
@@ -375,32 +375,40 @@ class RaveToMpasRegridProcessor:
         dst_mesh = self._dst_mesh
 
 # Check for extra dims beyond lat/lon
+        self._create_dst_field_(dst_mesh)
+        self._dst_field = self._create_dst_field_(dst_mesh)
+        self._regridder = self._create_regridder_(src_fwrap)
+
+    def _create_dst_field_(self, dst_mesh: Mesh) -> esmpy.Field:
         _LOGGER.info("create destination field")
         if self.context.level_out_size == 0:
-        #2D
-           if self.context.time_size == 0:
-              # 2D, static in Time
-              self._dst_field = esmpy.Field(
-                  dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
-               )
-           else:
-              # 2D + Time
-              self._dst_field = esmpy.Field(
-                  dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.time_size,)
-               )
+            # 2D
+            if self.context.time_size == 0:
+                # 2D, static in Time
+                dst_field = esmpy.Field(
+                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
+                )
+            else:
+                # 2D + Time
+                dst_field = esmpy.Field(
+                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
+                    ndbounds=(self.context.time_size,)
+                )
         else:
-        #3D
-           if self.context.time_size == 0:
-              # 3D, static in Time
-              self._dst_field = esmpy.Field(
-                  dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size,)
-              )
-           else:
-              # 3D + Time
-              self._dst_field = esmpy.Field(
-                  dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size, self.context.time_size)
-              )
-        self._regridder = self._create_regridder_(src_fwrap)
+            # 3D
+            if self.context.time_size == 0:
+                # 3D, static in Time
+                dst_field = esmpy.Field(
+                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
+                    ndbounds=(self.context.level_out_size,)
+                )
+            else:
+                # 3D + Time
+                dst_field = esmpy.Field(
+                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
+                    ndbounds=(self.context.level_out_size, self.context.time_size)
+                )
+        return dst_field
 
     def _create_regridder_(self, src_fwrap: FieldWrapper) -> esmpy.RegridFromFile | esmpy.Regrid:
         _LOGGER.info("create regridder")
@@ -413,50 +421,25 @@ class RaveToMpasRegridProcessor:
             )
         else:
             _LOGGER.info("create regridder in-memory")
-            if self.context.InterpMethod == InterpMethod.CONSERVE:
-                _LOGGER.info("using 1st order conservative interp")
-                regridder = esmpy.Regrid(
-                    srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
-                    regrid_method=esmpy.RegridMethod.CONSERVE,
-                    unmapped_action=esmpy.UnmappedAction.IGNORE,
-                    ignore_degenerate=True,
-                    large_file=True,
-                    filename=str(self.context.weight_path),
-                )
-            elif self.context.InterpMethod == InterpMethod.CONSERVE_2ND:
-                _LOGGER.info("using 2nd order conservative interp")
-                regridder = esmpy.Regrid(
-                    srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
-                    regrid_method=esmpy.RegridMethod.CONSERVE_2ND,
-                    unmapped_action=esmpy.UnmappedAction.IGNORE,
-                    ignore_degenerate=True,
-                    large_file=True,
-                    filename=str(self.context.weight_path),
-                )
-            elif self.context.InterpMethod == InterpMethod.BILINEAR:
-                _LOGGER.info("using bilinear interp")
-                regridder = esmpy.Regrid(
-                    srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
-                    regrid_method=esmpy.RegridMethod.BILINEAR,
-                    unmapped_action=esmpy.UnmappedAction.IGNORE,
-                    ignore_degenerate=True,
-                    large_file=True,
-                    filename=str(self.context.weight_path),
-                )
-            else:
-                _LOGGER.info("using nearest_STOD interp")
-                regridder = esmpy.Regrid(
-                    srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
-                    regrid_method=esmpy.RegridMethod.NEAREST_STOD,
-                    unmapped_action=esmpy.UnmappedAction.IGNORE,
-                    ignore_degenerate=True,
-                    large_file=True,
-                    filename=str(self.context.weight_path),
-                )
+            method_map = {
+                InterpMethod.CONSERVE: esmpy.RegridMethod.CONSERVE,
+                InterpMethod.CONSERVE_2ND: esmpy.RegridMethod.CONSERVE_2ND,
+                InterpMethod.BILINEAR: esmpy.RegridMethod.BILINEAR,
+                InterpMethod.NEAREST_STOD: esmpy.RegridMethod.NEAREST_STOD,
+            }
+            # Default to NEAREST_STOD if not found in map (preserving original behavior)
+            regrid_method = method_map[self.context.InterpMethod]
+
+            _LOGGER.info(f"using {regrid_method} interp")
+            regridder = esmpy.Regrid(
+                srcfield=src_fwrap.value,
+                dstfield=self._dst_field,
+                regrid_method=regrid_method,
+                unmapped_action=esmpy.UnmappedAction.IGNORE,
+                ignore_degenerate=True,
+                large_file=True,
+                filename=str(self.context.weight_path),
+            )
         return regridder
 
     def run(self) -> None:
