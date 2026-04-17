@@ -16,7 +16,7 @@ def test_mock_chem_regrid_impl_rave_integration(chem_regrid_context: ChemRegridC
     # Mock RaveToMpasRegridProcessor to avoid actual regridding
     with (
         patch("regrid_wrapper.app.chem_regrid.chem_regrid_impl.RaveToMpasRegridProcessor") as mock_processor_class,
-        patch("regrid_wrapper.app.chem_regrid.chem_regrid_impl.RaveToMpasRegridContext") as _,
+        patch("regrid_wrapper.app.chem_regrid.chem_regrid_impl.DatasetRegridContext") as _,
     ):
         mock_processor = MagicMock()
         mock_processor_class.return_value = mock_processor

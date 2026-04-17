@@ -230,7 +230,7 @@ class RaveField3d_plusTime(AbstractRaveField):
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
         return target.reshape(-1, self.level_out_size, self.time_size)
 
-class RaveToMpasRegridContext(BaseModel):
+class DatasetRegridContext(BaseModel):
     dataset_name: DatasetName
     workdir: Path
     src_path: Path
@@ -319,7 +319,7 @@ class FileDesc(BaseModel):
 class RaveToMpasRegridProcessor:
     _dst_mesh: esmpy.Mesh | None = None
 
-    def __init__(self, context: RaveToMpasRegridContext) -> None:
+    def __init__(self, context: DatasetRegridContext) -> None:
         self.context = context
 
         self._regridder: esmpy.Regrid | None = None
@@ -982,7 +982,7 @@ def main(ctx: ChemRegridContext) -> None:
 
     weight_path = ctx.get_weight_path(InterpMethod)
 
-    regrid_context = RaveToMpasRegridContext(
+    regrid_context = DatasetRegridContext(
         dataset_name=dataset_name,
         workdir=workdir,
         src_path=Path("dummy"),
