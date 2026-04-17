@@ -122,7 +122,7 @@ def create_ngfs_sparse_mesh(lat_1d, lon_1d, resolution=0.01):
 
     return mesh
 #
-class AbstractRaveField(ABC, BaseModel):
+class AbstractSrcField(ABC, BaseModel):
     name: str
     attrs: dict[str, Any]
     fill_value: float
@@ -175,7 +175,7 @@ class AbstractRaveField(ABC, BaseModel):
         ...
 
 
-class RaveField2d(AbstractRaveField):
+class SrcField2d(AbstractSrcField):
 
     def create_dimension_collection(
         self, ncells_bounds: tuple[int, int]
@@ -188,7 +188,7 @@ class RaveField2d(AbstractRaveField):
         return target.reshape(-1)
 
 
-class RaveField2d_plusTime(AbstractRaveField):
+class SrcField2d_plusTime(AbstractSrcField):
 
     def create_dimension_collection(
         self, ncells_bounds: tuple[int, int]
@@ -200,7 +200,7 @@ class RaveField2d_plusTime(AbstractRaveField):
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
         return target.reshape(self.time_size, -1)
 
-class RaveField3d(AbstractRaveField):
+class SrcField3d(AbstractSrcField):
 
     def create_dimension_collection(
         self, ncells_bounds: tuple[int, int]
@@ -215,7 +215,7 @@ class RaveField3d(AbstractRaveField):
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
         return target.reshape(-1, self.level_out_size)
 
-class RaveField3d_plusTime(AbstractRaveField):
+class SrcField3d_plusTime(AbstractSrcField):
 
     def create_dimension_collection(
         self, ncells_bounds: tuple[int, int]
@@ -263,7 +263,7 @@ class DatasetRegridContext(BaseModel):
     rank: int = COMM.rank
 
     @cached_property
-    def src_fields(self) -> tuple[AbstractRaveField, ...]:
+    def src_fields(self) -> tuple[AbstractSrcField, ...]:
         src_fields = []
         with open_nc(self.src_path, mode="r") as ds:
             for field_name in self.field_names:
@@ -288,14 +288,14 @@ class DatasetRegridContext(BaseModel):
                 }
                 if self.level_out_size == 0:
                    if self.time_size == 0:
-                      app = RaveField2d.model_validate(init_data)
+                      app = SrcField2d.model_validate(init_data)
                    else:
-                      app = RaveField2d_plusTime.model_validate(init_data)
+                      app = SrcField2d_plusTime.model_validate(init_data)
                 else:
                    if self.time_size == 0:
-                      app = RaveField3d.model_validate(init_data)
+                      app = SrcField3d.model_validate(init_data)
                    else:
-                      app = RaveField3d_plusTime.model_validate(init_data)
+                      app = SrcField3d_plusTime.model_validate(init_data)
                 src_fields.append(app)
         _LOGGER.debug(f"{src_fields=}")
         return tuple(src_fields)
