@@ -331,16 +331,7 @@ class RaveToMpasRegridProcessor:
         _LOGGER.info(f"initialize: {self.context=}")
         esmpy.Manager(debug=True)
 
-        # if not self.context.scrip_path.exists() and self.context.rank == 0:
-        #     _LOGGER.info("writing mpas scrip grid")
-        #     from pyremap import MpasCellMeshDescriptor
-        #
-        #     mpas_desc = MpasCellMeshDescriptor(
-        #         str(self.context.dst_path), self.context.mesh_name + ".init"
-        #     )
-        #     mpas_desc.to_scrip(str(self.context.scrip_path))
-
-# JLS - temporary fix for coords not in file
+        # JLS - temporary fix for coords not in file
         if self.context.dataset_name == "GOES":
            pathsrc=self.context.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
         else:
@@ -374,41 +365,24 @@ class RaveToMpasRegridProcessor:
             )
         dst_mesh = self._dst_mesh
 
-# Check for extra dims beyond lat/lon
-        self._create_dst_field_(dst_mesh)
         self._dst_field = self._create_dst_field_(dst_mesh)
         self._regridder = self._create_regridder_(src_fwrap)
 
     def _create_dst_field_(self, dst_mesh: Mesh) -> esmpy.Field:
         _LOGGER.info("create destination field")
-        if self.context.level_out_size == 0:
-            # 2D
-            if self.context.time_size == 0:
-                # 2D, static in Time
-                dst_field = esmpy.Field(
-                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
-                )
-            else:
-                # 2D + Time
-                dst_field = esmpy.Field(
-                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
-                    ndbounds=(self.context.time_size,)
-                )
-        else:
-            # 3D
-            if self.context.time_size == 0:
-                # 3D, static in Time
-                dst_field = esmpy.Field(
-                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
-                    ndbounds=(self.context.level_out_size,)
-                )
-            else:
-                # 3D + Time
-                dst_field = esmpy.Field(
-                    dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
-                    ndbounds=(self.context.level_out_size, self.context.time_size)
-                )
-        return dst_field
+
+        # Check for extra dims beyond lat/lon
+        ndbounds = []
+        if self.context.level_out_size > 0:
+            ndbounds.append(self.context.level_out_size)
+        if self.context.time_size > 0:
+            ndbounds.append(self.context.time_size)
+
+        kwargs = {}
+        if ndbounds:
+            kwargs["ndbounds"] = tuple(ndbounds)
+
+        return esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, **kwargs)
 
     def _create_regridder_(self, src_fwrap: FieldWrapper) -> esmpy.RegridFromFile | esmpy.Regrid:
         _LOGGER.info("create regridder")
