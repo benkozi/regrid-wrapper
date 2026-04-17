@@ -982,14 +982,14 @@ def main(ctx: ChemRegridContext) -> None:
         processor = None
         for date_to_process in dates_needed:
             _LOGGER.info(f"RAVE processing {date_to_process=}")
-            rave_paths = find_latest_rave_file(ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24)
-            if not rave_paths:
+            src_paths = find_latest_rave_file(ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24)
+            if not src_paths:
                 _LOGGER.warn(
                     f"No matching files found for {date_to_process} (even after lookback).")
                 continue
 
-            _LOGGER.info(f'Reading RAVE file: {rave_paths=}')
-            rave_path = rave_paths[0]
+            _LOGGER.info(f'Reading RAVE file: {src_paths=}')
+            src_path = src_paths[0]
             new_dst_path = ctx.output_dir / (ctx.mesh_name + "-RAVE-" + date_to_process + ".nc")
 
             # --- OPTIMIZATION START ---
@@ -997,7 +997,7 @@ def main(ctx: ChemRegridContext) -> None:
                 _LOGGER.info("FIRST PASS: Full Initialization")
                 # This pays the "expensive" cost of loading weights/grids, but only once.
 
-                regrid_context.src_path = rave_path
+                regrid_context.src_path = src_path
                 regrid_context.new_dst_path = new_dst_path
 
                 processor = ChemRegridProcessor(context=regrid_context)
@@ -1006,7 +1006,7 @@ def main(ctx: ChemRegridContext) -> None:
                 _LOGGER.info("SUBSEQUENT PASSES: Hot Swap")
                 # Just update the paths in the existing context.
                 # The grids and regridder (weights) remain loaded in memory.
-                processor.context.src_path = rave_path
+                processor.context.src_path = src_path
                 processor.context.new_dst_path = new_dst_path
             # Run the regridding (Fast)
             processor.run()
@@ -1049,8 +1049,8 @@ def main(ctx: ChemRegridContext) -> None:
     elif ctx.dataset_name == "GOES":
         processor = None
         date_to_process = dates_needed[0]
-        rave_paths = find_latest_rave_file(ctx.input_dir, date_to_process, -1, ctx.dataset_name, max_lookback_hours=2)
-        files_to_cat = rave_paths
+        src_paths = find_latest_rave_file(ctx.input_dir, date_to_process, -1, ctx.dataset_name, max_lookback_hours=2)
+        files_to_cat = src_paths
         _LOGGER.info(f"will cat files: {files_to_cat=}")
         if COMM.rank == 0:
            with xr.open_mfdataset(files_to_cat, combine='nested', concat_dim='file') as ds:
@@ -1064,21 +1064,21 @@ def main(ctx: ChemRegridContext) -> None:
            })
            ds_averaged.to_netcdf(ctx.output_dir / 'test_goes_aod_merged.nc')
 
-        if not rave_paths:
+        if not src_paths:
             msg = f"No matching GOES files found for {date_to_process} (even after lookback)."
             _LOGGER.error(msg)
             raise ValueError(msg)
 
         _LOGGER.info('Reading merged GOES file: test_goes_aod_merged.nc')
-        #rave_path = rave_paths[0]
-        rave_path = ctx.output_dir / "test_goes_aod_merged.nc"
+        #src_path = src_paths[0]
+        src_path = ctx.output_dir / "test_goes_aod_merged.nc"
         new_dst_path = ctx.output_dir / (ctx.mesh_name + "-GOES-" + date_to_process + ".nc")
         # --- OPTIMIZATION START ---
         if processor is None:
             # FIRST PASS: Full Initialization
             # This pays the "expensive" cost of loading weights/grids, but only once.
 
-            regrid_context.src_path = rave_path
+            regrid_context.src_path = src_path
             regrid_context.new_dst_path = new_dst_path
 
             processor = ChemRegridProcessor(context=regrid_context)
@@ -1087,7 +1087,7 @@ def main(ctx: ChemRegridContext) -> None:
             # SUBSEQUENT PASSES: Hot Swap
             # Just update the paths in the existing context.
             # The grids and regridder (weights) remain loaded in memory.
-            processor.context.src_path = rave_path
+            processor.context.src_path = src_path
             processor.context.new_dst_path = new_dst_path
         # Run the regridding (Fast)
         processor.run()
@@ -1100,11 +1100,11 @@ def main(ctx: ChemRegridContext) -> None:
 
     elif ctx.dataset_name == "FMC":
         for date_to_process in dates_needed:
-            rave_paths = glob.glob(str(ctx.input_dir / ("fmc_" + date_to_process + ".nc")))
-            rave_path = Path(rave_paths[0])
+            src_paths = glob.glob(str(ctx.input_dir / ("fmc_" + date_to_process + ".nc")))
+            src_path = Path(src_paths[0])
             new_dst_path = ctx.output_dir / ("fmc_" + date_to_process + "_" + ctx.mesh_name + ".nc")
 
-            regrid_context.src_path = rave_path
+            regrid_context.src_path = src_path
             regrid_context.new_dst_path = new_dst_path
 
             processor = ChemRegridProcessor(context=regrid_context)
@@ -1115,10 +1115,10 @@ def main(ctx: ChemRegridContext) -> None:
             _LOGGER.info("success")
 #
     elif ctx.dataset_name == "GRA2PES":
-        rave_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_00to11Z.nc")
+        src_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_00to11Z.nc")
         new_dst_path = ctx.output_dir / (ctx.dataset_name + "v1.0_total_" + ctx.mesh_name + "_00to11Z.nc")
 
-        regrid_context.src_path = rave_path
+        regrid_context.src_path = src_path
         regrid_context.new_dst_path = new_dst_path
 
         processor = ChemRegridProcessor(context=regrid_context)
@@ -1128,10 +1128,10 @@ def main(ctx: ChemRegridContext) -> None:
 
         _LOGGER.info("success")
 
-        rave_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_12to23Z.nc")
+        src_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_12to23Z.nc")
         new_dst_path = ctx.output_dir / (ctx.dataset_name + "v1.0_total_" + ctx.mesh_name + "_12to23Z.nc")
 
-        regrid_context.src_path = rave_path
+        regrid_context.src_path = src_path
         regrid_context.new_dst_path = new_dst_path
 
         processor = ChemRegridProcessor(context=regrid_context)
@@ -1143,28 +1143,28 @@ def main(ctx: ChemRegridContext) -> None:
 
     else:
         if ctx.dataset_name == "PECM":
-            rave_path = ctx.input_dir / ("pollen_obs_" + YYYY + "_BELD6_ef_T_" + JJJ + ".nc")
+            src_path = ctx.input_dir / ("pollen_obs_" + YYYY + "_BELD6_ef_T_" + JJJ + ".nc")
             new_dst_path = ctx.output_dir / ("pollen_ef_" + ctx.mesh_name + "_" + YYYY + "_" + JJJ + ".nc")
         elif ctx.dataset_name == "NEMO_RWC":
-            rave_path = ctx.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
+            src_path = ctx.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
             new_dst_path = ctx.output_dir / ("NEMO_RWC_ANNUAL_TOTAL_" + ctx.mesh_name + ".nc")
         elif ctx.dataset_name == "NEMO_ANTHRO":
-            rave_path = ctx.input_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + "_" + YYYY + MM + DD + HH + "_SECTORSUM.nc")
+            src_path = ctx.input_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + "_" + YYYY + MM + DD + HH + "_SECTORSUM.nc")
             new_dst_path = ctx.output_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + ".nc")
         elif ctx.dataset_name == "NARR":
-            rave_path = ctx.input_dir / "rwc_emission_denominator.2017.nc"
+            src_path = ctx.input_dir / "rwc_emission_denominator.2017.nc"
             new_dst_path = ctx.output_dir / ("NEMO_RWC_DENOMINATOR_2017_" + ctx.mesh_name + ".nc")
         elif ctx.dataset_name == "ECOREGION":
-            rave_path = ctx.input_dir / "veg_map.nc"
+            src_path = ctx.input_dir / "veg_map.nc"
             new_dst_path = ctx.output_dir / ("ecoregions_" + ctx.mesh_name + "_mpas.nc")
         elif ctx.dataset_name == "FENGSHA_2D":
-            rave_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"
+            src_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"
             new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D."+ ctx.mesh_name + ".nc")
         elif ctx.dataset_name == "FENGSHA_2D_Time":
-            rave_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
+            src_path = ctx.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
             new_dst_path = ctx.output_dir / ("fengsha_dust_inputs.2D_Time."+ ctx.mesh_name + ".nc")
 
-        regrid_context.src_path = rave_path
+        regrid_context.src_path = src_path
         regrid_context.new_dst_path = new_dst_path
 
         processor = ChemRegridProcessor(context=regrid_context)
