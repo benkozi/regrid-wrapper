@@ -390,7 +390,8 @@ class ChemRegridProcessor:
                 elif self.context.time_size == 1:
                     if "Time" not in dst_nc.dimensions:
                         dst_nc.createDimension("Time")
-                    _LOGGER.info("Not creating a time dimension")
+                    else:
+                        _LOGGER.info("Not creating a time dimension")
                 dst_nc.setncattr("created_at", str(datetime.now(timezone.utc)))
                 dst_nc.setncattr("src_path", str(self.context.src_path))
                 dst_nc.setncattr("dst_path", str(self.context.dst_path))
