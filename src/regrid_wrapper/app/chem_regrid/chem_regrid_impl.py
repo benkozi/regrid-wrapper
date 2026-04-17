@@ -11,6 +11,7 @@ import esmpy
 import numpy as np
 import xarray as xr
 import pandas as pd
+from esmpy import RegridFromFile
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
@@ -399,11 +400,13 @@ class RaveToMpasRegridProcessor:
               self._dst_field = esmpy.Field(
                   dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size, self.context.time_size)
               )
-# Check for weights
+        self._regridder = self._create_regridder_(src_fwrap)
+
+    def _create_regridder_(self, src_fwrap: FieldWrapper) -> esmpy.RegridFromFile | esmpy.Regrid:
         _LOGGER.info("create regridder")
         if self.context.weight_path.exists():
             _LOGGER.info("create regridder from file")
-            self._regridder = esmpy.RegridFromFile(
+            regridder = esmpy.RegridFromFile(
                 srcfield=src_fwrap.value,
                 dstfield=self._dst_field,
                 filename=str(self.context.weight_path),
@@ -412,7 +415,7 @@ class RaveToMpasRegridProcessor:
             _LOGGER.info("create regridder in-memory")
             if self.context.InterpMethod == InterpMethod.CONSERVE:
                 _LOGGER.info("using 1st order conservative interp")
-                self._regridder = esmpy.Regrid(
+                regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
                     dstfield=self._dst_field,
                     regrid_method=esmpy.RegridMethod.CONSERVE,
@@ -423,7 +426,7 @@ class RaveToMpasRegridProcessor:
                 )
             elif self.context.InterpMethod == InterpMethod.CONSERVE_2ND:
                 _LOGGER.info("using 2nd order conservative interp")
-                self._regridder = esmpy.Regrid(
+                regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
                     dstfield=self._dst_field,
                     regrid_method=esmpy.RegridMethod.CONSERVE_2ND,
@@ -434,7 +437,7 @@ class RaveToMpasRegridProcessor:
                 )
             elif self.context.InterpMethod == InterpMethod.BILINEAR:
                 _LOGGER.info("using bilinear interp")
-                self._regridder = esmpy.Regrid(
+                regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
                     dstfield=self._dst_field,
                     regrid_method=esmpy.RegridMethod.BILINEAR,
@@ -445,7 +448,7 @@ class RaveToMpasRegridProcessor:
                 )
             else:
                 _LOGGER.info("using nearest_STOD interp")
-                self._regridder = esmpy.Regrid(
+                regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
                     dstfield=self._dst_field,
                     regrid_method=esmpy.RegridMethod.NEAREST_STOD,
@@ -454,6 +457,7 @@ class RaveToMpasRegridProcessor:
                     large_file=True,
                     filename=str(self.context.weight_path),
                 )
+        return regridder
 
     def run(self) -> None:
         _LOGGER.info("apply regridding")
