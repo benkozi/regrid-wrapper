@@ -17,6 +17,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
+from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.context.logging import LOGGER
 from regrid_wrapper.esmpy.field_wrapper import (
@@ -997,7 +998,8 @@ def main(ctx: ChemRegridContext) -> None:
         # lmask[:] = np.where(xland > 0,1,0)
 
     if dataset_name == "RAVE":
-        field_names = ("TPM", "FRE", "FRP_MEAN", "PM25", "NH3", "SO2", "CH4","CO","NOx")
+        rave = ctx.rw_dataset
+        field_names = rave.field_names
         # JLS, TODO - NEED TO ACCOUNT FOR EBB1, MORE THAN 24, ETC.
         # Determine the cycle dates to process +%Y%m%d%H
         dates_needed = []
@@ -1013,21 +1015,21 @@ def main(ctx: ChemRegridContext) -> None:
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
         #
-        x_center = "grid_lont"
-        y_center = "grid_latt"
-        x_dim = "grid_xt"
-        y_dim = "grid_yt"
-        x_corner = "grid_lon"
-        y_corner = "grid_lat"
-        x_corner_dim = "grid_x"
-        y_corner_dim = "grid_y"
-        level_in_name = "None"
+        x_center = rave.x_center
+        y_center = rave.y_center
+        x_dim = rave.x_dim
+        y_dim = rave.y_dim
+        x_corner = rave.x_corner
+        y_corner = rave.y_corner
+        x_corner_dim = rave.x_corner_dim
+        y_corner_dim = rave.y_corner_dim
+        level_in_name = rave.level_in_name
         # level_in_size = None
-        level_out_name = "nkwildfire"
-        level_out_size = 1
-        time_name = "time"
-        time_size = 1
-        InterpMethod = "CONSERVE"
+        level_out_name = rave.level_out_name
+        level_out_size = rave.level_out_size
+        time_name = rave.time_name
+        time_size = rave.time_size
+        InterpMethod = rave.InterpMethod
     elif dataset_name == "NGFS":
         field_names = ("FRE", "FRP_MEAN", "PM25")
 

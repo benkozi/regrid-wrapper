@@ -1,43 +1,10 @@
-from abc import ABC
-from enum import StrEnum, unique
 from functools import cached_property
 from pathlib import Path
-from typing import TypeVar
 
-import yaml
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-T = TypeVar("T", bound="RwBaseModel")
-
-
-class RwBaseModel(ABC, BaseModel):
-    model_config = {"frozen": True}
-
-    @classmethod
-    def from_yaml(cls: type[T], data: dict) -> T:
-        return cls.model_validate(data)
-
-    @classmethod
-    def from_yaml_file(cls: type[T], path: Path) -> T:
-        string_data = path.read_text()
-        yaml_data = yaml.safe_load(string_data)
-        return cls.from_yaml(yaml_data)
-
-
-@unique
-class DatasetName(StrEnum):
-    RAVE = "RAVE"
-    GRA2PES = "GRA2PES"
-    NEMO_RWC = "NEMO_RWC"
-    NEMO_ANTHRO = "NEMO_ANTHRO"
-    FMC = "FMC"
-    PECM = "PECM"
-    NARR = "NARR"
-    ECOREGION = "ECOREGION"
-    FENGSHA_2D = "FENGSHA_2D"
-    FENGSHA_2D_Time = "FENGSHA_2D_Time"
-    NGFS = "NGFS"
-    GOES = "GOES"
+from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset, DatasetName
+from regrid_wrapper.common import RwBaseModel
 
 
 class ChemRegridContext(RwBaseModel):
@@ -52,6 +19,7 @@ class ChemRegridContext(RwBaseModel):
     dst_path: Path | None
     ebb_dcycle: int
     fcst_length: int
+    datasets_yml_path: Path = Path(__file__).parent / "dataset" / "config" / "datasets.yml"
 
     @cached_property
     def rw_scrip_path(self) -> Path:
@@ -68,6 +36,10 @@ class ChemRegridContext(RwBaseModel):
     @cached_property
     def rw_desc_stats_out(self) -> Path:
         return self.workdir / f"desc_stats-{self.cycle}.csv"
+
+    @cached_property
+    def rw_dataset(self) -> ChemRegridDataset:
+        return ChemRegridDataset.from_key(self.datasets_yml_path, self.dataset_name)
 
     def get_weight_path(self, interp_method: str) -> Path:
         weight_path = self.weight_dir / (

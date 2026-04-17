@@ -1,0 +1,25 @@
+RAVE:
+  field_names:
+    - TPM
+    - FRE
+    - FRP_MEAN
+    - PM25
+    - NH3
+    - SO2
+    - CH4
+    - CO
+    - NOx
+  x_center: grid_lont
+  y_center: grid_latt
+  x_dim: grid_xt
+  y_dim: grid_yt
+  x_corner: grid_lon
+  y_corner: grid_lat
+  x_corner_dim: grid_x
+  y_corner_dim: grid_y
+  level_in_name: "None"
+  level_out_name: nkwildfire
+  level_out_size: 1
+  time_name: time
+  time_size: 1
+  InterpMethod: CONSERVE
