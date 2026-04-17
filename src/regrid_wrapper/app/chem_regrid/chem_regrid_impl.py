@@ -690,50 +690,20 @@ class RaveToMpasRegridProcessor:
         return src_fwrap
 
     def _create_raw_src_field_wrapper_(self, field_name: str) -> FieldWrapper:
-        if self.context.dataset_name == "GRA2PES" and field_name in (
-                "h_agl",):  # Special case for staggered grid
-            src_fwrap = NcToField(
-                path=self.context.src_path,
-                name=field_name,
-                gwrap=self.get_src_gwrap(),
-                dim_time=(self.context.time_name,),
-                dim_level=('bottom_top_stag',),
-            ).create_field_wrapper()
-        elif self.context.level_in_name is None:
-            if self.context.time_name is None:
-                src_fwrap = NcToField(
-                    path=self.context.src_path,
-                    name=field_name,
-                    gwrap=self.get_src_gwrap(),
-                    dim_time=None,
-                    dim_level=None,
-                ).create_field_wrapper()
-            else:
-                src_fwrap = NcToField(
-                    path=self.context.src_path,
-                    name=field_name,
-                    gwrap=self.get_src_gwrap(),
-                    dim_time=(self.context.time_name,),
-                    dim_level=None,
-                ).create_field_wrapper()
+        if self.context.dataset_name == "GRA2PES" and field_name == "h_agl":
+            dim_level = ("bottom_top_stag",)
         else:
-            if self.context.time_name is None:
-                src_fwrap = NcToField(
-                    path=self.context.src_path,
-                    name=field_name,
-                    gwrap=self.get_src_gwrap(),
-                    dim_time=None,
-                    dim_level=(self.context.level_in_name,),
-                ).create_field_wrapper()
-            else:
-                src_fwrap = NcToField(
-                    path=self.context.src_path,
-                    name=field_name,
-                    gwrap=self.get_src_gwrap(),
-                    dim_time=(self.context.time_name,),
-                    dim_level=(self.context.level_in_name,),
-                ).create_field_wrapper()
-        return src_fwrap
+            dim_level = (self.context.level_in_name,) if self.context.level_in_name else None
+
+        dim_time = (self.context.time_name,) if self.context.time_name else None
+
+        return NcToField(
+            path=self.context.src_path,
+            name=field_name,
+            gwrap=self.get_src_gwrap(),
+            dim_time=dim_time,
+            dim_level=dim_level,
+        ).create_field_wrapper()
 
     def get_src_gwrap(self) -> GridWrapper:
         if self._src_gwrap is None:
