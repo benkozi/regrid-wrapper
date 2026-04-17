@@ -11,7 +11,6 @@ import esmpy
 import numpy as np
 import xarray as xr
 import pandas as pd
-from esmpy import RegridFromFile, Mesh
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
@@ -368,7 +367,7 @@ class RaveToMpasRegridProcessor:
         self._dst_field = self._create_dst_field_(dst_mesh)
         self._regridder = self._create_regridder_(src_fwrap)
 
-    def _create_dst_field_(self, dst_mesh: Mesh) -> esmpy.Field:
+    def _create_dst_field_(self, dst_mesh: esmpy.Mesh) -> esmpy.Field:
         _LOGGER.info("create destination field")
 
         # Check for extra dims beyond lat/lon
@@ -983,6 +982,34 @@ def main(ctx: ChemRegridContext) -> None:
 
     weight_path = ctx.get_weight_path(InterpMethod)
 
+    regrid_context = RaveToMpasRegridContext(
+        dataset_name=dataset_name,
+        workdir=workdir,
+        src_path=Path("dummy"),
+        dst_path=dst_path,
+        new_dst_path=Path("dummy"),
+        desc_stats_out=desc_stats_out,
+        weight_path=weight_path,
+        InterpMethod=InterpMethod,
+        scrip_path=scrip_path,
+        num_cells=num_cells,
+        mesh_name=mesh_name,
+        field_names=field_names,
+        x_center=x_center,
+        y_center=y_center,
+        x_dim=x_dim,
+        y_dim=y_dim,
+        x_corner=x_corner,
+        y_corner=y_corner,
+        x_corner_dim=x_corner_dim,
+        y_corner_dim=y_corner_dim,
+        level_in_name=level_in_name,
+        level_out_name=level_out_name,
+        level_out_size=level_out_size,
+        time_name=time_name,
+        time_size=time_size
+    )
+
     if dataset_name == "RAVE":
         processor = None
         for date_to_process in dates_needed:
@@ -1002,36 +1029,10 @@ def main(ctx: ChemRegridContext) -> None:
                 _LOGGER.info("FIRST PASS: Full Initialization")
                 # This pays the "expensive" cost of loading weights/grids, but only once.
 
-                context = RaveToMpasRegridContext(
-                    dataset_name=dataset_name,
-                    workdir=workdir,
-                    src_path=rave_path,
-                    dst_path=dst_path,
-                    new_dst_path=new_dst_path,
-                    desc_stats_out=desc_stats_out,
-                    weight_path=weight_path,
-                    InterpMethod=InterpMethod,
-                    scrip_path=scrip_path,
-                    num_cells=num_cells,
-                    mesh_name=mesh_name,
-                    field_names=field_names,
-                    x_center=x_center,
-                    y_center=y_center,
-                    x_dim=x_dim,
-                    y_dim=y_dim,
-                    x_corner=x_corner,
-                    y_corner=y_corner,
-                    x_corner_dim=x_corner_dim,
-                    y_corner_dim=y_corner_dim,
-                    level_in_name=level_in_name,
-                    # level_in_size=level_in_size,
-                    level_out_name=level_out_name,
-                    level_out_size=level_out_size,
-                    time_name=time_name,
-                    time_size=time_size
-    
-                )
-                processor = RaveToMpasRegridProcessor(context=context)
+                regrid_context.src_path = rave_path
+                regrid_context.new_dst_path = new_dst_path
+
+                processor = RaveToMpasRegridProcessor(context=regrid_context)
                 processor.initialize()
             else:
                 _LOGGER.info("SUBSEQUENT PASSES: Hot Swap")
@@ -1049,28 +1050,7 @@ def main(ctx: ChemRegridContext) -> None:
             _LOGGER.info("success")
 
     elif dataset_name == "NGFS":
-        # Initialize context with dummy paths (they get overwritten in the loop)
-        context = RaveToMpasRegridContext(
-            dataset_name=dataset_name,
-            workdir=workdir,
-            src_path=Path("dummy"),
-            dst_path=dst_path,
-            new_dst_path=Path("dummy"),
-            desc_stats_out=desc_stats_out,
-            weight_path=weight_path,
-            InterpMethod=InterpMethod,
-            scrip_path=scrip_path,
-            num_cells=num_cells,
-            mesh_name=mesh_name,
-            field_names=field_names,
-            x_center=x_center, y_center=y_center, x_dim=x_dim, y_dim=y_dim,
-            x_corner=x_corner, y_corner=y_corner,
-            x_corner_dim=x_corner_dim, y_corner_dim=y_corner_dim,
-            level_in_name=level_in_name, level_out_name=level_out_name, level_out_size=level_out_size,
-            time_name=time_name, time_size=time_size
-        )
-
-        processor = RaveToMpasRegridProcessor(context=context)
+        processor = RaveToMpasRegridProcessor(context=regrid_context)
 
         for date_to_process in dates_needed:
             # Construct the filename (Adjust the prefix 'ngfs_' if your files are named differently)
@@ -1130,35 +1110,10 @@ def main(ctx: ChemRegridContext) -> None:
             # FIRST PASS: Full Initialization
             # This pays the "expensive" cost of loading weights/grids, but only once.
 
-            context = RaveToMpasRegridContext(
-                dataset_name=dataset_name,
-                workdir=workdir,
-                src_path=rave_path,
-                dst_path=dst_path,
-                new_dst_path=new_dst_path,
-                desc_stats_out=desc_stats_out,
-                weight_path=weight_path,
-                InterpMethod=InterpMethod,
-                scrip_path=scrip_path,
-                num_cells=num_cells,
-                mesh_name=mesh_name,
-                field_names=field_names,
-                x_center=x_center,
-                y_center=y_center,
-                x_dim=x_dim,
-                y_dim=y_dim,
-                x_corner=x_corner,
-                y_corner=y_corner,
-                x_corner_dim=x_corner_dim,
-                y_corner_dim=y_corner_dim,
-                level_in_name=level_in_name,
-                level_out_name=level_out_name,
-                level_out_size=level_out_size,
-                time_name=time_name,
-                time_size=time_size
+            regrid_context.src_path = rave_path
+            regrid_context.new_dst_path = new_dst_path
 
-            )
-            processor = RaveToMpasRegridProcessor(context=context)
+            processor = RaveToMpasRegridProcessor(context=regrid_context)
             processor.initialize()
         else:
             # SUBSEQUENT PASSES: Hot Swap
@@ -1181,35 +1136,10 @@ def main(ctx: ChemRegridContext) -> None:
             rave_path = Path(rave_paths[0])
             new_dst_path = output_dir / ("fmc_" + date_to_process + "_" + mesh_name + ".nc")
 
-            context = RaveToMpasRegridContext(
-                dataset_name=dataset_name,
-                workdir=workdir,
-                src_path=rave_path,
-                dst_path=dst_path,
-                new_dst_path=new_dst_path,
-                desc_stats_out=desc_stats_out,
-                weight_path=weight_path,
-                InterpMethod=InterpMethod,
-                scrip_path=scrip_path,
-                num_cells=num_cells,
-                mesh_name=mesh_name,
-                field_names=field_names,
-                x_center=x_center,
-                y_center=y_center,
-                x_dim=x_dim,
-                y_dim=y_dim,
-                x_corner=x_corner,
-                y_corner=y_corner,
-                x_corner_dim=x_corner_dim,
-                y_corner_dim=y_corner_dim,
-                level_in_name=level_in_name,
-                level_out_name=level_out_name,
-                level_out_size=level_out_size,
-                time_name=time_name,
-                time_size=time_size
+            regrid_context.src_path = rave_path
+            regrid_context.new_dst_path = new_dst_path
 
-            )
-            processor = RaveToMpasRegridProcessor(context=context)
+            processor = RaveToMpasRegridProcessor(context=regrid_context)
             processor.initialize()
             processor.run()
             processor.finalize()
@@ -1219,35 +1149,11 @@ def main(ctx: ChemRegridContext) -> None:
     elif dataset_name == "GRA2PES":
         rave_path = input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_00to11Z.nc")
         new_dst_path = output_dir / (dataset_name + "v1.0_total_" + mesh_name + "_00to11Z.nc")
-        context = RaveToMpasRegridContext(
-            dataset_name=dataset_name,
-            workdir=workdir,
-            src_path=rave_path,
-            dst_path=dst_path,
-            new_dst_path=new_dst_path,
-            desc_stats_out=desc_stats_out,
-            weight_path=weight_path,
-            InterpMethod=InterpMethod,
-            scrip_path=scrip_path,
-            num_cells=num_cells,
-            mesh_name=mesh_name,
-            field_names=field_names,
-            x_center=x_center,
-            y_center=y_center,
-            x_dim=x_dim,
-            y_dim=y_dim,
-            x_corner=x_corner,
-            y_corner=y_corner,
-            x_corner_dim=x_corner_dim,
-            y_corner_dim=y_corner_dim,
-            level_in_name=level_in_name,
-            level_out_name=level_out_name,
-            level_out_size=level_out_size,
-            time_name=time_name,
-            time_size=time_size
 
-        )
-        processor = RaveToMpasRegridProcessor(context=context)
+        regrid_context.src_path = rave_path
+        regrid_context.new_dst_path = new_dst_path
+
+        processor = RaveToMpasRegridProcessor(context=regrid_context)
         processor.initialize()
         processor.run()
         processor.finalize()
@@ -1256,35 +1162,11 @@ def main(ctx: ChemRegridContext) -> None:
 
         rave_path = input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_12to23Z.nc")
         new_dst_path = output_dir / (dataset_name + "v1.0_total_" + mesh_name + "_12to23Z.nc")
-        context = RaveToMpasRegridContext(
-            dataset_name=dataset_name,
-            workdir=workdir,
-            src_path=rave_path,
-            dst_path=dst_path,
-            new_dst_path=new_dst_path,
-            desc_stats_out=desc_stats_out,
-            weight_path=weight_path,
-            InterpMethod=InterpMethod,
-            scrip_path=scrip_path,
-            num_cells=num_cells,
-            mesh_name=mesh_name,
-            field_names=field_names,
-            x_center=x_center,
-            y_center=y_center,
-            x_dim=x_dim,
-            y_dim=y_dim,
-            x_corner=x_corner,
-            y_corner=y_corner,
-            x_corner_dim=x_corner_dim,
-            y_corner_dim=y_corner_dim,
-            level_in_name=level_in_name,
-            level_out_name=level_out_name,
-            level_out_size=level_out_size,
-            time_name=time_name,
-            time_size=time_size
 
-        )
-        processor = RaveToMpasRegridProcessor(context=context)
+        regrid_context.src_path = rave_path
+        regrid_context.new_dst_path = new_dst_path
+
+        processor = RaveToMpasRegridProcessor(context=regrid_context)
         processor.initialize()
         processor.run()
         processor.finalize()
@@ -1314,36 +1196,10 @@ def main(ctx: ChemRegridContext) -> None:
             rave_path = input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
             new_dst_path = output_dir / ("fengsha_dust_inputs.2D_Time."+ mesh_name + ".nc")
 
-        context = RaveToMpasRegridContext(
-            dataset_name=dataset_name,
-            workdir=workdir,
-            src_path=rave_path,
-            dst_path=dst_path,
-            new_dst_path=new_dst_path,
-            desc_stats_out=desc_stats_out,
-            weight_path=weight_path,
-            InterpMethod=InterpMethod,
-            scrip_path=scrip_path,
-            num_cells=num_cells,
-            mesh_name=mesh_name,
-            field_names=field_names,
-            x_center=x_center,
-            y_center=y_center,
-            x_dim=x_dim,
-            y_dim=y_dim,
-            x_corner=x_corner,
-            y_corner=y_corner,
-            x_corner_dim=x_corner_dim,
-            y_corner_dim=y_corner_dim,
-            level_in_name=level_in_name,
-            # level_in_size=level_in_size,
-            level_out_name=level_out_name,
-            level_out_size=level_out_size,
-            time_name=time_name,
-            time_size=time_size
+        regrid_context.src_path = rave_path
+        regrid_context.new_dst_path = new_dst_path
 
-        )
-        processor = RaveToMpasRegridProcessor(context=context)
+        processor = RaveToMpasRegridProcessor(context=regrid_context)
         processor.initialize()
         processor.run()
         processor.finalize()
