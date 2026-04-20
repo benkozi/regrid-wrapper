@@ -665,13 +665,6 @@ def run_regridding(ctx: AbstractDatasetRegridContext) -> None:
 
 def main(ctx: ChemRegridContext) -> None:
 
-    # Calculate the number of cells in the
-    with open_nc(ctx.dst_path, mode="r", parallel=False) as src_nc:
-        foo = src_nc.variables["latCell"]
-        num_cells = len(foo)
-        # xland = src_nc.variables['xland']
-        # lmask[:] = np.where(xland > 0,1,0)
-
     klass = get_regrid_context_class(ctx.dataset_name)
     regrid_context = klass(
         dataset_name=ctx.dataset_name,
@@ -683,7 +676,6 @@ def main(ctx: ChemRegridContext) -> None:
         weight_path=ctx.rw_weight_path,
         InterpMethod=ctx.rw_dataset.InterpMethod,
         scrip_path=ctx.scrip_path,
-        num_cells=num_cells,
         mesh_name=ctx.mesh_name,
         field_names=ctx.rw_dataset.field_names,
         x_center=ctx.rw_dataset.x_center,

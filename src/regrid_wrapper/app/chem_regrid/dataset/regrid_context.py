@@ -47,7 +47,6 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     weight_path: Path
     InterpMethod: InterpMethod
     scrip_path: Path
-    num_cells: int
     mesh_name: str
     field_names: tuple
     x_center: str
@@ -79,6 +78,11 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     @cached_property
     def dates_needed(self) -> list[str]:
         raise NotImplementedError(self.__class__.__name__ + " does not support dates_needed")
+
+    @cached_property
+    def num_cells(self) -> int:
+        with open_nc(self.dst_path, mode="r", parallel=False) as ds:
+            return len(ds.variables["latCell"])
 
     @cached_property
     def dt_spec(self) -> DateTimeSpec:
