@@ -263,10 +263,41 @@ class DatasetRegridContext(BaseModel):
                     elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
                         x = self.dt_spec.datetime - timedelta(hours=i)
                     else:
-                        _LOGGER.info(
-                            "EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
+                        _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
                         x = self.dt_spec.datetime + timedelta(hours=i)
 
+                    y = x.strftime("%Y%m%d%H")
+                    dates_needed.append(y)
+            case DatasetName.NGFS:
+                # Determine the cycle dates to process +%Y%m%d%H
+                # This is for RETROS (using current datetime, not day before)
+                dates_needed = []
+                for i in range(25):  # GAF retro current day emissions
+                    if self.ebb_dcycle == 1:  # Same-day emissions
+                        x = self.dt_spec.datetime + timedelta(hours=i)
+                    elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
+                        x = self.dt_spec.datetime - timedelta(hours=i)
+                    else:
+                        _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
+                        x = self.dt_spec.datetime + timedelta(hours=i)
+                    y = x.strftime("%Y%m%d%H")
+                    dates_needed.append(y)
+            case DatasetName.FMC:  # fuel moisture content
+                dates_needed = []
+                for i in range(25):
+                    x = self.dt_spec.datetime - timedelta(hours=i)
+                    y = x.strftime("%Y%m%d%H")
+                    dates_needed.append(y)
+            case DatasetName.GOES:
+                dates_needed = []
+                for i in range(25):
+                    if self.ebb_dcycle == 1:  # Same-day emissions
+                        x = self.dt_spec.datetime + timedelta(hours=i)
+                    elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
+                        x = self.dt_spec.datetime - timedelta(hours=i)
+                    else:
+                        _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
+                        x = self.dt_spec.datetime - timedelta(hours=i)
                     y = x.strftime("%Y%m%d%H")
                     dates_needed.append(y)
             case _:
@@ -933,43 +964,10 @@ def main(ctx: ChemRegridContext) -> None:
         time_name=ctx.rw_dataset.time_name,
         time_size=ctx.rw_dataset.time_size,
         cycle=ctx.cycle,
-        ebb_dcycle=ctx.ebb_dcycle
+        ebb_dcycle=ctx.ebb_dcycle,
     )
 
     dt_spec = regrid_context.dt_spec
-
-    if ctx.dataset_name == "NGFS":
-        # Determine the cycle dates to process +%Y%m%d%H
-        # This is for RETROS (using current datetime, not day before)
-        dates_needed = []
-        for i in range(25):  # GAF retro current day emissions
-            if ctx.ebb_dcycle == 1:  # Same-day emissions
-                x = dt_spec.datetime + timedelta(hours=i)
-            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                x = dt_spec.datetime - timedelta(hours=i)
-            else:
-                _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                x = dt_spec.datetime + timedelta(hours=i)
-            y = x.strftime("%Y%m%d%H")
-            dates_needed.append(y)
-    elif ctx.dataset_name == "FMC":  # fuel moisture content
-        dates_needed = []
-        for i in range(25):
-            x = dt_spec.datetime - timedelta(hours=i)
-            y = x.strftime("%Y%m%d%H")
-            dates_needed.append(y)
-    elif ctx.dataset_name == "GOES":
-        dates_needed = []
-        for i in range(25):
-            if ctx.ebb_dcycle == 1:  # Same-day emissions
-                x = dt_spec.datetime + timedelta(hours=i)
-            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                x = dt_spec.datetime - timedelta(hours=i)
-            else:
-                _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                x = dt_spec.datetime - timedelta(hours=i)
-            y = x.strftime("%Y%m%d%H")
-            dates_needed.append(y)
 
     if ctx.dataset_name == "RAVE":
         processor = None
@@ -1013,7 +1011,7 @@ def main(ctx: ChemRegridContext) -> None:
     elif ctx.dataset_name == "NGFS":
         processor = ChemRegridProcessor(context=regrid_context)
 
-        for date_to_process in dates_needed:
+        for date_to_process in regrid_context.dates_needed:
             # Construct the filename (Adjust the prefix 'ngfs_' if your files are named differently)
             # print("GAF debug: attempting to read: " + input_dir + "/NGFS_v0.31_" + date_to_process + "_0p01.nc")
             ngfs_paths = glob.glob(str(ctx.input_dir) + "/NGFS_v0.31_0p01_" + date_to_process + "0000.nc")
@@ -1041,7 +1039,7 @@ def main(ctx: ChemRegridContext) -> None:
 
     elif ctx.dataset_name == "GOES":
         processor = None
-        date_to_process = dates_needed[0]
+        date_to_process = regrid_context.dates_needed[0]
         src_paths = find_latest_src_file(ctx.input_dir, date_to_process, -1, ctx.dataset_name, max_lookback_hours=2)
         files_to_cat = src_paths
         _LOGGER.info(f"will cat files: {files_to_cat=}")
@@ -1089,7 +1087,7 @@ def main(ctx: ChemRegridContext) -> None:
         _LOGGER.info("success")
 
     elif ctx.dataset_name == "FMC":
-        for date_to_process in dates_needed:
+        for date_to_process in regrid_context.dates_needed:
             src_paths = glob.glob(str(ctx.input_dir / ("fmc_" + date_to_process + ".nc")))
             src_path = Path(src_paths[0])
             new_dst_path = ctx.output_dir / ("fmc_" + date_to_process + "_" + ctx.mesh_name + ".nc")
