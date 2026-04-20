@@ -7,7 +7,7 @@ from typing import Any, Iterator, Union
 
 import numpy as np
 from dask.array.tests.test_xarray import xr
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 from regrid_wrapper.app.chem_regrid.context import CR_LOGGER
 from regrid_wrapper.app.chem_regrid.dataset.model import DatasetName, InterpMethod
@@ -185,7 +185,7 @@ def find_latest_src_file(
 
 
 class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
-    _area_data: np.ndarray | None = None
+    _area_data: np.ndarray | None = PrivateAttr(default=None)
 
     def get_area_data(self, raw_src_fwrap: FieldWrapper) -> np.ndarray:
         # Get the area from the RAVE file, need to convert from /grid to /m2
