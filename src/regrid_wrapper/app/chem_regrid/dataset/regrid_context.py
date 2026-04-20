@@ -1,4 +1,5 @@
 import glob
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from functools import cached_property
 from pathlib import Path
@@ -36,7 +37,7 @@ class RegridFilePair(BaseModel):
     dst_path: Path
 
 
-class DatasetRegridContext(BaseModel):
+class AbstractDatasetRegridContext(ABC, BaseModel):
     dataset_name: DatasetName
     workdir: Path
     src_path: Path
@@ -72,45 +73,12 @@ class DatasetRegridContext(BaseModel):
 
     rank: int = COMM.rank
 
-    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
-        raise NotImplementedError
+    @abstractmethod
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]: ...
 
     @cached_property
     def dates_needed(self) -> list[str]:
-        dates_needed = []
-        match self.dataset_name:
-            case DatasetName.NGFS:
-                # Determine the cycle dates to process +%Y%m%d%H
-                # This is for RETROS (using current datetime, not day before)
-                for i in range(25):  # GAF retro current day emissions
-                    if self.ebb_dcycle == 1:  # Same-day emissions
-                        x = self.dt_spec.datetime + timedelta(hours=i)
-                    elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                        x = self.dt_spec.datetime - timedelta(hours=i)
-                    else:
-                        CR_LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                        x = self.dt_spec.datetime + timedelta(hours=i)
-                    y = x.strftime("%Y%m%d%H")
-                    dates_needed.append(y)
-            case DatasetName.FMC:  # fuel moisture content
-                for i in range(25):
-                    x = self.dt_spec.datetime - timedelta(hours=i)
-                    y = x.strftime("%Y%m%d%H")
-                    dates_needed.append(y)
-            case DatasetName.GOES:
-                for i in range(25):
-                    if self.ebb_dcycle == 1:  # Same-day emissions
-                        x = self.dt_spec.datetime + timedelta(hours=i)
-                    elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                        x = self.dt_spec.datetime - timedelta(hours=i)
-                    else:
-                        CR_LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                        x = self.dt_spec.datetime - timedelta(hours=i)
-                    y = x.strftime("%Y%m%d%H")
-                    dates_needed.append(y)
-            case _:
-                raise NotImplementedError(f"Dataset {self.dataset_name} not supported")
-        return dates_needed
+        raise NotImplementedError(self.__class__.__name__ + " does not support dates_needed")
 
     @cached_property
     def dt_spec(self) -> DateTimeSpec:
@@ -206,7 +174,7 @@ def find_latest_src_file(
     return []
 
 
-class RAVE_DatasetRegridContext(DatasetRegridContext):
+class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for date_to_process in self.dates_needed:
             CR_LOGGER.info(f"RAVE processing {date_to_process=}")
@@ -245,7 +213,7 @@ class RAVE_DatasetRegridContext(DatasetRegridContext):
         return dates_needed
 
 
-class GRA2PES_DatasetRegridContext(DatasetRegridContext):
+class GRA2PES_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         # Define the parts that change
         suffixes = ["00to11Z", "12to23Z"]
@@ -260,7 +228,7 @@ class GRA2PES_DatasetRegridContext(DatasetRegridContext):
             )
 
 
-class FMC_DatasetRegridContext(DatasetRegridContext):
+class FMC_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for date_to_process in self.dates_needed:
             src_paths = glob.glob(str(self.input_dir / ("fmc_" + date_to_process + ".nc")))
@@ -268,8 +236,17 @@ class FMC_DatasetRegridContext(DatasetRegridContext):
             new_dst_path = self.output_dir / ("fmc_" + date_to_process + "_" + self.mesh_name + ".nc")
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
+    @cached_property
+    def dates_needed(self) -> list[str]:
+        dates_needed = []
+        for i in range(25):
+            x = self.dt_spec.datetime - timedelta(hours=i)
+            y = x.strftime("%Y%m%d%H")
+            dates_needed.append(y)
+        return dates_needed
 
-class NEMO_RWC_DatasetRegridContext(DatasetRegridContext):
+
+class NEMO_RWC_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
@@ -277,7 +254,7 @@ class NEMO_RWC_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
-class NEMO_ANTHRO_DatasetRegridContext(DatasetRegridContext):
+class NEMO_ANTHRO_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / (
@@ -294,7 +271,7 @@ class NEMO_ANTHRO_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
-class PECM_DatasetRegridContext(DatasetRegridContext):
+class PECM_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / ("pollen_obs_" + self.dt_spec.yyyy + "_BELD6_ef_T_" + self.dt_spec.jjj + ".nc")
@@ -304,7 +281,7 @@ class PECM_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
-class NARR_DatasetRegridContext(DatasetRegridContext):
+class NARR_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "rwc_emission_denominator.2017.nc"
@@ -312,7 +289,7 @@ class NARR_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
-class ECOREGION_DatasetRegridContext(DatasetRegridContext):
+class ECOREGION_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "veg_map.nc"
@@ -320,7 +297,7 @@ class ECOREGION_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
-class FENGSHA_2D_DatasetRegridContext(DatasetRegridContext):
+class FENGSHA_2D_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"
@@ -328,7 +305,7 @@ class FENGSHA_2D_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
-class FENGSHA_2D_Time_DatasetRegridContext(DatasetRegridContext):
+class FENGSHA_2D_Time_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
@@ -336,7 +313,7 @@ class FENGSHA_2D_Time_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
-class GOES_DatasetRegridContext(DatasetRegridContext):
+class GOES_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         date_to_process = self.dates_needed[0]
         src_paths = find_latest_src_file(self.input_dir, date_to_process, -1, self.dataset_name, max_lookback_hours=2)
@@ -364,8 +341,45 @@ class GOES_DatasetRegridContext(DatasetRegridContext):
         for _ in range(1):
             yield fp
 
+    @cached_property
+    def dates_needed(self) -> list[str]:
+        dates_needed = []
+        for i in range(25):
+            if self.ebb_dcycle == 1:  # Same-day emissions
+                x = self.dt_spec.datetime + timedelta(hours=i)
+            elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
+                x = self.dt_spec.datetime - timedelta(hours=i)
+            else:
+                CR_LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
+                x = self.dt_spec.datetime - timedelta(hours=i)
+            y = x.strftime("%Y%m%d%H")
+            dates_needed.append(y)
+        return dates_needed
 
-def get_regrid_context_class(name: DatasetName) -> type[DatasetRegridContext]:
+
+class NGFS_DatasetRegridContext(AbstractDatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        raise NotImplementedError("NGFS not yet supported")
+
+    @cached_property
+    def dates_needed(self) -> list[str]:
+        dates_needed = []
+        # Determine the cycle dates to process +%Y%m%d%H
+        # This is for RETROS (using current datetime, not day before)
+        for i in range(25):  # GAF retro current day emissions
+            if self.ebb_dcycle == 1:  # Same-day emissions
+                x = self.dt_spec.datetime + timedelta(hours=i)
+            elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
+                x = self.dt_spec.datetime - timedelta(hours=i)
+            else:
+                CR_LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
+                x = self.dt_spec.datetime + timedelta(hours=i)
+            y = x.strftime("%Y%m%d%H")
+            dates_needed.append(y)
+        return dates_needed
+
+
+def get_regrid_context_class(name: DatasetName) -> type[AbstractDatasetRegridContext]:
     klasses = {
         DatasetName.RAVE: RAVE_DatasetRegridContext,
         DatasetName.GRA2PES: GRA2PES_DatasetRegridContext,
@@ -378,5 +392,6 @@ def get_regrid_context_class(name: DatasetName) -> type[DatasetRegridContext]:
         DatasetName.FENGSHA_2D: FENGSHA_2D_DatasetRegridContext,
         DatasetName.FENGSHA_2D_Time: FENGSHA_2D_Time_DatasetRegridContext,
         DatasetName.GOES: GOES_DatasetRegridContext,
+        DatasetName.NGFS: NGFS_DatasetRegridContext,
     }
     return klasses[name]

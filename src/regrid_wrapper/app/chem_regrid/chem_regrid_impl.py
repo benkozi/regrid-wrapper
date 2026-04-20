@@ -12,10 +12,7 @@ from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import CR_LOGGER, ChemRegridContext
 from regrid_wrapper.app.chem_regrid.dataset.model import InterpMethod
-from regrid_wrapper.app.chem_regrid.dataset.regrid_context import (
-    DatasetRegridContext,
-    get_regrid_context_class,
-)
+from regrid_wrapper.app.chem_regrid.dataset.regrid_context import AbstractDatasetRegridContext, get_regrid_context_class
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.esmpy.field_wrapper import (
     FieldWrapper,
@@ -83,7 +80,7 @@ class FileDesc(BaseModel):
 class ChemRegridProcessor:
     _dst_mesh: esmpy.Mesh | None = None
 
-    def __init__(self, context: DatasetRegridContext) -> None:
+    def __init__(self, context: AbstractDatasetRegridContext) -> None:
         self.context = context
 
         self._regridder: esmpy.Regrid | None = None
@@ -639,7 +636,7 @@ class ChemRegridProcessor:
         src_mesh.destroy()
 
 
-def run_regridding(ctx: DatasetRegridContext) -> None:
+def run_regridding(ctx: AbstractDatasetRegridContext) -> None:
     processor = None
     for file_pair in ctx.iter_file_pairs():
         # --- OPTIMIZATION START ---
@@ -676,7 +673,6 @@ def main(ctx: ChemRegridContext) -> None:
         # lmask[:] = np.where(xland > 0,1,0)
 
     klass = get_regrid_context_class(ctx.dataset_name)
-
     regrid_context = klass(
         dataset_name=ctx.dataset_name,
         workdir=ctx.workdir,
