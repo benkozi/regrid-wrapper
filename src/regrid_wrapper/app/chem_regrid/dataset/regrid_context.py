@@ -73,13 +73,13 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
 
     rank: int = COMM.rank
 
+    @abstractmethod
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]: ...
+
     def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
         src_data = raw_src_fwrap.data
         src_data[:] = np.where(src_data < 0.0, 0.0, src_data)
         src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
-
-    @abstractmethod
-    def iter_file_pairs(self) -> Iterator[RegridFilePair]: ...
 
     @cached_property
     def dates_needed(self) -> list[str]:
