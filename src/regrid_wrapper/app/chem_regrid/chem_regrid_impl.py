@@ -431,18 +431,15 @@ class ChemRegridProcessor:
         dst_mesh = esmpy.Mesh(filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology")
 
         # Create destination field (using logic from your original initialize method)
+        ndbounds = None
         if self.context.level_out_size > 1 and self.context.time_size > 1:
-            self._dst_field = esmpy.Field(
-                dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size, self.context.time_size)
-            )
+            ndbounds = (self.context.level_out_size, self.context.time_size)
         elif self.context.level_out_size > 1 and self.context.time_size == 1:
-            self._dst_field = esmpy.Field(
-                dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size,)
-            )
+            ndbounds = (self.context.level_out_size,)
         elif self.context.level_out_size == 1 and self.context.time_size > 1:
-            self._dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.time_size,))
-        else:
-            self._dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT)
+            ndbounds = (self.context.time_size,)
+
+        self._dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=ndbounds)
 
     def process_ngfs_file(self, file_path: Path, resolution: float = 0.01) -> None:
         """Dynamically builds a mesh for NGFS points, regrids, and writes the output."""
