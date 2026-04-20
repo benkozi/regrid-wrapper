@@ -660,7 +660,7 @@ def run_regridding(ctx: AbstractDatasetRegridContext) -> None:
         # Only finalize after ALL files are done
     if processor:
         processor.finalize()
-        CR_LOGGER.info("success")
+    CR_LOGGER.info("success")
 
 
 def main(ctx: ChemRegridContext) -> None:
