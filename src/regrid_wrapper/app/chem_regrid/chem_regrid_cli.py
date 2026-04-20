@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -23,17 +22,3 @@ def chem_regrid_cli(args: argparse.Namespace) -> None:
 
     ctx = ChemRegridContext.from_yaml(config)
     main(ctx)
-
-
-def add_chem_regrid_parser(subparsers: Any) -> None:
-    # chem_regrid sub-command
-    parser_chem_regrid = subparsers.add_parser("chem-regrid", help="Run chem-regrid")
-    parser_chem_regrid.add_argument(
-        "--yaml-path", type=str, required=False, help="If provided, path to YAML file containing the configuration's root key"
-    )
-    parser_chem_regrid.add_argument(
-        "--root-key", type=str, default="rw-chem-regrid", help="If provided, use this key when extracting the root configuration"
-    )
-    parser_chem_regrid.add_argument(
-        "--overrides", nargs="+", help="If provided, override arbitrary key+values (e.g. --override key1:nest=val1 key2=val2)"
-    )
