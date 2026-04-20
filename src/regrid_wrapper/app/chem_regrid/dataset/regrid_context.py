@@ -185,32 +185,26 @@ def find_latest_src_file(
 
 
 class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
-    def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
-        field_name = raw_src_fwrap.value.name
-        src_data = raw_src_fwrap.data
+    _area_data: np.ndarray | None = None
 
+    def get_area_data(self, raw_src_fwrap: FieldWrapper) -> np.ndarray:
         # Get the area from the RAVE file, need to convert from /grid to /m2
-        area_data = None
-        if field_name in (
-            "PM25",
-            "NH3",
-            "SO2",
-            "FRE",
-            "FRP_MEAN",
-            "TPM",
-            "CH4",
-            "CO",
-            "NOx",
-        ):
-            # To get the right gwrap we need to know what kind of field it is.
-            # But FieldWrapper already has the gwrap it was created with.
+
+        # To get the right gwrap we need to know what kind of field it is.
+        # But FieldWrapper already has the gwrap it was created with.
+        if self._area_data is None:
             area_fwrap = NcToField(
                 path=self.src_path,
                 name="area",
                 gwrap=raw_src_fwrap.gwrap,
                 dim_time=None,
             ).create_field_wrapper()
-            area_data = area_fwrap.value.data
+            self._area_data = area_fwrap.data
+        return self._area_data
+
+    def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        field_name = raw_src_fwrap.value.name
+        src_data = raw_src_fwrap.data
 
         # RAVE methane, convert from kg/hr to mol/m2/s
         if field_name == "CH4":
@@ -226,13 +220,17 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
 
         if field_name in ("PM25", "TPM"):
             # If RAVE aerosol emissions, convert from kg/hr to ug/m2/s
-            src_data[:] = np.where(src_data < 0.0, 0.0, src_data * 1.0e3 / area_data[:, :, np.newaxis] / 3600.0)
+            src_data[:] = np.where(
+                src_data < 0.0, 0.0, src_data * 1.0e3 / self.get_area_data(raw_src_fwrap)[:, :, np.newaxis] / 3600.0
+            )
         elif field_name in ("CH4", "NH3", "SO2", "CO", "NOx"):
             # If RAVE gas emissions, convert from kg/hr to mol/m2/s
-            src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data / area_data[:, :, np.newaxis] / 3600.0)
+            src_data[:] = np.where(
+                src_data < 0.0, 0.0, conv_aer * src_data / self.get_area_data(raw_src_fwrap)[:, :, np.newaxis] / 3600.0
+            )
         elif field_name in ("FRE", "FRP_MEAN"):
             # For FRE, FRP, don't multiply area by 1.e6, cancelled out by MW to W conversion
-            src_data[:] = np.where(src_data < 0.0, 0.0, src_data / (area_data[:, :, np.newaxis]))
+            src_data[:] = np.where(src_data < 0.0, 0.0, src_data / (self.get_area_data(raw_src_fwrap)[:, :, np.newaxis]))
         else:
             src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data)
 
