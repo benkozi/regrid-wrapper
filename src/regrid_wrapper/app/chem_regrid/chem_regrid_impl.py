@@ -171,33 +171,7 @@ class ChemRegridProcessor:
         CR_LOGGER.info("apply regridding")
 
         CR_LOGGER.info("create output file")
-        if self.context.rank == 0:
-            with open_nc(self.context.new_dst_path, mode="w", clobber=True, parallel=False) as dst_nc:
-                dst_nc.createDimension("nCells", self.context.num_cells)
-                if self.context.level_out_name is not None:
-                    dst_nc.createDimension(self.context.level_out_name, self.context.level_out_size)
-                dst_nc.createDimension("StrLen", 64)
-                if self.context.time_size > 1:
-                    dst_nc.createDimension("Time", self.context.time_size)
-                elif self.context.time_size == 1:
-                    if "Time" not in dst_nc.dimensions:
-                        dst_nc.createDimension("Time")
-                    else:
-                        CR_LOGGER.info("Not creating a time dimension")
-                dst_nc.setncattr("created_at", str(datetime.now(timezone.utc)))
-                dst_nc.setncattr("src_path", str(self.context.src_path))
-                dst_nc.setncattr("dst_path", str(self.context.dst_path))
-
-                with open_nc(self.context.dst_path, mode="r", parallel=False) as src_nc:
-                    if self.context.dataset_name in ("RAVE"):
-                        for varname in ("latCell", "lonCell", "areaCell", "xtime"):
-                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
-                    elif self.context.dataset_name in ("FENGSHA_2D"):
-                        for varname in ("latCell", "lonCell"):
-                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
-                    else:
-                        for varname in ("latCell", "lonCell", "xtime"):
-                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
+        self.create_output_file()
 
         regridder = self.get_regridder()
         for src_field in self.context.src_fields:
@@ -337,6 +311,35 @@ class ChemRegridProcessor:
             ]
             data_frame = self.create_desc_stuff(targets)
             data_frame.to_csv(self.context.desc_stats_out, index=False)
+
+    def create_output_file(self):
+        if self.context.rank == 0:
+            with open_nc(self.context.new_dst_path, mode="w", clobber=True, parallel=False) as dst_nc:
+                dst_nc.createDimension("nCells", self.context.num_cells)
+                if self.context.level_out_name is not None:
+                    dst_nc.createDimension(self.context.level_out_name, self.context.level_out_size)
+                dst_nc.createDimension("StrLen", 64)
+                if self.context.time_size > 1:
+                    dst_nc.createDimension("Time", self.context.time_size)
+                elif self.context.time_size == 1:
+                    if "Time" not in dst_nc.dimensions:
+                        dst_nc.createDimension("Time")
+                    else:
+                        CR_LOGGER.debug("Not creating a time dimension")
+                dst_nc.setncattr("created_at", str(datetime.now(timezone.utc)))
+                dst_nc.setncattr("src_path", str(self.context.src_path))
+                dst_nc.setncattr("dst_path", str(self.context.dst_path))
+
+                with open_nc(self.context.dst_path, mode="r", parallel=False) as src_nc:
+                    if self.context.dataset_name in ("RAVE"):
+                        for varname in ("latCell", "lonCell", "areaCell", "xtime"):
+                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
+                    elif self.context.dataset_name in ("FENGSHA_2D"):
+                        for varname in ("latCell", "lonCell"):
+                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
+                    else:
+                        for varname in ("latCell", "lonCell", "xtime"):
+                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
 
     def finalize(self) -> None:
         CR_LOGGER.info("finalizing")
