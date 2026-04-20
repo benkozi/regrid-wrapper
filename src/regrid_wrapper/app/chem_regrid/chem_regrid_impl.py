@@ -206,7 +206,24 @@ class SrcField3d_plusTime(AbstractSrcField):
 
 
 class DateTimeSpec(BaseModel):
-    ...
+
+    @classmethod
+    def from_cycle_str(cls, cycle: str) -> "DateTimeSpec":
+        YYYY = cycle[0:4]
+        MM = cycle[4:6]
+        DD = cycle[6:8]
+        HH = cycle[8:10]
+        x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0)
+        JJJ = x.strftime("%j")
+        DOWh = int(x.strftime("%u"))
+        if DOWh <= 5:
+            DOWs = "weekdy"
+        elif DOWh == 6:
+            DOWs = "satdy"
+        else:
+            DOWs = "sundy"
+        return cls()
+
 
 
 class DatasetRegridContext(BaseModel):
@@ -236,6 +253,7 @@ class DatasetRegridContext(BaseModel):
     level_out_size: int
     time_name: str | None
     time_size: int
+    dt_spec: DateTimeSpec
     # InterpMask: float
     write_desc_stats: bool = False
 
@@ -849,19 +867,6 @@ class ChemRegridProcessor:
 
 
 def main(ctx: ChemRegridContext) -> None:
-    YYYY = ctx.cycle[0:4]
-    MM = ctx.cycle[4:6]
-    DD = ctx.cycle[6:8]
-    HH = ctx.cycle[8:10]
-    x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0)
-    JJJ = x.strftime("%j")
-    DOWh = int(x.strftime("%u"))
-    if DOWh <= 5:
-        DOWs = "weekdy"
-    elif DOWh == 6:
-        DOWs = "satdy"
-    else:
-        DOWs = "sundy"
 
     # Calculate the number of cells in the
     with open_nc(ctx.dst_path, mode="r", parallel=False) as src_nc:
@@ -869,6 +874,37 @@ def main(ctx: ChemRegridContext) -> None:
         num_cells = len(foo)
         # xland = src_nc.variables['xland']
         # lmask[:] = np.where(xland > 0,1,0)
+
+    regrid_context = DatasetRegridContext(
+        dataset_name=ctx.dataset_name,
+        workdir=ctx.workdir,
+        src_path=Path("dummy"),
+        dst_path=ctx.dst_path,
+        new_dst_path=Path("dummy"),
+        desc_stats_out=ctx.rw_desc_stats_out,
+        weight_path=ctx.rw_weight_path,
+        InterpMethod=ctx.rw_dataset.InterpMethod,
+        scrip_path=ctx.scrip_path,
+        num_cells=num_cells,
+        mesh_name=ctx.mesh_name,
+        field_names=ctx.rw_dataset.field_names,
+        x_center=ctx.rw_dataset.x_center,
+        y_center=ctx.rw_dataset.y_center,
+        x_dim=ctx.rw_dataset.x_dim,
+        y_dim=ctx.rw_dataset.y_dim,
+        x_corner=ctx.rw_dataset.x_corner,
+        y_corner=ctx.rw_dataset.y_corner,
+        x_corner_dim=ctx.rw_dataset.x_corner_dim,
+        y_corner_dim=ctx.rw_dataset.y_corner_dim,
+        level_in_name=ctx.rw_dataset.level_in_name,
+        level_out_name=ctx.rw_dataset.level_out_name,
+        level_out_size=ctx.rw_dataset.level_out_size,
+        time_name=ctx.rw_dataset.time_name,
+        time_size=ctx.rw_dataset.time_size,
+        dt_spec=DateTimeSpec.from_cycle_str(ctx.cycle),
+    )
+
+
 
     if ctx.dataset_name == "RAVE":
         # JLS, TODO - NEED TO ACCOUNT FOR EBB1, MORE THAN 24, ETC.
@@ -918,34 +954,6 @@ def main(ctx: ChemRegridContext) -> None:
                 x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
-
-    regrid_context = DatasetRegridContext(
-        dataset_name=ctx.dataset_name,
-        workdir=ctx.workdir,
-        src_path=Path("dummy"),
-        dst_path=ctx.dst_path,
-        new_dst_path=Path("dummy"),
-        desc_stats_out=ctx.rw_desc_stats_out,
-        weight_path=ctx.rw_weight_path,
-        InterpMethod=ctx.rw_dataset.InterpMethod,
-        scrip_path=ctx.scrip_path,
-        num_cells=num_cells,
-        mesh_name=ctx.mesh_name,
-        field_names=ctx.rw_dataset.field_names,
-        x_center=ctx.rw_dataset.x_center,
-        y_center=ctx.rw_dataset.y_center,
-        x_dim=ctx.rw_dataset.x_dim,
-        y_dim=ctx.rw_dataset.y_dim,
-        x_corner=ctx.rw_dataset.x_corner,
-        y_corner=ctx.rw_dataset.y_corner,
-        x_corner_dim=ctx.rw_dataset.x_corner_dim,
-        y_corner_dim=ctx.rw_dataset.y_corner_dim,
-        level_in_name=ctx.rw_dataset.level_in_name,
-        level_out_name=ctx.rw_dataset.level_out_name,
-        level_out_size=ctx.rw_dataset.level_out_size,
-        time_name=ctx.rw_dataset.time_name,
-        time_size=ctx.rw_dataset.time_size,
-    )
 
     if ctx.dataset_name == "RAVE":
         processor = None
