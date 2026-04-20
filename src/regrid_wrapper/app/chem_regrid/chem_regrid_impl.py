@@ -206,23 +206,13 @@ class SrcField3d_plusTime(AbstractSrcField):
 
 
 class DateTimeSpec(BaseModel):
-
-    @classmethod
-    def from_cycle_str(cls, cycle: str) -> "DateTimeSpec":
-        YYYY = cycle[0:4]
-        MM = cycle[4:6]
-        DD = cycle[6:8]
-        HH = cycle[8:10]
-        x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0)
-        JJJ = x.strftime("%j")
-        DOWh = int(x.strftime("%u"))
-        if DOWh <= 5:
-            DOWs = "weekdy"
-        elif DOWh == 6:
-            DOWs = "satdy"
-        else:
-            DOWs = "sundy"
-        return cls()
+    yyyy: str
+    mm: str
+    dd: str
+    hh: str
+    jjj: str
+    dowh: int
+    dows: str
 
 
 
@@ -253,11 +243,28 @@ class DatasetRegridContext(BaseModel):
     level_out_size: int
     time_name: str | None
     time_size: int
-    dt_spec: DateTimeSpec
+    cycle: str
     # InterpMask: float
     write_desc_stats: bool = False
 
     rank: int = COMM.rank
+
+    @cached_property
+    def dt_spec(self) -> DateTimeSpec:
+        yyyy = self.cycle[0:4]
+        mm = self.cycle[4:6]
+        dd = self.cycle[6:8]
+        hh = self.cycle[8:10]
+        x = datetime(int(yyyy), int(mm), int(dd), int(hh), 0, 0)
+        jjj = x.strftime("%j")
+        dowh = int(x.strftime("%u"))
+        if dowh <= 5:
+            dows = "weekdy"
+        elif dowh == 6:
+            dows = "satdy"
+        else:
+            dows = "sundy"
+        return DateTimeSpec(yyyy=yyyy, mm=mm, dd=dd, hh=hh, jjj=jjj, dowh=dowh, dows=dows)
 
     @cached_property
     def src_fields(self) -> tuple[AbstractSrcField, ...]:
@@ -901,10 +908,10 @@ def main(ctx: ChemRegridContext) -> None:
         level_out_size=ctx.rw_dataset.level_out_size,
         time_name=ctx.rw_dataset.time_name,
         time_size=ctx.rw_dataset.time_size,
-        dt_spec=DateTimeSpec.from_cycle_str(ctx.cycle),
+        cycle=ctx.cycle,
     )
 
-
+    dt_spec = regrid_context.dt_spec
 
     if ctx.dataset_name == "RAVE":
         # JLS, TODO - NEED TO ACCOUNT FOR EBB1, MORE THAN 24, ETC.
@@ -912,12 +919,12 @@ def main(ctx: ChemRegridContext) -> None:
         dates_needed = []
         for i in range(25):
             if ctx.ebb_dcycle == 1:  # Same-day emissions
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) + timedelta(hours=i)
             elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) + timedelta(hours=i)
 
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
@@ -928,30 +935,30 @@ def main(ctx: ChemRegridContext) -> None:
         dates_needed = []
         for i in range(25):  # GAF retro current day emissions
             if ctx.ebb_dcycle == 1:  # Same-day emissions
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) + timedelta(hours=i)
             elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) + timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
     elif ctx.dataset_name == "FMC":  # fuel moisture content
         dates_needed = []
         for i in range(25):
-            x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
+            x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) - timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
     elif ctx.dataset_name == "GOES":
         dates_needed = []
         for i in range(25):
             if ctx.ebb_dcycle == 1:  # Same-day emissions
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) + timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) + timedelta(hours=i)
             elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) - timedelta(hours=i)
             else:
                 _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                x = datetime(int(YYYY), int(MM), int(DD), int(HH), 0, 0) - timedelta(hours=i)
+                x = datetime(int(dt_spec.yyyy), int(dt_spec.mm), int(dt_spec.dd), int(dt_spec.hh), 0, 0) - timedelta(hours=i)
             y = x.strftime("%Y%m%d%H")
             dates_needed.append(y)
 
@@ -1090,7 +1097,7 @@ def main(ctx: ChemRegridContext) -> None:
             _LOGGER.info("success")
     #
     elif ctx.dataset_name == "GRA2PES":
-        src_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_00to11Z.nc")
+        src_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + dt_spec.mm + "_" + dt_spec.dows + "_00to11Z.nc")
         new_dst_path = ctx.output_dir / (ctx.dataset_name + "v1.0_total_" + ctx.mesh_name + "_00to11Z.nc")
 
         regrid_context.src_path = src_path
@@ -1103,7 +1110,7 @@ def main(ctx: ChemRegridContext) -> None:
 
         _LOGGER.info("success")
 
-        src_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + MM + "_" + DOWs + "_12to23Z.nc")
+        src_path = ctx.input_dir / ("GRA2PESv1.0_total_2021" + dt_spec.mm + "_" + dt_spec.dows + "_12to23Z.nc")
         new_dst_path = ctx.output_dir / (ctx.dataset_name + "v1.0_total_" + ctx.mesh_name + "_12to23Z.nc")
 
         regrid_context.src_path = src_path
@@ -1118,13 +1125,13 @@ def main(ctx: ChemRegridContext) -> None:
 
     else:
         if ctx.dataset_name == "PECM":
-            src_path = ctx.input_dir / ("pollen_obs_" + YYYY + "_BELD6_ef_T_" + JJJ + ".nc")
-            new_dst_path = ctx.output_dir / ("pollen_ef_" + ctx.mesh_name + "_" + YYYY + "_" + JJJ + ".nc")
+            src_path = ctx.input_dir / ("pollen_obs_" + dt_spec.yyyy + "_BELD6_ef_T_" + dt_spec.jjj + ".nc")
+            new_dst_path = ctx.output_dir / ("pollen_ef_" + ctx.mesh_name + "_" + dt_spec.yyyy + "_" + dt_spec.jjj + ".nc")
         elif ctx.dataset_name == "NEMO_RWC":
             src_path = ctx.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
             new_dst_path = ctx.output_dir / ("NEMO_RWC_ANNUAL_TOTAL_" + ctx.mesh_name + ".nc")
         elif ctx.dataset_name == "NEMO_ANTHRO":
-            src_path = ctx.input_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + "_" + YYYY + MM + DD + HH + "_SECTORSUM.nc")
+            src_path = ctx.input_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + "_" + dt_spec.yyyy + dt_spec.mm + dt_spec.dd + dt_spec.hh + "_SECTORSUM.nc")
             new_dst_path = ctx.output_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + ".nc")
         elif ctx.dataset_name == "NARR":
             src_path = ctx.input_dir / "rwc_emission_denominator.2017.nc"
