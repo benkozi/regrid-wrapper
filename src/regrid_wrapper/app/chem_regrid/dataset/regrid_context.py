@@ -70,6 +70,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     output_dir: Path
     # InterpMask: float
     write_desc_stats: bool = False
+    var_names_to_copy_to_output_file: tuple[str, ...] = ("latCell", "lonCell", "xtime")
 
     rank: int = COMM.rank
 
@@ -185,6 +186,7 @@ def find_latest_src_file(
 
 
 class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
+    var_names_to_copy_to_output_file: tuple[str, ...] = ("latCell", "lonCell", "areaCell", "xtime")
     _area_data: np.ndarray | None = PrivateAttr(default=None)
 
     def get_area_data(self, raw_src_fwrap: FieldWrapper) -> np.ndarray:
@@ -401,6 +403,8 @@ class ECOREGION_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class FENGSHA_2D_DatasetRegridContext(AbstractDatasetRegridContext):
+    var_names_to_copy_to_output_file: tuple[str, ...] = ("latCell", "lonCell")
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"

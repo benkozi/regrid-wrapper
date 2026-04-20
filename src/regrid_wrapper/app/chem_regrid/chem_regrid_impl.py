@@ -331,15 +331,8 @@ class ChemRegridProcessor:
                 dst_nc.setncattr("dst_path", str(self.context.dst_path))
 
                 with open_nc(self.context.dst_path, mode="r", parallel=False) as src_nc:
-                    if self.context.dataset_name in ("RAVE"):
-                        for varname in ("latCell", "lonCell", "areaCell", "xtime"):
-                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
-                    elif self.context.dataset_name in ("FENGSHA_2D"):
-                        for varname in ("latCell", "lonCell"):
-                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
-                    else:
-                        for varname in ("latCell", "lonCell", "xtime"):
-                            copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
+                    for varname in self.context.var_names_to_copy_to_output_file:
+                        copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
 
     def finalize(self) -> None:
         CR_LOGGER.info("finalizing")
