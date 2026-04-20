@@ -80,7 +80,7 @@ def _coerce_to_tuple_(v: str | List[str] | Tuple[str, ...]) -> Tuple[str, ...]:
     return v
 
 
-NameListType = Annotated[Tuple[str, ...], BeforeValidator(_coerce_to_tuple_)]
+NameListType = Annotated[Tuple[str, ...] | str, BeforeValidator(_coerce_to_tuple_)]
 
 
 def get_aliased_key(source: Dict, keys: NameListType | str) -> Any:

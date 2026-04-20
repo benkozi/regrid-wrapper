@@ -5,6 +5,9 @@ from pydantic import Field
 
 from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset, DatasetName
 from regrid_wrapper.common import RwBaseModel
+from regrid_wrapper.context.logging import LOGGER
+
+CR_LOGGER = LOGGER.getChild("mpas-regrid")
 
 
 class ChemRegridContext(RwBaseModel):
