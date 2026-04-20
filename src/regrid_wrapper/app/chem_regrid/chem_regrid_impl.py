@@ -381,68 +381,7 @@ class ChemRegridProcessor:
     def create_src_field_wrapper(self, field_name: str) -> FieldWrapper:
         CR_LOGGER.info("create source field")
         src_fwrap = self._create_raw_src_field_wrapper_(field_name)
-
-        # Get the area from the RAVE file, need to convert from /grid to /m2
-        if self.context.dataset_name == "RAVE" and field_name in (
-            "PM25",
-            "NH3",
-            "SO2",
-            "FRE",
-            "FRP_MEAN",
-            "TPM",
-            "CH4",
-            "CO",
-            "NOx",
-        ):
-            area_fwrap = NcToField(
-                path=self.context.src_path,
-                name="area",
-                gwrap=self.get_src_gwrap(),
-                dim_time=None,
-            ).create_field_wrapper()
-            area_data = area_fwrap.value.data
-
-        # GRA2PES PM, convert from metric tons/km2/hr to ug/m2/s
-        if self.context.dataset_name == "GRA2PES" and field_name in ("PM25-PRI", "PM10-PRI"):
-            conv_aer = 1.0e6 / 3600.0
-        # GRA2PES methane, convert from moles/km2/hr to ug/m2/s
-        elif self.context.dataset_name == "GRA2PES" and field_name in ("HC01", "SO2", "CO", "NH3", "NOX"):
-            conv_aer = 1.0e-6 / 3600.0
-        # RAVE methane, convert from kg/hr to mol/m2/s
-        elif self.context.dataset_name == "RAVE":
-            if field_name == "CH4":
-                conv_aer = (1.0 / 16.0) * 1000.0
-            elif field_name == "CO":
-                conv_aer = (1.0 / 28.0) * 1000.0
-            elif field_name == "NH3":
-                conv_aer = (1.0 / 17.0) * 1000.0
-            elif field_name == "NOx":
-                conv_aer = ((1.0 / 30.0) + (1.0 / 46.0)) / 2.0 * 1000.0
-            else:
-                conv_aer = 1.0
-        elif self.context.dataset_name == "NEMO_RWC" and field_name in ("PEC", "POC", "PMOTHR", "PMC"):
-            # Convert g/s/km2 (on 1km grid) to ug/m2/s -->
-            conv_aer = 1.0
-        elif self.context.dataset_name == "NEMO_ANTHRO" and field_name in ("PEC", "POC", "PMOTHR", "PMC"):
-            # Convert g/s/km2 to ug/m2/s -->
-            conv_aer = 1.0
-        else:
-            conv_aer = 1.0
-
-        src_data = src_fwrap.value.data
-        if self.context.dataset_name == "RAVE" and field_name in ("PM25", "TPM"):
-            # If RAVE aerosol emissions, convert from kg/hr to ug/m2/s
-            src_data[:] = np.where(src_data < 0.0, 0.0, src_data * 1.0e3 / area_data[:, :, np.newaxis] / 3600.0)
-        elif self.context.dataset_name == "RAVE" and field_name in ("CH4", "NH3", "SO2", "CO", "NOx"):
-            # If RAVE gas emissions, convert from kg/hr to mol/m2/s
-            src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data / area_data[:, :, np.newaxis] / 3600.0)
-        elif self.context.dataset_name == "RAVE" and field_name in ("FRE", "FRP_MEAN"):
-            # For FRE, FRP, don't multiply area by 1.e6, cancelled out by MW to W conversion
-            src_data[:] = np.where(src_data < 0.0, 0.0, src_data / (area_data[:, :, np.newaxis]))
-        else:
-            src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data)
-
-        src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
+        self.context.update_src_field_wrapper(src_fwrap)
         return src_fwrap
 
     def _create_raw_src_field_wrapper_(self, field_name: str) -> FieldWrapper:

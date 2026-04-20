@@ -394,6 +394,10 @@ class FieldWrapper(AbstractWrapper):
     value: esmpy.Field
     gwrap: GeomType
 
+    @property
+    def data(self) -> np.ndarray:
+        return self.value.data
+
     def fill_nc_variable(self, path: Path) -> None:
         _LOGGER.debug(r"filling variable: {self.value.name}")
         with open_nc(path, "a") as ds:

@@ -5,6 +5,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Iterator, Union
 
+import numpy as np
 from dask.array.tests.test_xarray import xr
 from pydantic import BaseModel
 
@@ -18,7 +19,7 @@ from regrid_wrapper.app.chem_regrid.dataset.src_field import (
     SrcField3d_plusTime,
 )
 from regrid_wrapper.context.comm import COMM
-from regrid_wrapper.esmpy.field_wrapper import HasNcAttrsType, open_nc
+from regrid_wrapper.esmpy.field_wrapper import FieldWrapper, HasNcAttrsType, NcToField, open_nc
 
 
 class DateTimeSpec(BaseModel):
@@ -71,6 +72,11 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     write_desc_stats: bool = False
 
     rank: int = COMM.rank
+
+    def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        src_data = raw_src_fwrap.data
+        src_data[:] = np.where(src_data < 0.0, 0.0, src_data)
+        src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
 
     @abstractmethod
     def iter_file_pairs(self) -> Iterator[RegridFilePair]: ...
@@ -179,6 +185,59 @@ def find_latest_src_file(
 
 
 class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
+    def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        field_name = raw_src_fwrap.value.name
+        src_data = raw_src_fwrap.data
+
+        # Get the area from the RAVE file, need to convert from /grid to /m2
+        area_data = None
+        if field_name in (
+            "PM25",
+            "NH3",
+            "SO2",
+            "FRE",
+            "FRP_MEAN",
+            "TPM",
+            "CH4",
+            "CO",
+            "NOx",
+        ):
+            # To get the right gwrap we need to know what kind of field it is.
+            # But FieldWrapper already has the gwrap it was created with.
+            area_fwrap = NcToField(
+                path=self.src_path,
+                name="area",
+                gwrap=raw_src_fwrap.gwrap,
+                dim_time=None,
+            ).create_field_wrapper()
+            area_data = area_fwrap.value.data
+
+        # RAVE methane, convert from kg/hr to mol/m2/s
+        if field_name == "CH4":
+            conv_aer = (1.0 / 16.0) * 1000.0
+        elif field_name == "CO":
+            conv_aer = (1.0 / 28.0) * 1000.0
+        elif field_name == "NH3":
+            conv_aer = (1.0 / 17.0) * 1000.0
+        elif field_name == "NOx":
+            conv_aer = ((1.0 / 30.0) + (1.0 / 46.0)) / 2.0 * 1000.0
+        else:
+            conv_aer = 1.0
+
+        if field_name in ("PM25", "TPM"):
+            # If RAVE aerosol emissions, convert from kg/hr to ug/m2/s
+            src_data[:] = np.where(src_data < 0.0, 0.0, src_data * 1.0e3 / area_data[:, :, np.newaxis] / 3600.0)
+        elif field_name in ("CH4", "NH3", "SO2", "CO", "NOx"):
+            # If RAVE gas emissions, convert from kg/hr to mol/m2/s
+            src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data / area_data[:, :, np.newaxis] / 3600.0)
+        elif field_name in ("FRE", "FRP_MEAN"):
+            # For FRE, FRP, don't multiply area by 1.e6, cancelled out by MW to W conversion
+            src_data[:] = np.where(src_data < 0.0, 0.0, src_data / (area_data[:, :, np.newaxis]))
+        else:
+            src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data)
+
+        src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for date_to_process in self.dates_needed:
             CR_LOGGER.info(f"RAVE processing {date_to_process=}")
@@ -218,6 +277,22 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class GRA2PES_DatasetRegridContext(AbstractDatasetRegridContext):
+    def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        field_name = raw_src_fwrap.value.name
+        src_data = raw_src_fwrap.value.data
+
+        # GRA2PES PM, convert from metric tons/km2/hr to ug/m2/s
+        if field_name in ("PM25-PRI", "PM10-PRI"):
+            conv_aer = 1.0e6 / 3600.0
+        # GRA2PES methane, convert from moles/km2/hr to ug/m2/s
+        elif field_name in ("HC01", "SO2", "CO", "NH3", "NOX"):
+            conv_aer = 1.0e-6 / 3600.0
+        else:
+            conv_aer = 1.0
+
+        src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data)
+        src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         # Define the parts that change
         suffixes = ["00to11Z", "12to23Z"]
@@ -251,6 +326,19 @@ class FMC_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class NEMO_RWC_DatasetRegridContext(AbstractDatasetRegridContext):
+    def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        field_name = raw_src_fwrap.value.name
+        src_data = raw_src_fwrap.value.data
+
+        if field_name in ("PEC", "POC", "PMOTHR", "PMC"):
+            # Convert g/s/km2 (on 1km grid) to ug/m2/s -->
+            conv_aer = 1.0
+        else:
+            conv_aer = 1.0
+
+        src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data)
+        src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
@@ -259,6 +347,19 @@ class NEMO_RWC_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class NEMO_ANTHRO_DatasetRegridContext(AbstractDatasetRegridContext):
+    def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        field_name = raw_src_fwrap.value.name
+        src_data = raw_src_fwrap.value.data
+
+        if field_name in ("PEC", "POC", "PMOTHR", "PMC"):
+            # Convert g/s/km2 to ug/m2/s -->
+            conv_aer = 1.0
+        else:
+            conv_aer = 1.0
+
+        src_data[:] = np.where(src_data < 0.0, 0.0, conv_aer * src_data)
+        src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / (
