@@ -244,10 +244,34 @@ class DatasetRegridContext(BaseModel):
     time_name: str | None
     time_size: int
     cycle: str
+    ebb_dcycle: int
     # InterpMask: float
     write_desc_stats: bool = False
 
     rank: int = COMM.rank
+
+    @cached_property
+    def dates_needed(self) -> list[datetime]:
+        match self.dataset_name:
+            case DatasetName.RAVE:
+                # JLS, TODO - NEED TO ACCOUNT FOR EBB1, MORE THAN 24, ETC.
+                # Determine the cycle dates to process +%Y%m%d%H
+                dates_needed = []
+                for i in range(25):
+                    if self.ebb_dcycle == 1:  # Same-day emissions
+                        x = self.dt_spec.datetime + timedelta(hours=i)
+                    elif self.ebb_dcycle == -1 or self.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
+                        x = self.dt_spec.datetime - timedelta(hours=i)
+                    else:
+                        _LOGGER.info(
+                            "EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
+                        x = self.dt_spec.datetime + timedelta(hours=i)
+
+                    y = x.strftime("%Y%m%d%H")
+                    dates_needed.append(y)
+            case _:
+                raise NotImplementedError(f"Dataset {self.dataset_name} not supported")
+        return dates_needed
 
     @cached_property
     def dt_spec(self) -> DateTimeSpec:
@@ -909,27 +933,12 @@ def main(ctx: ChemRegridContext) -> None:
         time_name=ctx.rw_dataset.time_name,
         time_size=ctx.rw_dataset.time_size,
         cycle=ctx.cycle,
+        ebb_dcycle=ctx.ebb_dcycle
     )
 
     dt_spec = regrid_context.dt_spec
 
-    if ctx.dataset_name == "RAVE":
-        # JLS, TODO - NEED TO ACCOUNT FOR EBB1, MORE THAN 24, ETC.
-        # Determine the cycle dates to process +%Y%m%d%H
-        dates_needed = []
-        for i in range(25):
-            if ctx.ebb_dcycle == 1:  # Same-day emissions
-                x = dt_spec.datetime + timedelta(hours=i)
-            elif ctx.ebb_dcycle == -1 or ctx.ebb_dcycle == 2:  # Persistence (-1) or forecasted (2) needs prev 24 hours
-                x = dt_spec.datetime - timedelta(hours=i)
-            else:
-                _LOGGER.info("EBB_DCYLE selection not recognized, reverting to same day, ebb_dcycle = 1")
-                x = dt_spec.datetime + timedelta(hours=i)
-
-            y = x.strftime("%Y%m%d%H")
-            dates_needed.append(y)
-
-    elif ctx.dataset_name == "NGFS":
+    if ctx.dataset_name == "NGFS":
         # Determine the cycle dates to process +%Y%m%d%H
         # This is for RETROS (using current datetime, not day before)
         dates_needed = []
@@ -964,7 +973,7 @@ def main(ctx: ChemRegridContext) -> None:
 
     if ctx.dataset_name == "RAVE":
         processor = None
-        for date_to_process in dates_needed:
+        for date_to_process in regrid_context.dates_needed:
             _LOGGER.info(f"RAVE processing {date_to_process=}")
             src_paths = find_latest_src_file(
                 ctx.input_dir, date_to_process, ctx.ebb_dcycle, ctx.dataset_name, max_lookback_hours=24
@@ -981,7 +990,6 @@ def main(ctx: ChemRegridContext) -> None:
             if processor is None:
                 _LOGGER.info("FIRST PASS: Full Initialization")
                 # This pays the "expensive" cost of loading weights/grids, but only once.
-
                 regrid_context.src_path = src_path
                 regrid_context.new_dst_path = new_dst_path
 
