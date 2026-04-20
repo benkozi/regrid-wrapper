@@ -4,6 +4,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Iterator, Union
 
+from dask.array.tests.test_xarray import xr
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.context import CR_LOGGER
@@ -303,6 +304,67 @@ class PECM_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
+class NARR_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        for _ in range(1):
+            src_path = self.input_dir / "rwc_emission_denominator.2017.nc"
+            new_dst_path = self.output_dir / ("NEMO_RWC_DENOMINATOR_2017_" + self.mesh_name + ".nc")
+            yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+
+
+class ECOREGION_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        for _ in range(1):
+            src_path = self.input_dir / "veg_map.nc"
+            new_dst_path = self.output_dir / ("ecoregions_" + self.mesh_name + "_mpas.nc")
+            yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+
+
+class FENGSHA_2D_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        for _ in range(1):
+            src_path = self.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D.nc"
+            new_dst_path = self.output_dir / ("fengsha_dust_inputs.2D." + self.mesh_name + ".nc")
+            yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+
+
+class FENGSHA_2D_Time_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        for _ in range(1):
+            src_path = self.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
+            new_dst_path = self.output_dir / ("fengsha_dust_inputs.2D_Time." + self.mesh_name + ".nc")
+            yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+
+
+class GOES_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        date_to_process = self.dates_needed[0]
+        src_paths = find_latest_src_file(self.input_dir, date_to_process, -1, self.dataset_name, max_lookback_hours=2)
+        files_to_cat = src_paths
+        CR_LOGGER.info(f"will cat files: {files_to_cat=}")
+        if self.rank == 0:
+            with xr.open_mfdataset(files_to_cat, combine="nested", concat_dim="file") as ds:
+                # 2. Calculate the nanmean across the new 'file' dimension
+                # skipna=True (default) ensures it behaves like np.nanmean
+                ds_averaged = ds["AOD"].mean(dim="file", skipna=True)
+            # CR_LOGGER.debug(ds_averaged)
+            ds_averaged.encoding.update({"dtype": "float32", "_FillValue": -999})
+            ds_averaged.to_netcdf(self.output_dir / "test_goes_aod_merged.nc")
+
+        if not src_paths:
+            msg = f"No matching GOES files found for {date_to_process} (even after lookback)."
+            CR_LOGGER.error(msg)
+            raise ValueError(msg)
+
+        CR_LOGGER.info("Reading merged GOES file: test_goes_aod_merged.nc")
+        # src_path = src_paths[0]
+        src_path = self.output_dir / "test_goes_aod_merged.nc"
+        new_dst_path = self.output_dir / (self.mesh_name + "-GOES-" + date_to_process + ".nc")
+        fp = RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+        for _ in range(1):
+            yield fp
+
+
 def get_regrid_context_class(name: DatasetName) -> type[DatasetRegridContext]:
     klasses = {
         DatasetName.RAVE: RAVE_DatasetRegridContext,
@@ -311,6 +373,10 @@ def get_regrid_context_class(name: DatasetName) -> type[DatasetRegridContext]:
         DatasetName.NEMO_RWC: NEMO_RWC_DatasetRegridContext,
         DatasetName.NEMO_ANTHRO: NEMO_ANTHRO_DatasetRegridContext,
         DatasetName.PECM: PECM_DatasetRegridContext,
+        DatasetName.NARR: NARR_DatasetRegridContext,
+        DatasetName.ECOREGION: ECOREGION_DatasetRegridContext,
+        DatasetName.FENGSHA_2D: FENGSHA_2D_DatasetRegridContext,
+        DatasetName.FENGSHA_2D_Time: FENGSHA_2D_Time_DatasetRegridContext,
+        DatasetName.GOES: GOES_DatasetRegridContext,
     }
-    klass = klasses.get(name, DatasetRegridContext)
-    return klass
+    return klasses[name]

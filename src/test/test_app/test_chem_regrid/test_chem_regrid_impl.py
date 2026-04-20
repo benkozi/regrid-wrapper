@@ -17,7 +17,6 @@ def test_mock_chem_regrid_impl_rave_integration(chem_regrid_context: ChemRegridC
     with (
         patch("regrid_wrapper.app.chem_regrid.chem_regrid_impl.ChemRegridProcessor") as mock_processor_class,
         patch("regrid_wrapper.app.chem_regrid.chem_regrid_impl.DatasetRegridContext") as _,
-        patch("regrid_wrapper.app.chem_regrid.chem_regrid_impl.find_latest_src_file") as _,
     ):
         mock_processor = MagicMock()
         mock_processor_class.return_value = mock_processor
