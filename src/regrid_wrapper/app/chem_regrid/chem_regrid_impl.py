@@ -205,6 +205,10 @@ class SrcField3d_plusTime(AbstractSrcField):
         return target.reshape(-1, self.level_out_size, self.time_size)
 
 
+class DateTimeSpec(BaseModel):
+    ...
+
+
 class DatasetRegridContext(BaseModel):
     dataset_name: DatasetName
     workdir: Path
