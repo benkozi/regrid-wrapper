@@ -343,6 +343,8 @@ class ChemRegridProcessor:
         self._regridder.destroy()
         self._dst_field.destroy()
         self._src_gwrap.value.destroy()
+        # TODO: There could be an option to destroy the destination mesh when finalizing. However,
+        #  it is more efficient to leave it since the destination is not variable at this point.
         # self._dst_mesh.destroy()
 
     def create_desc_stuff(self, targets: Iterable[FileDesc]) -> pd.DataFrame:
