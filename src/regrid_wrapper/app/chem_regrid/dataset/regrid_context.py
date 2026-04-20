@@ -268,11 +268,49 @@ class FMC_DatasetRegridContext(DatasetRegridContext):
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
 
+class NEMO_RWC_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        for _ in range(1):
+            src_path = self.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
+            new_dst_path = self.output_dir / ("NEMO_RWC_ANNUAL_TOTAL_" + self.mesh_name + ".nc")
+            yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+
+
+class NEMO_ANTHRO_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        for _ in range(1):
+            src_path = self.input_dir / (
+                "NEMO_ANTHRO_"
+                + self.mesh_name
+                + "_"
+                + self.dt_spec.yyyy
+                + self.dt_spec.mm
+                + self.dt_spec.dd
+                + self.dt_spec.hh
+                + "_SECTORSUM.nc"
+            )
+            new_dst_path = self.output_dir / ("NEMO_ANTHRO_" + self.mesh_name + ".nc")
+            yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+
+
+class PECM_DatasetRegridContext(DatasetRegridContext):
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        for _ in range(1):
+            src_path = self.input_dir / ("pollen_obs_" + self.dt_spec.yyyy + "_BELD6_ef_T_" + self.dt_spec.jjj + ".nc")
+            new_dst_path = self.output_dir / (
+                "pollen_ef_" + self.mesh_name + "_" + self.dt_spec.yyyy + "_" + self.dt_spec.jjj + ".nc"
+            )
+            yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
+
+
 def get_regrid_context_class(name: DatasetName) -> type[DatasetRegridContext]:
     klasses = {
         DatasetName.RAVE: RAVE_DatasetRegridContext,
         DatasetName.GRA2PES: GRA2PES_DatasetRegridContext,
         DatasetName.FMC: FMC_DatasetRegridContext,
+        DatasetName.NEMO_RWC: NEMO_RWC_DatasetRegridContext,
+        DatasetName.NEMO_ANTHRO: NEMO_ANTHRO_DatasetRegridContext,
+        DatasetName.PECM: PECM_DatasetRegridContext,
     }
     klass = klasses.get(name, DatasetRegridContext)
     return klass

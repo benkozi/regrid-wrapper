@@ -792,17 +792,7 @@ def main(ctx: ChemRegridContext) -> None:
 
     #
     # else:
-    #     if ctx.dataset_name == "PECM":
-    #         src_path = ctx.input_dir / ("pollen_obs_" + dt_spec.yyyy + "_BELD6_ef_T_" + dt_spec.jjj + ".nc")
-    #         new_dst_path = ctx.output_dir / ("pollen_ef_" + ctx.mesh_name + "_" + dt_spec.yyyy + "_" + dt_spec.jjj + ".nc")
-    #     elif ctx.dataset_name == "NEMO_RWC":
-    #         src_path = ctx.input_dir / "NEMO_RWC_POC_PEC_PMOTHR.annual.2017.nc"
-    #         new_dst_path = ctx.output_dir / ("NEMO_RWC_ANNUAL_TOTAL_" + ctx.mesh_name + ".nc")
-    #     elif ctx.dataset_name == "NEMO_ANTHRO":
-    #         src_path = ctx.input_dir / (
-    #             "NEMO_ANTHRO_" + ctx.mesh_name + "_" + dt_spec.yyyy + dt_spec.mm + dt_spec.dd + dt_spec.hh + "_SECTORSUM.nc"
-    #         )
-    #         new_dst_path = ctx.output_dir / ("NEMO_ANTHRO_" + ctx.mesh_name + ".nc")
+
     #     elif ctx.dataset_name == "NARR":
     #         src_path = ctx.input_dir / "rwc_emission_denominator.2017.nc"
     #         new_dst_path = ctx.output_dir / ("NEMO_RWC_DENOMINATOR_2017_" + ctx.mesh_name + ".nc")
