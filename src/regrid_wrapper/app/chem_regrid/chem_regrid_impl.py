@@ -167,111 +167,133 @@ class ChemRegridProcessor:
             )
         return regridder
 
-    def _regrid_and_write_variable(self, field_name: str, dst_var_name: str = None, data_to_write: np.ndarray = None) -> None:
-        if dst_var_name is None:
-            dst_var_name = field_name
-
-        CR_LOGGER.info(f"regridding {field_name=}")
-        src_fwrap = self.create_src_field_wrapper(field_name=field_name)
-
-        dst_field = self.get_dst_field()
-        # If data_to_write is NOT provided, we perform the regridding here.
-        # If it IS provided, it means someone else already did regridding (like in ENL_POLL or TPM cases).
-        if data_to_write is None:
-            dst_field.data.fill(0.0)
-            regridder = self.get_regridder()
-            regridder(src_fwrap.value, dst_field)
-            data_to_write = dst_field.data
-
-        local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
-        reconciled_bounds = reconcile_bounds(local_bounds)
-
-        # We find the SrcField object to get dimensions and attributes
-        # Note: field_name might not be in self.context.src_fields if it's a component (like PM25 for TPM)
-        # But we need a SrcField to call create_dimension_collection and reshape_field_data.
-        # The original code used src_field from the loop or self.context.src_fields[0].
-        # Let's try to find it in src_fields, otherwise use the first one as a template.
-        src_field = next((f for f in self.context.src_fields if f.name == field_name), self.context.src_fields[0])
-
-        dims = src_field.create_dimension_collection(reconciled_bounds)
-        CR_LOGGER.info(f"{dims=}")
-
-        CR_LOGGER.info(f"writing field to netcdf {dst_var_name=}")
-        with open_nc(self.context.new_dst_path, mode="a") as ds:
-            area_subset = None
-            if self.context.dataset_name == "RAVE" and field_name in ("FRP_MEAN", "FRE"):
-                area = np.asarray(ds.variables["areaCell"])
-                area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]].reshape(dims.shape_local)
-
-            CR_LOGGER.info(f"creating variable {dst_var_name=}")
-            var = ds.createVariable(
-                dst_var_name,
-                src_field.dtype,
-                [dim.name[0] for dim in dims.value],
-                fill_value=src_field.fill_value,
-            )
-
-            # Don't carry over fill value and datatype
-            if self.context.dataset_name != "GOES":
-                for k, v in src_field.attrs.items():
-                    setattr(var, k, v)
-
-            CR_LOGGER.info(f"setting variable data {dst_var_name=}")
-            if area_subset is not None:
-                final_data = src_field.reshape_field_data(data_to_write * area_subset)
-            else:
-                final_data = src_field.reshape_field_data(data_to_write)
-
-            set_variable_data(
-                var,
-                dims,
-                final_data,
-                collective=True,
-            )
-
-        CR_LOGGER.info(f"finished writing field to netcdf {dst_var_name=}")
-        src_fwrap.value.destroy()
-        del src_fwrap
-
-    def _regrid_field(self, field_name: str) -> np.ndarray:
-        src_fwrap = self.create_src_field_wrapper(field_name=field_name)
-        dst_field = self.get_dst_field()
-        dst_field.data.fill(0.0)
-        self.get_regridder()(src_fwrap.value, dst_field)
-        data = dst_field.data.copy()
-        src_fwrap.value.destroy()
-        return data
-
     def run(self) -> None:
         CR_LOGGER.info("apply regridding")
 
         CR_LOGGER.info("create output file")
         self.create_output_file()
 
+        regridder = self.get_regridder()
         for src_field in self.context.src_fields:
-            self._regrid_and_write_variable(field_name=src_field.name)
+            CR_LOGGER.info(f"regridding {src_field.name=}")
+            src_fwrap = self.create_src_field_wrapper(field_name=src_field.name)
+
+            dst_field = self.get_dst_field()
+            dst_field.data.fill(0.0)
+            regridder(src_fwrap.value, dst_field)
+
+            local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
+            reconciled_bounds = reconcile_bounds(local_bounds)
+            dims = src_field.create_dimension_collection(reconciled_bounds)
+            CR_LOGGER.info(f"{dims=}")
+            CR_LOGGER.info("writing field to netcdf")
+            with open_nc(self.context.new_dst_path, mode="a") as ds:
+                if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
+                    area = np.asarray(ds.variables["areaCell"])
+                    area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]].reshape(dims.shape_local)
+                CR_LOGGER.info(f"creating variable {src_field.name=}")
+                var = ds.createVariable(
+                    src_field.name,
+                    src_field.dtype,
+                    [dim.name[0] for dim in dims.value],
+                    fill_value=src_field.fill_value,
+                )
+                # Don't carry over fill value and datatype
+                if self.context.dataset_name != "GOES":
+                    for k, v in src_field.attrs.items():
+                        setattr(var, k, v)
+
+                CR_LOGGER.info(f"setting variable data {src_field.name=}")
+                # Multiply FRE/FRP by output area so it is back to W or J*s
+                if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
+                    set_variable_data(
+                        var,
+                        dims,
+                        src_field.reshape_field_data(dst_field.data * area_subset),
+                        collective=True,
+                    )
+                else:
+                    set_variable_data(
+                        var,
+                        dims,
+                        src_field.reshape_field_data(dst_field.data),
+                        collective=True,
+                    )
+            CR_LOGGER.info(f"finished writing field to netcdf {src_field.name=}")
+            src_fwrap.value.destroy()
+            del src_fwrap
 
             if src_field.name == "ENL_POLL":
-                CR_LOGGER.info("renaming and combining tree fields")
-                data_enl = self._regrid_field("ENL_POLL")
-                data_dbl = self._regrid_field("DBL_POLL")
+                with open_nc(self.context.new_dst_path, mode="a") as ds:
+                    CR_LOGGER.info("renaming and combining tree fields")
 
-                self._regrid_and_write_variable(
-                    field_name="ENL_POLL",
-                    dst_var_name="TREE_POLL",
-                    data_to_write=data_enl + data_dbl,
-                )
+                    src_fwrap_enl = self.create_src_field_wrapper(field_name="ENL_POLL")
+                    dst_field_enl = self.get_dst_field()
+                    dst_field_enl.data.fill(0.0)
+                    regridder(src_fwrap_enl.value, dst_field_enl)
 
+                    src_fwrap_dbl = self.create_src_field_wrapper(field_name="DBL_POLL")
+                    dst_field_dbl = self.get_dst_field()
+                    dst_field_dbl.data.fill(0.0)
+                    regridder(src_fwrap_dbl.value, dst_field_dbl)
+
+                    src_field = self.context.src_fields[0]
+
+                    var = ds.createVariable(
+                        "TREE_POLL",
+                        src_field.dtype,
+                        [dim.name[0] for dim in dims.value],
+                        fill_value=src_field.fill_value,
+                    )
+                    for k, v in self.context.src_fields[0].attrs.items():
+                        setattr(var, k, v)
+                    set_variable_data(
+                        var,
+                        dims,
+                        src_field.reshape_field_data(dst_field_enl.data + dst_field_dbl.data),
+                        collective=True,
+                    )
+                src_fwrap_enl.value.destroy()
+                del src_fwrap_enl
+                src_fwrap_dbl.value.destroy()
+                del src_fwrap_dbl
             if src_field.name == "TPM":
-                CR_LOGGER.info("calculating PM10 as TPM - PM25")
-                data_ttl = self._regrid_field("TPM")
-                data_p25 = self._regrid_field("PM25")
+                with open_nc(self.context.new_dst_path, mode="a") as ds:
+                    CR_LOGGER.info("calculating PM10 as TPM - PM25")
+                    src_fwrap_ttl = self.create_src_field_wrapper(field_name="TPM")
+                    src_fwrap_p25 = self.create_src_field_wrapper(field_name="PM25")
 
-                self._regrid_and_write_variable(
-                    field_name="TPM",
-                    dst_var_name="PM10",
-                    data_to_write=data_ttl - data_p25,
-                )
+                    dst_field_ttl = self.get_dst_field()
+                    dst_field_ttl.data.fill(0.0)
+                    regridder(src_fwrap_ttl.value, dst_field_ttl)
+
+                    dst_field_p25 = self.get_dst_field()
+                    dst_field_p25.data.fill(0.0)
+                    regridder(src_fwrap_p25.value, dst_field_p25)
+
+                    src_field = self.context.src_fields[0]
+
+                    var = ds.createVariable(
+                        "PM10",
+                        src_field.dtype,
+                        [dim.name[0] for dim in dims.value],
+                        fill_value=src_field.fill_value,
+                    )
+                    for k, v in self.context.src_fields[0].attrs.items():
+                        setattr(var, k, v)
+                    data1 = src_field.reshape_field_data(dst_field_ttl.data)
+                    data2 = src_field.reshape_field_data(dst_field_p25.data)
+                    data3 = data1 - data2
+                    set_variable_data(
+                        var,
+                        dims,
+                        data3,
+                        collective=True,
+                    )
+                src_fwrap_ttl.value.destroy()
+                del src_fwrap_ttl
+                src_fwrap_p25.value.destroy()
+                del src_fwrap_p25
 
         if self.context.write_desc_stats and self.context.rank == 0:
             field_names = tuple(ii.name for ii in self.context.src_fields)
