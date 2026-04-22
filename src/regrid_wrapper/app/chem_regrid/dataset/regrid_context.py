@@ -31,6 +31,8 @@ from regrid_wrapper.esmpy.field_wrapper import (
 
 
 class DateTimeSpec(BaseModel):
+    """Container for datetime components used in file path formatting."""
+
     yyyy: str
     mm: str
     dd: str
@@ -42,11 +44,15 @@ class DateTimeSpec(BaseModel):
 
 
 class RegridFilePair(BaseModel):
+    """Pair of source and destination paths for a regridding operation."""
+
     src_path: Path
     dst_path: Path
 
 
 class AbstractDatasetRegridContext(ABC, BaseModel):
+    """Abstract base class for dataset-specific regridding configurations and logic."""
+
     dataset_name: DatasetName
     workdir: Path
     src_path: Path
@@ -83,32 +89,40 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     rank: int = COMM.rank
 
     def get_src_grid_path(self) -> Path:
+        """Returns the path to the source grid file."""
         return self.src_path
 
     def get_src_field_dims(self, field_name: str) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
+        """Returns the level and time dimension names for a given field."""
         dim_level = (self.level_in_name,) if self.level_in_name else None
         dim_time = (self.time_name,) if self.time_name else None
         return dim_level, dim_time
 
     @abstractmethod
-    def iter_file_pairs(self) -> Iterator[RegridFilePair]: ...
+    def iter_file_pairs(self) -> Iterator[RegridFilePair]:
+        """Yields pairs of source and destination paths to be processed."""
+        ...
 
     def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        """Applies dataset-specific data cleaning or transformations to the source field."""
         src_data = raw_src_fwrap.data
         src_data[:] = np.where(src_data < 0.0, 0.0, src_data)
         src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
 
     @cached_property
     def dates_needed(self) -> list[str]:
+        """Returns a list of dates required for the current cycle."""
         raise NotImplementedError(self.__class__.__name__ + " does not support dates_needed")
 
     @cached_property
     def num_cells(self) -> int:
+        """Returns the number of cells in the destination mesh."""
         with open_nc(self.dst_path, mode="r", parallel=False) as ds:
             return len(ds.variables["latCell"])
 
     @cached_property
     def dt_spec(self) -> DateTimeSpec:
+        """Returns a DateTimeSpec based on the current cycle."""
         yyyy = self.cycle[0:4]
         mm = self.cycle[4:6]
         dd = self.cycle[6:8]
@@ -125,10 +139,12 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
         return DateTimeSpec(yyyy=yyyy, mm=mm, dd=dd, hh=hh, jjj=jjj, dowh=dowh, dows=dows, datetime=x)
 
     def get_read_name(self, field_name: str) -> str:
+        """Returns the variable name to read from the source file for a given field."""
         return field_name
 
     @cached_property
     def src_fields(self) -> tuple[AbstractSrcField, ...]:
+        """Initializes and returns the collection of source fields for the dataset."""
         src_fields = []
         with open_nc(self.src_path, mode="r") as ds:
             for field_name in self.field_names:
@@ -163,6 +179,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
 
     @staticmethod
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
+        """Extracts and filters netCDF attributes from a variable."""
         exclude = ("coordinates", "valid_range")
         return {ii: getattr(src, ii) for ii in src.ncattrs() if not ii.startswith("_") and ii not in exclude}
 
@@ -193,7 +210,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
 def find_latest_src_file(
     input_dir: Path, target_time_str: str, ebb_dcycle: int, dataset_name: DatasetName, max_lookback_hours: int = 24
 ) -> list[str]:
-    """Return list of files for the latest time <= target_time_str."""
+    """Finds the latest available source file within a lookback window."""
     fmt = "%Y%m%d%H"  # RAVE
     fmt2 = "%Y%j%H"  # GOES
     target_time = datetime.strptime(target_time_str, fmt)
@@ -224,10 +241,13 @@ def find_latest_src_file(
 
 
 class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for RAVE (Regional Real-time Biomass Burning Emissions) data."""
+
     var_names_to_copy_to_output_file: tuple[str, ...] = ("latCell", "lonCell", "areaCell", "xtime")
     _area_data: np.ndarray | None = PrivateAttr(default=None)
 
     def get_area_data(self, raw_src_fwrap: FieldWrapper) -> np.ndarray:
+        """Loads and returns area information from the RAVE source file."""
         # Get the area from the RAVE file, need to convert from /grid to /m2
 
         # To get the right gwrap we need to know what kind of field it is.
@@ -373,6 +393,8 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class GRA2PES_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for GRA2PES (Great Lakes Regional Air Pollution Emissions System) data."""
+
     def get_src_field_dims(self, field_name: str) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
         dim_level, dim_time = super().get_src_field_dims(field_name)
         if field_name == "h_agl":
@@ -380,6 +402,7 @@ class GRA2PES_DatasetRegridContext(AbstractDatasetRegridContext):
         return dim_level, dim_time
 
     def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        """Converts GRA2PES emissions from metric tons/km2/hr or moles/km2/hr to ug/m2/s."""
         field_name = raw_src_fwrap.value.name
         src_data = raw_src_fwrap.value.data
 
@@ -410,6 +433,8 @@ class GRA2PES_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class FMC_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for FMC (Fuel Moisture Content) data."""
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for date_to_process in self.dates_needed:
             src_paths = glob.glob(str(self.input_dir / ("fmc_" + date_to_process + ".nc")))
@@ -428,7 +453,10 @@ class FMC_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class NEMO_RWC_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for NEMO RWC (Residential Wood Combustion) data."""
+
     def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        """Converts NEMO RWC emissions from g/s/km2 to ug/m2/s."""
         field_name = raw_src_fwrap.value.name
         src_data = raw_src_fwrap.value.data
 
@@ -449,7 +477,10 @@ class NEMO_RWC_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class NEMO_ANTHRO_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for NEMO Anthropogenic emissions data."""
+
     def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
+        """Converts NEMO Anthropogenic emissions from g/s/km2 to ug/m2/s."""
         field_name = raw_src_fwrap.value.name
         src_data = raw_src_fwrap.value.data
 
@@ -479,6 +510,8 @@ class NEMO_ANTHRO_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class PECM_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for PECM (Pollen Emissions for Climate Models) data."""
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / ("pollen_obs_" + self.dt_spec.yyyy + "_BELD6_ef_T_" + self.dt_spec.jjj + ".nc")
@@ -529,6 +562,8 @@ class PECM_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class NARR_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for NARR (North American Regional Reanalysis) data."""
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "rwc_emission_denominator.2017.nc"
@@ -537,6 +572,8 @@ class NARR_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class ECOREGION_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for Ecoregion mapping data."""
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "veg_map.nc"
@@ -545,6 +582,8 @@ class ECOREGION_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class FENGSHA_2D_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for FENGSHA 2D dust emission data."""
+
     var_names_to_copy_to_output_file: tuple[str, ...] = ("latCell", "lonCell")
 
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
@@ -555,6 +594,8 @@ class FENGSHA_2D_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class FENGSHA_2D_Time_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for FENGSHA 2D dust emission data with time dimension."""
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for _ in range(1):
             src_path = self.input_dir / "FENGSHA_RRFS_NA_3km_2026_2D_Time.nc"
@@ -563,6 +604,8 @@ class FENGSHA_2D_Time_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class GOES_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for GOES (Geostationary Operational Environmental Satellite) AOD data."""
+
     def get_src_grid_path(self) -> Path:
         return self.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
 
@@ -614,6 +657,8 @@ class GOES_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class NGFS_DatasetRegridContext(AbstractDatasetRegridContext):
+    """Regrid context for NGFS (Next Generation Fire System) data."""
+
     def get_read_name(self, field_name: str) -> str:
         if field_name == "PM25":
             return "EMIS_PM25"
@@ -641,6 +686,7 @@ class NGFS_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 def get_regrid_context_class(name: DatasetName) -> type[AbstractDatasetRegridContext]:
+    """Factory function to return the appropriate context class for a given dataset name."""
     klasses = {
         DatasetName.RAVE: RAVE_DatasetRegridContext,
         DatasetName.GRA2PES: GRA2PES_DatasetRegridContext,
