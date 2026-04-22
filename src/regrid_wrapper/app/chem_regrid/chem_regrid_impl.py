@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 
-from regrid_wrapper.app.chem_regrid.context import CR_LOGGER, ChemRegridContext
+from regrid_wrapper.app.chem_regrid.chem_regrid_context import CR_LOGGER, ChemRegridContext
 from regrid_wrapper.app.chem_regrid.dataset.model import InterpMethod
 from regrid_wrapper.app.chem_regrid.dataset.regrid_context import AbstractDatasetRegridContext, get_regrid_context_class
 from regrid_wrapper.app.chem_regrid.dataset.src_field import AbstractSrcField

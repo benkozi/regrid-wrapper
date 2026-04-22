@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
 from regrid_wrapper.app.chem_regrid.chem_regrid_impl import main
-from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
 from regrid_wrapper.app.chem_regrid.dataset.model import DatasetName
 from test.test_app.test_chem_regrid.conftest import DatasetTestContext
 

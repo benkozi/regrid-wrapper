@@ -3,8 +3,8 @@ from pathlib import Path
 
 import yaml
 
+from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
 from regrid_wrapper.app.chem_regrid.chem_regrid_impl import main
-from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
 from regrid_wrapper.app.override import apply_overrides
 
 

@@ -3,8 +3,8 @@ import time
 
 from pydantic_settings import BaseSettings
 
+from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
 from regrid_wrapper.app.chem_regrid.chem_regrid_impl import main as chem_regrid_impl_main
-from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
 from regrid_wrapper.context.logging import LOGGER
 
 

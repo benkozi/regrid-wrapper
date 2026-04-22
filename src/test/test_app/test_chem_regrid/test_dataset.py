@@ -1,6 +1,6 @@
 import pytest
 
-from regrid_wrapper.app.chem_regrid.context import ChemRegridContext
+from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
 from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset, DatasetName
 
 
