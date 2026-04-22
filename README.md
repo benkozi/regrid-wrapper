@@ -2,6 +2,39 @@
 
 The `rw` command provides a set of command-line tools for regridding.
 
+## "Chem Regrid" Application
+
+Install via `pip install .` or access via `<regrid-wrapper root dir>/src/regrid-wrapper/app/rw_cli.py`.
+
+```
+usage: rw chem-regrid [-h] [--yaml-path YAML_PATH] [--root-key ROOT_KEY] [--overrides OVERRIDES [OVERRIDES ...]]
+
+options:
+  -h, --help            show this help message and exit
+  --yaml-path YAML_PATH
+                        If provided, path to YAML file containing the configuration's root key
+  --root-key ROOT_KEY   If provided, use this key when extracting the root configuration
+  --overrides OVERRIDES [OVERRIDES ...]
+                        If provided, override arbitrary key+values (e.g. --override key1:nest=val1 key2=val2)
+```
+
+Example:
+
+```shell
+python ${rw_dir}/src/regrid_wrapper/app/rw_cli.py chem-regrid \
+    --overrides workdir=${cr_workdir} \
+                input_dir=${cr_input_dir} \
+                output_dir=${cr_output_dir} \
+                weight_dir=${cr_weight_dir} \
+                scrip_path=${cr_scrip_path} \
+                dst_path=${cr_dst_path} \
+                cycle=${cr_cycle} \
+                mesh_name=${cr_mesh_name} \
+                ebb_dcycle=1 \
+                dataset_name=RAVE \
+                fcst_length=6
+```
+
 ## MPAS to UGRID Conversion
 
 1. `conda env create -f environment-uxarray.yaml`
