@@ -206,7 +206,7 @@ class ChemRegridProcessor:
         local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
         reconciled_bounds = reconcile_bounds(local_bounds)
         dims = src_field.create_dimension_collection(reconciled_bounds)
-        CR_LOGGER.info(f"{dims=}")
+        CR_LOGGER.debug(f"{dims=}")
         CR_LOGGER.info("writing field to netcdf")
         with open_nc(self.context.new_dst_path, mode="a") as ds:
             if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
