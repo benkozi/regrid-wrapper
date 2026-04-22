@@ -44,6 +44,64 @@ cd /opt/project && \
 
 ... or mpi tests:
 
-```
+```bash
 mpirun -n 8 pytest -m mpi src/test
+```
+
+# Adding a New Dataset
+
+To add a new dataset to the regridding pipeline, follow these steps:
+
+1.  **Update `DatasetName` Enum**: Add the new dataset key to the `DatasetName` enum in `src/regrid_wrapper/app/chem_regrid/dataset/model.py`.
+2.  **Add Configuration**: Add a new entry to `src/regrid_wrapper/app/chem_regrid/dataset/config/datasets.yml` following the schema described above.
+3.  **Create Regrid Context Subclass**: In `src/regrid_wrapper/app/chem_regrid/dataset/regrid_context.py`, create a new subclass of `AbstractDatasetRegridContext` (e.g., `MY_DATASET_DatasetRegridContext`).
+    *   Implement `iter_file_pairs` to define how source and destination files are paired.
+    *   Override `update_src_field_wrapper`, `transform_regridded_data`, or `post_regrid_processing` if dataset-specific logic is needed.
+4.  **Register the Subclass**: Add the new context class to the `klasses` dictionary in the `get_regrid_context_class` factory function within `src/regrid_wrapper/app/chem_regrid/dataset/regrid_context.py`.
+
+## Dataset Configuration
+
+Datasets are configured in `src/regrid_wrapper/app/chem_regrid/dataset/config/datasets.yml`. Each entry defines how a specific dataset should be read and regridded.
+
+### Dataset Schema
+
+| Field | Description |
+|---|---|
+| `field_names` | List of variable names to be regridded from the source file. |
+| `x_center` | Variable name for longitude centers. |
+| `y_center` | Variable name for latitude centers. |
+| `x_dim` | Dimension name for the X (longitude) axis. |
+| `y_dim` | Dimension name for the Y (latitude) axis. |
+| `x_corner` | (Optional) Variable name for longitude corners. Set to `null` if not available. |
+| `y_corner` | (Optional) Variable name for latitude corners. Set to `null` if not available. |
+| `x_corner_dim` | (Optional) Dimension name for longitude corners. |
+| `y_corner_dim` | (Optional) Dimension name for latitude corners. |
+| `level_in_name` | (Optional) Name of the vertical level dimension in the source file. |
+| `level_out_name` | Name of the vertical level dimension in the output file. |
+| `level_out_size` | Number of vertical levels in the output. Set to `0` for 2D data. |
+| `time_name` | (Optional) Name of the time dimension in the source file. |
+| `time_size` | Number of time steps. Set to `0` if time dimension is not used. |
+| `InterpMethod` | ESMF interpolation method (e.g., `CONSERVE`, `BILINEAR`, `NEAREST_STOD`). |
+
+### Example Entry
+
+```yaml
+MY_DATASET:
+  field_names:
+    - PM25
+    - SO2
+  x_center: lon
+  y_center: lat
+  x_dim: x
+  y_dim: y
+  x_corner: null
+  y_corner: null
+  x_corner_dim: null
+  y_corner_dim: null
+  level_in_name: null
+  level_out_name: nkanthro
+  level_out_size: 1
+  time_name: time
+  time_size: 1
+  InterpMethod: CONSERVE
 ```
