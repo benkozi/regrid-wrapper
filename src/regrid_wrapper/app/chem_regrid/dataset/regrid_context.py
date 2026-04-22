@@ -5,6 +5,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Iterator, Union
 
+import esmpy
 import numpy as np
 from dask.array.tests.test_xarray import xr
 from pydantic import BaseModel, PrivateAttr
@@ -19,7 +20,14 @@ from regrid_wrapper.app.chem_regrid.dataset.src_field import (
     SrcField3d_plusTime,
 )
 from regrid_wrapper.context.comm import COMM
-from regrid_wrapper.esmpy.field_wrapper import FieldWrapper, HasNcAttrsType, NcToField, open_nc
+from regrid_wrapper.esmpy.field_wrapper import (
+    DimensionCollection,
+    FieldWrapper,
+    HasNcAttrsType,
+    NcToField,
+    open_nc,
+    set_variable_data,
+)
 
 
 class DateTimeSpec(BaseModel):
@@ -74,6 +82,14 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
 
     rank: int = COMM.rank
 
+    def get_src_grid_path(self) -> Path:
+        return self.src_path
+
+    def get_src_field_dims(self, field_name: str) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
+        dim_level = (self.level_in_name,) if self.level_in_name else None
+        dim_time = (self.time_name,) if self.time_name else None
+        return dim_level, dim_time
+
     @abstractmethod
     def iter_file_pairs(self) -> Iterator[RegridFilePair]: ...
 
@@ -108,14 +124,15 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
             dows = "sundy"
         return DateTimeSpec(yyyy=yyyy, mm=mm, dd=dd, hh=hh, jjj=jjj, dowh=dowh, dows=dows, datetime=x)
 
+    def get_read_name(self, field_name: str) -> str:
+        return field_name
+
     @cached_property
     def src_fields(self) -> tuple[AbstractSrcField, ...]:
         src_fields = []
         with open_nc(self.src_path, mode="r") as ds:
             for field_name in self.field_names:
-                read_name = field_name
-                if self.dataset_name == "NGFS" and field_name == "PM25":
-                    read_name = "EMIS_PM25"
+                read_name = self.get_read_name(field_name)
 
                 if read_name not in ds.variables:
                     raise KeyError(f"Source variable '{read_name}' not found for field '{field_name}' in {self.src_path}")
@@ -148,6 +165,27 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
         exclude = ("coordinates", "valid_range")
         return {ii: getattr(src, ii) for ii in src.ncattrs() if not ii.startswith("_") and ii not in exclude}
+
+    def transform_regridded_data(
+        self,
+        src_field: AbstractSrcField,
+        dst_field_data: np.ndarray,
+        ds: Any,
+        reconciled_bounds: tuple[int, int],
+        dims: DimensionCollection,
+    ) -> np.ndarray:
+        """Hook for dataset-specific data transformations after regridding but before writing."""
+        return dst_field_data
+
+    def post_regrid_processing(
+        self,
+        src_field: AbstractSrcField,
+        regridder: Union[esmpy.Regrid, esmpy.RegridFromFile],
+        processor: Any,
+        dims: DimensionCollection,
+    ) -> None:
+        """Hook for dataset-specific operations after a field has been regridded and written."""
+        pass
 
 
 # Try to find the latest RAVE file available up to max_lookback_hours before target_time_str
@@ -275,8 +313,72 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
             dates_needed.append(y)
         return dates_needed
 
+    def transform_regridded_data(
+        self,
+        src_field: AbstractSrcField,
+        dst_field_data: np.ndarray,
+        ds: Any,
+        reconciled_bounds: tuple[int, int],
+        dims: DimensionCollection,
+    ) -> np.ndarray:
+        if src_field.name in ("FRP_MEAN", "FRE"):
+            # Multiply FRE/FRP by output area so it is back to W or J*s
+            area = np.asarray(ds.variables["areaCell"])
+            area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]].reshape(dims.shape_local)
+            return dst_field_data * area_subset
+        return dst_field_data
+
+    def post_regrid_processing(
+        self,
+        src_field: AbstractSrcField,
+        regridder: Union[esmpy.Regrid, esmpy.RegridFromFile],
+        processor: Any,
+        dims: DimensionCollection,
+    ) -> None:
+        if src_field.name == "TPM":
+            with open_nc(self.new_dst_path, mode="a") as ds:
+                CR_LOGGER.info("calculating PM10 as TPM - PM25")
+                src_fwrap_ttl = processor.create_src_field_wrapper(field_name="TPM")
+                src_fwrap_p25 = processor.create_src_field_wrapper(field_name="PM25")
+
+                dst_field_ttl = processor.get_dst_field()
+                dst_field_ttl.data.fill(0.0)
+                regridder(src_fwrap_ttl.value, dst_field_ttl)
+                data1 = src_field.reshape_field_data(dst_field_ttl.data).copy()
+
+                dst_field_p25 = processor.get_dst_field()
+                dst_field_p25.data.fill(0.0)
+                regridder(src_fwrap_p25.value, dst_field_p25)
+                data2 = src_field.reshape_field_data(dst_field_p25.data)
+
+                # use the same src_field metadata for PM10
+                var = ds.createVariable(
+                    "PM10",
+                    src_field.dtype,
+                    [dim.name[0] for dim in dims.value],
+                    fill_value=src_field.fill_value,
+                )
+                for k, v in src_field.attrs.items():
+                    setattr(var, k, v)
+
+                data3 = data1 - data2
+                set_variable_data(
+                    var,
+                    dims,
+                    data3,
+                    collective=True,
+                )
+            src_fwrap_ttl.value.destroy()
+            src_fwrap_p25.value.destroy()
+
 
 class GRA2PES_DatasetRegridContext(AbstractDatasetRegridContext):
+    def get_src_field_dims(self, field_name: str) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
+        dim_level, dim_time = super().get_src_field_dims(field_name)
+        if field_name == "h_agl":
+            dim_level = ("bottom_top_stag",)
+        return dim_level, dim_time
+
     def update_src_field_wrapper(self, raw_src_fwrap: FieldWrapper) -> None:
         field_name = raw_src_fwrap.value.name
         src_data = raw_src_fwrap.value.data
@@ -385,6 +487,46 @@ class PECM_DatasetRegridContext(AbstractDatasetRegridContext):
             )
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
 
+    def post_regrid_processing(
+        self,
+        src_field: AbstractSrcField,
+        regridder: Union[esmpy.Regrid, esmpy.RegridFromFile],
+        processor: Any,
+        dims: DimensionCollection,
+    ) -> None:
+        if src_field.name == "ENL_POLL":
+            with open_nc(self.new_dst_path, mode="a") as ds:
+                CR_LOGGER.info("renaming and combining tree fields")
+
+                src_fwrap_enl = processor.create_src_field_wrapper(field_name="ENL_POLL")
+                dst_field_enl = processor.get_dst_field()
+                dst_field_enl.data.fill(0.0)
+                regridder(src_fwrap_enl.value, dst_field_enl)
+                data_enl = src_field.reshape_field_data(dst_field_enl.data).copy()
+
+                src_fwrap_dbl = processor.create_src_field_wrapper(field_name="DBL_POLL")
+                dst_field_dbl = processor.get_dst_field()
+                dst_field_dbl.data.fill(0.0)
+                regridder(src_fwrap_dbl.value, dst_field_dbl)
+                data_dbl = src_field.reshape_field_data(dst_field_dbl.data)
+
+                var = ds.createVariable(
+                    "TREE_POLL",
+                    src_field.dtype,
+                    [dim.name[0] for dim in dims.value],
+                    fill_value=src_field.fill_value,
+                )
+                for k, v in src_field.attrs.items():
+                    setattr(var, k, v)
+                set_variable_data(
+                    var,
+                    dims,
+                    data_enl + data_dbl,
+                    collective=True,
+                )
+            src_fwrap_enl.value.destroy()
+            src_fwrap_dbl.value.destroy()
+
 
 class NARR_DatasetRegridContext(AbstractDatasetRegridContext):
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
@@ -421,6 +563,13 @@ class FENGSHA_2D_Time_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class GOES_DatasetRegridContext(AbstractDatasetRegridContext):
+    def get_src_grid_path(self) -> Path:
+        return self.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
+
+    @staticmethod
+    def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
+        return {}
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         date_to_process = self.dates_needed[0]
         src_paths = find_latest_src_file(self.input_dir, date_to_process, -1, self.dataset_name, max_lookback_hours=2)
@@ -465,6 +614,11 @@ class GOES_DatasetRegridContext(AbstractDatasetRegridContext):
 
 
 class NGFS_DatasetRegridContext(AbstractDatasetRegridContext):
+    def get_read_name(self, field_name: str) -> str:
+        if field_name == "PM25":
+            return "EMIS_PM25"
+        return super().get_read_name(field_name)
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         raise NotImplementedError("NGFS not yet supported")
 

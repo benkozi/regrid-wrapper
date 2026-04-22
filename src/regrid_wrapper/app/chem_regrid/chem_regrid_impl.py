@@ -92,11 +92,7 @@ class ChemRegridProcessor:
         CR_LOGGER.info(f"initialize: {self.context=}")
         esmpy.Manager(debug=True)
 
-        # JLS - temporary fix for coords not in file
-        if self.context.dataset_name == "GOES":
-            pathsrc = self.context.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
-        else:
-            pathsrc = self.context.src_path
+        pathsrc = self.context.get_src_grid_path()
 
         CR_LOGGER.info("create source grid")
         self._src_gwrap = NcToGrid(
@@ -209,9 +205,8 @@ class ChemRegridProcessor:
         CR_LOGGER.debug(f"{dims=}")
         CR_LOGGER.info("writing field to netcdf")
         with open_nc(self.context.new_dst_path, mode="a") as ds:
-            if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
-                area = np.asarray(ds.variables["areaCell"])
-                area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]].reshape(dims.shape_local)
+            transformed_data = self.context.transform_regridded_data(src_field, dst_field.data, ds, reconciled_bounds, dims)
+
             CR_LOGGER.info(f"creating variable {src_field.name=}")
             var = ds.createVariable(
                 src_field.name,
@@ -219,102 +214,21 @@ class ChemRegridProcessor:
                 [dim.name[0] for dim in dims.value],
                 fill_value=src_field.fill_value,
             )
-            # Don't carry over fill value and datatype
-            if self.context.dataset_name != "GOES":
-                for k, v in src_field.attrs.items():
-                    setattr(var, k, v)
+            for k, v in src_field.attrs.items():
+                setattr(var, k, v)
 
             CR_LOGGER.info(f"setting variable data {src_field.name=}")
-            # Multiply FRE/FRP by output area so it is back to W or J*s
-            if self.context.dataset_name == "RAVE" and src_field.name in ("FRP_MEAN", "FRE"):
-                set_variable_data(
-                    var,
-                    dims,
-                    src_field.reshape_field_data(dst_field.data * area_subset),
-                    collective=True,
-                )
-            else:
-                set_variable_data(
-                    var,
-                    dims,
-                    src_field.reshape_field_data(dst_field.data),
-                    collective=True,
-                )
+            set_variable_data(
+                var,
+                dims,
+                src_field.reshape_field_data(transformed_data),
+                collective=True,
+            )
         CR_LOGGER.info(f"finished writing field to netcdf {src_field.name=}")
         src_fwrap.value.destroy()
         del src_fwrap
 
-        if src_field.name == "ENL_POLL":
-            with open_nc(self.context.new_dst_path, mode="a") as ds:
-                CR_LOGGER.info("renaming and combining tree fields")
-
-                src_fwrap_enl = self.create_src_field_wrapper(field_name="ENL_POLL")
-                dst_field_enl = self.get_dst_field()
-                dst_field_enl.data.fill(0.0)
-                regridder(src_fwrap_enl.value, dst_field_enl)
-
-                src_fwrap_dbl = self.create_src_field_wrapper(field_name="DBL_POLL")
-                dst_field_dbl = self.get_dst_field()
-                dst_field_dbl.data.fill(0.0)
-                regridder(src_fwrap_dbl.value, dst_field_dbl)
-
-                src_field = self.context.src_fields[0]
-
-                var = ds.createVariable(
-                    "TREE_POLL",
-                    src_field.dtype,
-                    [dim.name[0] for dim in dims.value],
-                    fill_value=src_field.fill_value,
-                )
-                for k, v in self.context.src_fields[0].attrs.items():
-                    setattr(var, k, v)
-                set_variable_data(
-                    var,
-                    dims,
-                    src_field.reshape_field_data(dst_field_enl.data + dst_field_dbl.data),
-                    collective=True,
-                )
-            src_fwrap_enl.value.destroy()
-            del src_fwrap_enl
-            src_fwrap_dbl.value.destroy()
-            del src_fwrap_dbl
-        if src_field.name == "TPM":
-            with open_nc(self.context.new_dst_path, mode="a") as ds:
-                CR_LOGGER.info("calculating PM10 as TPM - PM25")
-                src_fwrap_ttl = self.create_src_field_wrapper(field_name="TPM")
-                src_fwrap_p25 = self.create_src_field_wrapper(field_name="PM25")
-
-                dst_field_ttl = self.get_dst_field()
-                dst_field_ttl.data.fill(0.0)
-                regridder(src_fwrap_ttl.value, dst_field_ttl)
-
-                dst_field_p25 = self.get_dst_field()
-                dst_field_p25.data.fill(0.0)
-                regridder(src_fwrap_p25.value, dst_field_p25)
-
-                src_field = self.context.src_fields[0]
-
-                var = ds.createVariable(
-                    "PM10",
-                    src_field.dtype,
-                    [dim.name[0] for dim in dims.value],
-                    fill_value=src_field.fill_value,
-                )
-                for k, v in self.context.src_fields[0].attrs.items():
-                    setattr(var, k, v)
-                data1 = src_field.reshape_field_data(dst_field_ttl.data)
-                data2 = src_field.reshape_field_data(dst_field_p25.data)
-                data3 = data1 - data2
-                set_variable_data(
-                    var,
-                    dims,
-                    data3,
-                    collective=True,
-                )
-            src_fwrap_ttl.value.destroy()
-            del src_fwrap_ttl
-            src_fwrap_p25.value.destroy()
-            del src_fwrap_p25
+        self.context.post_regrid_processing(src_field, regridder, self, dims)
 
     def create_output_file(self):
         if self.context.rank == 0:
@@ -387,12 +301,7 @@ class ChemRegridProcessor:
         return src_fwrap
 
     def _create_raw_src_field_wrapper_(self, field_name: str) -> FieldWrapper:
-        if self.context.dataset_name == "GRA2PES" and field_name == "h_agl":
-            dim_level = ("bottom_top_stag",)
-        else:
-            dim_level = (self.context.level_in_name,) if self.context.level_in_name else None
-
-        dim_time = (self.context.time_name,) if self.context.time_name else None
+        dim_level, dim_time = self.context.get_src_field_dims(field_name)
 
         return NcToField(
             path=self.context.src_path,
