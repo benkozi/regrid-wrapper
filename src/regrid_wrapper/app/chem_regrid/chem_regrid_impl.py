@@ -195,8 +195,8 @@ class ChemRegridProcessor:
             data_frame.to_csv(self.context.desc_stats_out, index=False)
 
     def _regrid_src_field(self, src_field: AbstractSrcField) -> None:
-        regridder = self.get_regridder()
         CR_LOGGER.info(f"regridding {src_field.name=}")
+        regridder = self.get_regridder()
         src_fwrap = self.create_src_field_wrapper(field_name=src_field.name)
 
         dst_field = self.get_dst_field()
