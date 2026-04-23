@@ -10,11 +10,12 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 
-from regrid_wrapper.app.chem_regrid.chem_regrid_context import CR_LOGGER, ChemRegridContext
-from regrid_wrapper.app.chem_regrid.dataset.config.model import InterpMethod
+from regrid_wrapper.app.chem_regrid import CR_LOGGER
+from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
+from regrid_wrapper.app.chem_regrid.dataset.context import get_regrid_context_class
 from regrid_wrapper.app.chem_regrid.dataset.context.base import (
     AbstractDatasetRegridContext,
-    get_regrid_context_class,
+    InterpMethod,
 )
 from regrid_wrapper.app.chem_regrid.dataset.src_field import SrcField
 from regrid_wrapper.context.comm import COMM, reconcile_bounds

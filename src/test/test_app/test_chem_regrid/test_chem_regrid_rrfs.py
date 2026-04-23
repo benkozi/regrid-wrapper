@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from regrid_wrapper.app.chem_regrid import chem_regrid_rrfs
 from regrid_wrapper.app.chem_regrid.chem_regrid_rrfs import ChemRegridEnv
-from regrid_wrapper.app.chem_regrid.dataset.config.model import DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.context import DatasetName
 
 
 def test_chem_regrid_env_from_env_vars() -> None:

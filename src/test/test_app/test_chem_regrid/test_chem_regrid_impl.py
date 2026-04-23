@@ -5,7 +5,7 @@ import pytest
 
 from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
 from regrid_wrapper.app.chem_regrid.chem_regrid_impl import main
-from regrid_wrapper.app.chem_regrid.dataset.config.model import DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.context import DatasetName
 from test.test_app.test_chem_regrid.conftest import DatasetTestContext
 
 

@@ -1,31 +1,8 @@
-from enum import StrEnum, unique
 from pathlib import Path
 
+from regrid_wrapper.app.chem_regrid.dataset.context import DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.context.base import InterpMethod
 from regrid_wrapper.common import RwBaseModel
-
-
-@unique
-class DatasetName(StrEnum):
-    RAVE = "RAVE"
-    GRA2PES = "GRA2PES"
-    NEMO_RWC = "NEMO_RWC"
-    NEMO_ANTHRO = "NEMO_ANTHRO"
-    FMC = "FMC"
-    PECM = "PECM"
-    NARR = "NARR"
-    ECOREGION = "ECOREGION"
-    FENGSHA_2D = "FENGSHA_2D"
-    FENGSHA_2D_Time = "FENGSHA_2D_Time"
-    NGFS = "NGFS"
-    GOES = "GOES"
-
-
-@unique
-class InterpMethod(StrEnum):
-    CONSERVE = "CONSERVE"
-    CONSERVE_2ND = "CONSERVE_2ND"
-    BILINEAR = "BILINEAR"
-    NEAREST_STOD = "NEAREST_STOD"
 
 
 class ChemRegridDataset(RwBaseModel):

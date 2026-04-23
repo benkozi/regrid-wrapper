@@ -9,7 +9,7 @@ import xarray as xr
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
-from regrid_wrapper.app.chem_regrid.dataset.config.model import DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.context import DatasetName
 from regrid_wrapper.context.comm import COMM
 from test.conftest import create_analytic_data_array, create_rrfs_grid_file
 
