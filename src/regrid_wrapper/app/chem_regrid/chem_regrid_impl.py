@@ -392,7 +392,7 @@ class RaveToMpasRegridProcessor:
 
 # Check for extra dims beyond lat/lon
         _LOGGER.info("create destination field")
-        cells_dim = Dimension(name=("numCells",),
+        cells_dim = Dimension(name=("nCells",),
                           size=self.context.num_cells,
                           lower=local_bounds[0],
                           upper=local_bounds[1],
@@ -560,14 +560,14 @@ class RaveToMpasRegridProcessor:
                 if self.context.dataset_name == "RAVE" and rave_field.name in ("FRP_MEAN", "FRE"):
                     set_variable_data(
                         var,
-                        dims,
+                        dst_field.dims,
                         dst_field.value.data * area_subset,
                         collective=True,
                     )
                 else:
                     set_variable_data(
                         var,
-                        dims,
+                        dst_field.dims,
                         dst_field.value.data,
                         collective=True,
                     )
@@ -601,8 +601,8 @@ class RaveToMpasRegridProcessor:
                         setattr(var, k, v)
                     set_variable_data(
                         var,
-                        dims,
-                        rave_field.reshape_field_data(dst_field_enl.data + dst_field_dbl.data),
+                        dst_field.dims,
+                        dst_field_enl.value.data + dst_field_dbl.value.data,
                         collective=True,
                     )
                 src_fwrap_enl.value.destroy()
