@@ -9,6 +9,8 @@ from regrid_wrapper.esmpy.field_wrapper import Dimension, DimensionCollection
 
 
 class SrcField(BaseModel):
+    """Represents a source field with its metadata and dimensions for regridding."""
+
     name: str
     attrs: dict[str, Any]
     fill_value: float
@@ -20,6 +22,7 @@ class SrcField(BaseModel):
 
     @cached_property
     def time_dimension(self) -> Dimension:
+        """Returns the time dimension for the field."""
         return Dimension(
             name=("Time",),
             size=self.time_size,
@@ -31,6 +34,7 @@ class SrcField(BaseModel):
 
     @cached_property
     def nklevel_dimension(self) -> Dimension:
+        """Returns the vertical level dimension for the field."""
         if self.level_out_name is None:
             raise ValueError("Level out name must be set for 3D fields")
         return Dimension(
@@ -43,6 +47,7 @@ class SrcField(BaseModel):
         )
 
     def create_ncells_dimension(self, bounds: tuple[int, int]) -> Dimension:
+        """Creates the cells dimension with specified bounds."""
         return Dimension(
             name=("nCells",),
             size=self.num_cells,
@@ -53,6 +58,7 @@ class SrcField(BaseModel):
         )
 
     def create_dimension_collection(self, ncells_bounds: tuple[int, int]) -> DimensionCollection:
+        """Creates a collection of dimensions based on the field's shape."""
         dims = []
         if self.level_out_size == 0:
             if self.time_size > 0:
@@ -66,6 +72,7 @@ class SrcField(BaseModel):
         return DimensionCollection(value=tuple(dims))
 
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
+        """Reshapes the field data to match the expected output dimensions."""
         if self.level_out_size == 0:
             if self.time_size == 0:
                 return target.reshape(-1)
