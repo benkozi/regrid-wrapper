@@ -965,13 +965,11 @@ def main(ctx: ChemRegridContext) -> None:
     workdir = ctx.workdir  # Directory where operations will be processed
     input_dir = ctx.input_dir  # Top directory of input data
     output_dir = ctx.output_dir  # Top directory of output data
-    weight_dir = ctx.weight_dir  # Directory that contains the regrid weights
     cycle = ctx.cycle
     scrip_path = ctx.rw_scrip_path # Cycle Time, YYYYMMDDHH
-    dst_path = ctx.dst_path
+    dst_path = ctx.rw_dst_path
     mesh_name = ctx.mesh_name
     ebb_dcycle = ctx.ebb_dcycle
-    fcst_length = ctx.fcst_length
 
     desc_stats_out = ctx.rw_desc_stats_out
     #

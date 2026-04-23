@@ -10,3 +10,4 @@ dependencies:
   - mpi4py
   - nccmp
   - pydantic
+  - pydantic-settings

@@ -56,7 +56,7 @@ class ChemRegridContext(RwBaseModel):
     @cached_property
     def rw_scrip_path(self) -> Path:
         if self.scrip_path is None:
-            return self.workdir / f"mpas_{self.dataset_name.value}-{self.mesh_name}_scrip.nc"
+            return self.workdir / f"mpas_{self.mesh_name}_scrip.nc"
         return self.scrip_path
 
     @cached_property

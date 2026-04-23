@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -14,14 +13,3 @@ def verify_cli(args: argparse.Namespace) -> None:
     yaml_data = yaml.safe_load(yaml_path.read_text())
     ctx = VerifyContext(**yaml_data[root_key])
     run_verify(ctx)
-
-
-def add_verify_parser(subparsers: Any) -> None:
-    # verify sub-command
-    parser_verify = subparsers.add_parser("verify", help="Verify data files using nccmp.")
-    parser_verify.add_argument(
-        "--yaml-path", type=str, required=True, help="Path to YAML file containing the configuration's root key"
-    )
-    parser_verify.add_argument(
-        "--root-key", type=str, default="rw-verify", help="If provided, use this key when extracting the root configuration"
-    )
