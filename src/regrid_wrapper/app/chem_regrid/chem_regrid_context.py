@@ -9,6 +9,9 @@ from regrid_wrapper.common import RwBaseModel
 
 
 class ChemRegridContext(RwBaseModel):
+    """This is the API class for the regridding implementation. These fields may be customized by
+    users."""
+
     dataset_name: DatasetName
     workdir: Path
     input_dir: Path
