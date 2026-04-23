@@ -28,6 +28,8 @@ from regrid_wrapper.esmpy.field_wrapper import (
     copy_nc_variable,
     open_nc,
     set_variable_data,
+    HasNcAttrsType,
+    copy_nc_variable, load_variable_data, MeshWrapper,
 )
 
 
@@ -89,7 +91,7 @@ class ChemRegridProcessor:
         self.context = context
 
         self._regridder: esmpy.Regrid | None = None
-        self._dst_field: esmpy.Field | None = None
+        self._dst_field: FieldWrapper | None = None
         self._src_gwrap: GridWrapper | None = None
 
     def initialize(self) -> None:
@@ -116,6 +118,7 @@ class ChemRegridProcessor:
                 filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology"
             )
         dst_mesh = self._dst_mesh
+        local_bounds = reconcile_bounds((0, self._dst_mesh.size_owned[1]))
 
         self._dst_field = self._create_dst_field_(dst_mesh)
         self._regridder = self._create_regridder_(src_fwrap)
@@ -142,7 +145,7 @@ class ChemRegridProcessor:
             CR_LOGGER.info("create regridder from file")
             regridder = esmpy.RegridFromFile(
                 srcfield=src_fwrap.value,
-                dstfield=self._dst_field,
+                dstfield=self._dst_field.value,
                 filename=str(self.context.weight_path),
             )
         else:
@@ -259,7 +262,7 @@ class ChemRegridProcessor:
     def finalize(self) -> None:
         CR_LOGGER.info("finalizing")
         self._regridder.destroy()
-        self._dst_field.destroy()
+        self._dst_field.value.destroy()
         self._src_gwrap.value.destroy()
         # TODO: There could be an option to destroy the destination mesh when finalizing. However,
         #  it is more efficient to leave it since the destination is not variable at this point.
@@ -320,7 +323,7 @@ class ChemRegridProcessor:
             raise ValueError
         return self._src_gwrap
 
-    def get_dst_field(self) -> esmpy.Field:
+    def get_dst_field(self) -> FieldWrapper:
         if self._dst_field is None:
             raise ValueError
         return self._dst_field
