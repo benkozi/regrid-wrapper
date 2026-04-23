@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from regrid_wrapper.app.chem_regrid.chem_regrid_context import CR_LOGGER, ChemRegridContext
 from regrid_wrapper.app.chem_regrid.dataset.dataset_regrid_context import AbstractDatasetRegridContext, get_regrid_context_class
 from regrid_wrapper.app.chem_regrid.dataset.model import InterpMethod
-from regrid_wrapper.app.chem_regrid.dataset.src_field import AbstractSrcField
+from regrid_wrapper.app.chem_regrid.dataset.src_field import SrcField
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.esmpy.field_wrapper import (
     FieldWrapper,
@@ -190,7 +190,7 @@ class ChemRegridProcessor:
             data_frame = self.create_desc_stuff(targets)
             data_frame.to_csv(self.context.desc_stats_out, index=False)
 
-    def _regrid_src_field(self, src_field: AbstractSrcField) -> None:
+    def _regrid_src_field(self, src_field: SrcField) -> None:
         CR_LOGGER.info(f"regridding {src_field.name=}")
         regridder = self.get_regridder()
         src_fwrap = self.create_src_field_wrapper(field_name=src_field.name)

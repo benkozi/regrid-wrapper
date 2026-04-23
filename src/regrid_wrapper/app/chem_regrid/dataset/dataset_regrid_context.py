@@ -12,13 +12,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from regrid_wrapper.app.chem_regrid.chem_regrid_context import CR_LOGGER
 from regrid_wrapper.app.chem_regrid.dataset.model import DatasetName, InterpMethod
-from regrid_wrapper.app.chem_regrid.dataset.src_field import (
-    AbstractSrcField,
-    SrcField2d,
-    SrcField2d_plusTime,
-    SrcField3d,
-    SrcField3d_plusTime,
-)
+from regrid_wrapper.app.chem_regrid.dataset.src_field import SrcField
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.esmpy.field_wrapper import (
     DimensionCollection,
@@ -143,7 +137,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
         return field_name
 
     @cached_property
-    def src_fields(self) -> tuple[AbstractSrcField, ...]:
+    def src_fields(self) -> tuple[SrcField, ...]:
         """Initializes and returns the collection of source fields for the dataset."""
         src_fields = []
         with open_nc(self.src_path, mode="r") as ds:
@@ -163,16 +157,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
                     "time_size": self.time_size,
                     "num_cells": self.num_cells,
                 }
-                if self.level_out_size == 0:
-                    if self.time_size == 0:
-                        app: AbstractSrcField = SrcField2d.model_validate(init_data)
-                    else:
-                        app = SrcField2d_plusTime.model_validate(init_data)
-                else:
-                    if self.time_size == 0:
-                        app = SrcField3d.model_validate(init_data)
-                    else:
-                        app = SrcField3d_plusTime.model_validate(init_data)
+                app = SrcField.model_validate(init_data)
                 src_fields.append(app)
         CR_LOGGER.debug(f"{src_fields=}")
         return tuple(src_fields)
@@ -185,7 +170,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
 
     def transform_regridded_data(
         self,
-        src_field: AbstractSrcField,
+        src_field: SrcField,
         dst_field_data: np.ndarray,
         ds: Any,
         reconciled_bounds: tuple[int, int],
@@ -196,7 +181,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
 
     def post_regrid_processing(
         self,
-        src_field: AbstractSrcField,
+        src_field: SrcField,
         regridder: Union[esmpy.Regrid, esmpy.RegridFromFile],
         processor: Any,
         dims: DimensionCollection,
@@ -335,7 +320,7 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
 
     def transform_regridded_data(
         self,
-        src_field: AbstractSrcField,
+        src_field: SrcField,
         dst_field_data: np.ndarray,
         ds: Any,
         reconciled_bounds: tuple[int, int],
@@ -350,7 +335,7 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
 
     def post_regrid_processing(
         self,
-        src_field: AbstractSrcField,
+        src_field: SrcField,
         regridder: Union[esmpy.Regrid, esmpy.RegridFromFile],
         processor: Any,
         dims: DimensionCollection,
@@ -522,7 +507,7 @@ class PECM_DatasetRegridContext(AbstractDatasetRegridContext):
 
     def post_regrid_processing(
         self,
-        src_field: AbstractSrcField,
+        src_field: SrcField,
         regridder: Union[esmpy.Regrid, esmpy.RegridFromFile],
         processor: Any,
         dims: DimensionCollection,
