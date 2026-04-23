@@ -112,9 +112,6 @@ class ChemRegridProcessor:
 
         if self._dst_mesh is None:
             CR_LOGGER.info("create destination mesh")
-            # dst_mesh = esmpy.Mesh(
-            #     filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.SCRIP
-            # )
             self._dst_mesh = esmpy.Mesh(
                 filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology"
             )
@@ -188,7 +185,6 @@ class ChemRegridProcessor:
                 InterpMethod.BILINEAR: esmpy.RegridMethod.BILINEAR,
                 InterpMethod.NEAREST_STOD: esmpy.RegridMethod.NEAREST_STOD,
             }
-            # Default to NEAREST_STOD if not found in map (preserving original behavior)
             regrid_method = method_map[self.context.InterpMethod]
 
             CR_LOGGER.info(f"using {regrid_method} interp")
