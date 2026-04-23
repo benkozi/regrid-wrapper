@@ -108,6 +108,10 @@ class Dimension(RwBaseModel):
     staggerloc: int
     coordinate_type: Literal["y", "x", "time", "element", "level", "cell"]
 
+    @property
+    def bounds(self) -> tuple[int, int]:
+        return self.lower, self.upper
+
 
 class DimensionCollection(RwBaseModel):
     value: Tuple[Dimension, ...]
