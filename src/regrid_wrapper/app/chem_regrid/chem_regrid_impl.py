@@ -314,32 +314,6 @@ class ChemRegridProcessor:
             raise ValueError
         return self._regridder
 
-    def init_destination_only(self) -> None:
-        """Loads the heavy MPAS destination mesh once for dynamic NGFS processing."""
-        CR_LOGGER.info("Initializing MPAS Destination Mesh (Once)")
-        esmpy.Manager(debug=True)
-
-        # if not self.context.input_mesh_path.exists() and self.context.rank == 0:
-        #     CR_LOGGER.info("writing mpas scrip grid")
-        #     mpas_desc = MpasCellMeshDescriptor(
-        #         str(self.context.dst_path), self.context.mesh_name + ".init"
-        #     )
-        #     mpas_desc.to_scrip(str(self.context.input_mesh_path))
-
-        CR_LOGGER.info("create destination mesh")
-        dst_mesh = esmpy.Mesh(filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology")
-
-        # Create destination field (using logic from your original initialize method)
-        ndbounds = None
-        if self.context.level_out_size > 1 and self.context.time_size > 1:
-            ndbounds = (self.context.level_out_size, self.context.time_size)
-        elif self.context.level_out_size > 1 and self.context.time_size == 1:
-            ndbounds = (self.context.level_out_size,)
-        elif self.context.level_out_size == 1 and self.context.time_size > 1:
-            ndbounds = (self.context.time_size,)
-
-        self._dst_fwrap = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=ndbounds)
-
 
 def run_regridding(ctx: AbstractDatasetRegridContext) -> None:
     processor = None
