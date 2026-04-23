@@ -1,7 +1,7 @@
 import pytest
 
 from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
-from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset, DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.config.model import ChemRegridDataset, DatasetName
 
 
 @pytest.mark.parametrize("dataset_name", DatasetName)

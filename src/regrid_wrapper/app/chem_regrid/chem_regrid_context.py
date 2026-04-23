@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pydantic import Field
 
-from regrid_wrapper.app.chem_regrid.dataset.model import ChemRegridDataset, DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.config.model import ChemRegridDataset, DatasetName
 from regrid_wrapper.common import RwBaseModel
 from regrid_wrapper.context.logging import LOGGER
 

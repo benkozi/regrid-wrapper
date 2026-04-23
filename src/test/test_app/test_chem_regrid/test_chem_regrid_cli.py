@@ -5,7 +5,7 @@ from _pytest.fixtures import FixtureRequest
 from pydantic import BaseModel
 
 from regrid_wrapper.app.chem_regrid.chem_regrid_context import ChemRegridContext
-from regrid_wrapper.app.chem_regrid.dataset.model import DatasetName
+from regrid_wrapper.app.chem_regrid.dataset.config.model import DatasetName
 from test.conftest import TEST_LOGGER
 
 

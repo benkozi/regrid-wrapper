@@ -11,7 +11,7 @@ from dask.array.tests.test_xarray import xr
 from pydantic import BaseModel, PrivateAttr
 
 from regrid_wrapper.app.chem_regrid.chem_regrid_context import CR_LOGGER
-from regrid_wrapper.app.chem_regrid.dataset.model import DatasetName, InterpMethod
+from regrid_wrapper.app.chem_regrid.dataset.config.model import DatasetName, InterpMethod
 from regrid_wrapper.app.chem_regrid.dataset.src_field import SrcField
 from regrid_wrapper.context.comm import COMM
 from regrid_wrapper.esmpy.field_wrapper import (
