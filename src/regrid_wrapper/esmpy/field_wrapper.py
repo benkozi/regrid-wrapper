@@ -100,6 +100,10 @@ class Dimension:
     staggerloc: int
     coordinate_type: Literal["y", "x", "time", "element", "level"]
 
+    @property
+    def bounds(self) -> tuple[int, int]:
+        return self.lower, self.upper
+
 
 @dataclass
 class DimensionCollection:

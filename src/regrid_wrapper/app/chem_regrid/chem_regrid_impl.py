@@ -30,7 +30,7 @@ from regrid_wrapper.esmpy.field_wrapper import (
     DimensionCollection,
     set_variable_data,
     HasNcAttrsType,
-    copy_nc_variable,
+    copy_nc_variable, load_variable_data, MeshWrapper,
 )
 
 _LOGGER = LOGGER.getChild("mpas-regrid")
@@ -224,13 +224,13 @@ class RaveField3d_plusTime(AbstractRaveField):
     ) -> DimensionCollection:
         return DimensionCollection(
             value=(
+                self.time_dimension,
                 self.create_ncells_dimension(ncells_bounds),
                 self.nklevel_dimension,
-                self.time_dimension,
             )
         )
     def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
-        return target.reshape(-1, self.level_out_size, self.time_size)
+        raise NotImplementedError
 
 class RaveToMpasRegridContext(BaseModel):
     dataset_name: str
@@ -325,7 +325,7 @@ class RaveToMpasRegridProcessor:
         self.context = context
 
         self._regridder: esmpy.Regrid | None = None
-        self._dst_field: esmpy.Field | None = None
+        self._dst_field: FieldWrapper | None = None
         self._src_gwrap: GridWrapper | None = None
 
     def initialize(self) -> None:
@@ -388,40 +388,57 @@ class RaveToMpasRegridProcessor:
                 filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology"
             )
         dst_mesh = self._dst_mesh
+        local_bounds = reconcile_bounds((0, self._dst_mesh.size_owned[1]))
 
 # Check for extra dims beyond lat/lon
         _LOGGER.info("create destination field")
+        cells_dim = Dimension(name=("numCells",),
+                          size=self.context.num_cells,
+                          lower=local_bounds[0],
+                          upper=local_bounds[1],
+                          staggerloc=esmpy.MeshLoc.ELEMENT,
+                          coordinate_type="element")
+        dims = [cells_dim]
+        time_dim = Dimension(name=("Time",), size=self.context.time_size, staggerloc=esmpy.StaggerLoc.CENTER, coordinate_type="time", lower=0, upper=self.context.time_size) if self.context.time_size > 0 else None
+        level_dim = Dimension(name=(self.context.level_out_name,), size=self.context.level_out_size, staggerloc=esmpy.StaggerLoc.CENTER, coordinate_type="level", lower=0, upper=self.context.level_out_size) if self.context.level_out_size > 0 else None
         if self.context.level_out_size == 0:
         #2D
            if self.context.time_size == 0:
               # 2D, static in Time
-              self._dst_field = esmpy.Field(
+              esmpy_dst_field = esmpy.Field(
                   dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT,
                )
            else:
               # 2D + Time
-              self._dst_field = esmpy.Field(
+              esmpy_dst_field = esmpy.Field(
                   dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.time_size,)
                )
+              dims.append(time_dim)
         else:
         #3D
            if self.context.time_size == 0:
               # 3D, static in Time
-              self._dst_field = esmpy.Field(
+              esmpy_dst_field = esmpy.Field(
                   dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size,)
               )
+              dims.append(level_dim)
            else:
               # 3D + Time
-              self._dst_field = esmpy.Field(
+              esmpy_dst_field = esmpy.Field(
                   dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=(self.context.level_out_size, self.context.time_size)
               )
+              dims.append(level_dim)
+              dims.append(time_dim)
+        gwrap = MeshWrapper(value=dst_mesh, dims=DimensionCollection(value=[cells_dim]))
+        self._dst_field = FieldWrapper(value=esmpy_dst_field, gwrap=gwrap, dims=DimensionCollection(value=dims))
+
 # Check for weights
         _LOGGER.info("create regridder")
         if self.context.weight_path.exists():
             _LOGGER.info("create regridder from file")
             self._regridder = esmpy.RegridFromFile(
                 srcfield=src_fwrap.value,
-                dstfield=self._dst_field,
+                dstfield=self._dst_field.value,
                 filename=str(self.context.weight_path),
             )
         else:
@@ -430,7 +447,7 @@ class RaveToMpasRegridProcessor:
                 _LOGGER.info("using 1st order conservative interp")
                 self._regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
+                    dstfield=self._dst_field.value,
                     regrid_method=esmpy.RegridMethod.CONSERVE,
                     unmapped_action=esmpy.UnmappedAction.IGNORE,
                     ignore_degenerate=True,
@@ -441,7 +458,7 @@ class RaveToMpasRegridProcessor:
                 _LOGGER.info("using 2nd order conservative interp")
                 self._regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
+                    dstfield=self._dst_field.value,
                     regrid_method=esmpy.RegridMethod.CONSERVE_2ND,
                     unmapped_action=esmpy.UnmappedAction.IGNORE,
                     ignore_degenerate=True,
@@ -452,7 +469,7 @@ class RaveToMpasRegridProcessor:
                 _LOGGER.info("using bilinear interp")
                 self._regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
+                    dstfield=self._dst_field.value,
                     regrid_method=esmpy.RegridMethod.BILINEAR,
                     unmapped_action=esmpy.UnmappedAction.IGNORE,
                     ignore_degenerate=True,
@@ -463,7 +480,7 @@ class RaveToMpasRegridProcessor:
                 _LOGGER.info("using nearest_STOD interp")
                 self._regridder = esmpy.Regrid(
                     srcfield=src_fwrap.value,
-                    dstfield=self._dst_field,
+                    dstfield=self._dst_field.value,
                     regrid_method=esmpy.RegridMethod.NEAREST_STOD,
                     unmapped_action=esmpy.UnmappedAction.IGNORE,
                     ignore_degenerate=True,
@@ -509,18 +526,20 @@ class RaveToMpasRegridProcessor:
 
             dst_field = self.get_dst_field()
             # tdk: any more qa stuff? minimum threshold?
-            dst_field.data.fill(0.0)
-            regridder(src_fwrap.value, dst_field)
+            dst_field.value.data.fill(0.0)
+            regridder(src_fwrap.value, dst_field.value)
             # tdk: support NcToMesh
-            local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
-            reconciled_bounds = reconcile_bounds(local_bounds)
-            dims = rave_field.create_dimension_collection(reconciled_bounds)
+            dims = rave_field.create_dimension_collection(dst_field.gwrap.dims.value[0].bounds)
             _LOGGER.info(f"{dims=}")
             _LOGGER.info(f"writing field to netcdf")
             with open_nc(self.context.new_dst_path, mode="a") as ds:
                 if self.context.dataset_name == "RAVE" and rave_field.name in ("FRP_MEAN", "FRE"):
-                    area = np.asarray(ds.variables['areaCell'])
-                    area_subset = area[reconciled_bounds[0]:reconciled_bounds[1]].reshape(dims.shape_local)
+                    area_dims = DimensionCollection(value=[dims.get("nCells")])
+                    area_subset = load_variable_data(ds.variables['areaCell'], area_dims)
+                    area_subset = area_subset.reshape(dst_field.dims.shape_local)
+                    # area_subset = area_subset.reshape(dims.shape_local)
+                    # area = np.asarray(ds.variables['areaCell'])
+                    # area_subset = area[reconciled_bounds[0]:reconciled_bounds[1]].reshape(dims.shape_local)
                 _LOGGER.info(f"creating variable {rave_field.name=}")
                 var = ds.createVariable(
                     rave_field.name,
@@ -542,14 +561,14 @@ class RaveToMpasRegridProcessor:
                     set_variable_data(
                         var,
                         dims,
-                        rave_field.reshape_field_data(dst_field.data * area_subset),
+                        dst_field.value.data * area_subset,
                         collective=True,
                     )
                 else:
                     set_variable_data(
                         var,
                         dims,
-                        rave_field.reshape_field_data(dst_field.data),
+                        dst_field.value.data,
                         collective=True,
                     )
             _LOGGER.info(f"finished writing field to netcdf {rave_field.name=}")
@@ -562,13 +581,13 @@ class RaveToMpasRegridProcessor:
 
                     src_fwrap_enl = self.create_src_field_wrapper(field_name='ENL_POLL')
                     dst_field_enl = self.get_dst_field()
-                    dst_field_enl.data.fill(0.0)
-                    regridder(src_fwrap_enl.value, dst_field_enl)
+                    dst_field_enl.value.data.fill(0.0)
+                    regridder(src_fwrap_enl.value, dst_field_enl.value)
 
                     src_fwrap_dbl = self.create_src_field_wrapper(field_name='DBL_POLL')
                     dst_field_dbl = self.get_dst_field()
-                    dst_field_dbl.data.fill(0.0)
-                    regridder(src_fwrap_dbl.value, dst_field_dbl)
+                    dst_field_dbl.value.data.fill(0.0)
+                    regridder(src_fwrap_dbl.value, dst_field_dbl.value)
 
                     rave_field = self.context.rave_fields[0]
 
@@ -597,12 +616,12 @@ class RaveToMpasRegridProcessor:
                     src_fwrap_p25 = self.create_src_field_wrapper(field_name='PM25')
 
                     dst_field_ttl = self.get_dst_field()
-                    dst_field_ttl.data.fill(0.0)
-                    regridder(src_fwrap_ttl.value, dst_field_ttl)
+                    dst_field_ttl.value.data.fill(0.0)
+                    regridder(src_fwrap_ttl.value, dst_field_ttl.value)
 
                     dst_field_p25 = self.get_dst_field()
-                    dst_field_p25.data.fill(0.0)
-                    regridder(src_fwrap_p25.value, dst_field_p25)
+                    dst_field_p25.value.data.fill(0.0)
+                    regridder(src_fwrap_p25.value, dst_field_p25.value)
 
                     rave_field = self.context.rave_fields[0]
 
@@ -614,9 +633,7 @@ class RaveToMpasRegridProcessor:
                     )
                     for k, v in self.context.rave_fields[0].attrs.items():
                         setattr(var, k, v)
-                    data1 = rave_field.reshape_field_data(dst_field_ttl.data)
-                    data2 = rave_field.reshape_field_data(dst_field_p25.data)
-                    data3 = data1 - data2
+                    data3 = dst_field_ttl.value.data - dst_field_p25.value.data
                     set_variable_data(
                         var,
                         dims,
@@ -648,7 +665,7 @@ class RaveToMpasRegridProcessor:
     def finalize(self) -> None:
         _LOGGER.info("finalizing")
         self._regridder.destroy()
-        self._dst_field.destroy()
+        self._dst_field.value.destroy()
         self._src_gwrap.value.destroy()
         # self._dst_mesh.destroy()
 
@@ -790,7 +807,7 @@ class RaveToMpasRegridProcessor:
             raise ValueError
         return self._src_gwrap
 
-    def get_dst_field(self) -> esmpy.Field:
+    def get_dst_field(self) -> FieldWrapper:
         if self._dst_field is None:
             raise ValueError
         return self._dst_field
