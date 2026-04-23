@@ -1,7 +1,6 @@
 from typing import Any, Iterator, Union
 
 import esmpy
-import numpy as np
 
 from regrid_wrapper.app.chem_regrid import CR_LOGGER
 from regrid_wrapper.app.chem_regrid.dataset.context.base import (
