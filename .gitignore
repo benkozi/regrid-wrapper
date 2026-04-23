@@ -12,3 +12,5 @@ __pycache__/
 *.DS_Store
 
 src/regrid_wrapper.egg-info/
+
+/build/
