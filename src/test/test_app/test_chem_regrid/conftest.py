@@ -69,6 +69,8 @@ class DatasetTestContext(ABC, BaseModel):
 
     # Optional overrides in subclasses =====
 
+    # Expected dimension names
+    expected_dim_names: tuple[str, ...] = ("nCells",)
     # Number of decimal places to use for sum verification.
     expected_sum_decimal: int = 7
     # Dictionary mapping field names to their expected shapes for fields that deviate from the default.
@@ -133,6 +135,7 @@ class DatasetTestContext(ABC, BaseModel):
                     target = ds[field_name]
                     expected_shape = self.expected_field_shape_exceptions.get(field_name, self.expected_field_shape)
                     assert target.shape == expected_shape
+                    assert target.dims == self.expected_dim_names
                     np.testing.assert_almost_equal(
                         self.actual_field_meta[output_file.name][field_name].sum,
                         self.expected_sums[field_name],
@@ -152,7 +155,8 @@ class DatasetTestContext(ABC, BaseModel):
 
 class RAVE_DatasetTestContext(DatasetTestContext):
     key: DatasetName = DatasetName.RAVE
-    expected_field_shape: tuple[int, ...] = (162, 1, 1)
+    expected_field_shape: tuple[int, ...] = (1, 162, 1)
+    expected_dim_names: tuple[str, ...] = ('Time', 'nCells', 'nkwildfire')
     expected_weight_ns: int = 6109
     expected_weight_sum: float = 168.59977032981334
     expected_sums: dict[str, float] = {
