@@ -224,13 +224,12 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     def transform_regridded_data(
         self,
         src_field: SrcField,
-        dst_field_data: np.ndarray,
+        dst_fwrap: FieldWrapper,
         ds: Any,
-        reconciled_bounds: tuple[int, int],
         dims: DimensionCollection,
     ) -> np.ndarray:
         """Hook for dataset-specific data transformations after regridding but before writing."""
-        return dst_field_data
+        return dst_fwrap.data
 
     def post_regrid_processing(
         self,

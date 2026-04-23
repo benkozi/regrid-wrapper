@@ -20,16 +20,17 @@ from regrid_wrapper.app.chem_regrid.dataset.context.base import (
 from regrid_wrapper.app.chem_regrid.dataset.src_field import SrcField
 from regrid_wrapper.context.comm import COMM, reconcile_bounds
 from regrid_wrapper.esmpy.field_wrapper import (
+    Dimension,
+    DimensionCollection,
     FieldWrapper,
     GridSpec,
     GridWrapper,
+    MeshWrapper,
     NcToField,
     NcToGrid,
     copy_nc_variable,
     open_nc,
     set_variable_data,
-    HasNcAttrsType,
-    copy_nc_variable, load_variable_data, MeshWrapper,
 )
 
 
@@ -91,7 +92,7 @@ class ChemRegridProcessor:
         self.context = context
 
         self._regridder: esmpy.Regrid | None = None
-        self._dst_field: FieldWrapper | None = None
+        self._dst_fwrap: FieldWrapper | None = None
         self._src_gwrap: GridWrapper | None = None
 
     def initialize(self) -> None:
@@ -118,26 +119,57 @@ class ChemRegridProcessor:
                 filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology"
             )
         dst_mesh = self._dst_mesh
-        local_bounds = reconcile_bounds((0, self._dst_mesh.size_owned[1]))
 
-        self._dst_field = self._create_dst_field_(dst_mesh)
+        self._dst_fwrap = self._create_dst_fwrap_(dst_mesh)
         self._regridder = self._create_regridder_(src_fwrap)
 
-    def _create_dst_field_(self, dst_mesh: esmpy.Mesh) -> esmpy.Field:
+    def _create_dst_fwrap_(self, dst_mesh: esmpy.Mesh) -> FieldWrapper:
         CR_LOGGER.info("create destination field")
 
-        # Check for extra dims beyond lat/lon
+        local_bounds = reconcile_bounds((0, self._dst_mesh.size_owned[1]))
+        cells_dim = Dimension(
+            name=("nCells",),
+            size=self.context.num_cells,
+            lower=local_bounds[0],
+            upper=local_bounds[1],
+            staggerloc=esmpy.MeshLoc.ELEMENT,
+            coordinate_type="element",
+        )
+        dims = [cells_dim]
         ndbounds = []
         if self.context.level_out_size > 0:
+            level_dim = Dimension(
+                name=self.context.level_out_name,
+                size=self.context.level_out_size,
+                staggerloc=esmpy.StaggerLoc.CENTER,
+                coordinate_type="level",
+                lower=0,
+                upper=self.context.level_out_size,
+            )
+            dims.append(level_dim)
             ndbounds.append(self.context.level_out_size)
         if self.context.time_size > 0:
             ndbounds.append(self.context.time_size)
-
+            time_dim = (
+                Dimension(
+                    name=("Time",),
+                    size=self.context.time_size,
+                    staggerloc=esmpy.StaggerLoc.CENTER,
+                    coordinate_type="time",
+                    lower=0,
+                    upper=self.context.time_size,
+                )
+                if self.context.time_size > 0
+                else None
+            )
+            dims.append(time_dim)
         kwargs = {}
         if ndbounds:
             kwargs["ndbounds"] = tuple(ndbounds)
 
-        return esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, **kwargs)
+        esmpy_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, **kwargs)
+        gwrap = MeshWrapper(value=dst_mesh, dims=DimensionCollection(value=(cells_dim,)))
+        return FieldWrapper(value=esmpy_field, gwrap=gwrap, dims=DimensionCollection(value=tuple(dims)))
 
     def _create_regridder_(self, src_fwrap: FieldWrapper) -> esmpy.RegridFromFile | esmpy.Regrid:
         CR_LOGGER.info("create regridder")
@@ -145,7 +177,7 @@ class ChemRegridProcessor:
             CR_LOGGER.info("create regridder from file")
             regridder = esmpy.RegridFromFile(
                 srcfield=src_fwrap.value,
-                dstfield=self._dst_field.value,
+                dstfield=self._dst_fwrap.value,
                 filename=str(self.context.weight_path),
             )
         else:
@@ -162,7 +194,7 @@ class ChemRegridProcessor:
             CR_LOGGER.info(f"using {regrid_method} interp")
             regridder = esmpy.Regrid(
                 srcfield=src_fwrap.value,
-                dstfield=self._dst_field,
+                dstfield=self._dst_fwrap.value,
                 regrid_method=regrid_method,
                 unmapped_action=esmpy.UnmappedAction.IGNORE,
                 ignore_degenerate=True,
@@ -202,17 +234,15 @@ class ChemRegridProcessor:
         regridder = self.get_regridder()
         src_fwrap = self.create_src_field_wrapper(field_name=src_field.name)
 
-        dst_field = self.get_dst_field()
-        dst_field.data.fill(0.0)
-        regridder(src_fwrap.value, dst_field)
+        dst_fwrap = self.get_dst_fwrap()
+        dst_fwrap.data.fill(0.0)
+        regridder(src_fwrap.value, dst_fwrap.value)
 
-        local_bounds = (dst_field.lower_bounds[0], dst_field.upper_bounds[0])
-        reconciled_bounds = reconcile_bounds(local_bounds)
-        dims = src_field.create_dimension_collection(reconciled_bounds)
+        dims = src_field.create_dimension_collection(dst_fwrap.gwrap.dims.value[0].bounds)
         CR_LOGGER.debug(f"{dims=}")
         CR_LOGGER.info("writing field to netcdf")
         with open_nc(self.context.new_dst_path, mode="a") as ds:
-            transformed_data = self.context.transform_regridded_data(src_field, dst_field.data, ds, reconciled_bounds, dims)
+            transformed_data = self.context.transform_regridded_data(src_field, dst_fwrap, ds, dims)
 
             CR_LOGGER.info(f"creating variable {src_field.name=}")
             var = ds.createVariable(
@@ -227,8 +257,8 @@ class ChemRegridProcessor:
             CR_LOGGER.info(f"setting variable data {src_field.name=}")
             set_variable_data(
                 var,
-                dims,
-                src_field.reshape_field_data(transformed_data),
+                dst_fwrap.dims,
+                transformed_data,
                 collective=True,
             )
         CR_LOGGER.info(f"finished writing field to netcdf {src_field.name=}")
@@ -262,7 +292,7 @@ class ChemRegridProcessor:
     def finalize(self) -> None:
         CR_LOGGER.info("finalizing")
         self._regridder.destroy()
-        self._dst_field.value.destroy()
+        self._dst_fwrap.value.destroy()
         self._src_gwrap.value.destroy()
         # TODO: There could be an option to destroy the destination mesh when finalizing. However,
         #  it is more efficient to leave it since the destination is not variable at this point.
@@ -323,10 +353,10 @@ class ChemRegridProcessor:
             raise ValueError
         return self._src_gwrap
 
-    def get_dst_field(self) -> FieldWrapper:
-        if self._dst_field is None:
+    def get_dst_fwrap(self) -> FieldWrapper:
+        if self._dst_fwrap is None:
             raise ValueError
-        return self._dst_field
+        return self._dst_fwrap
 
     def get_regridder(self) -> esmpy.Regrid:
         if self._regridder is None:
@@ -357,7 +387,7 @@ class ChemRegridProcessor:
         elif self.context.level_out_size == 1 and self.context.time_size > 1:
             ndbounds = (self.context.time_size,)
 
-        self._dst_field = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=ndbounds)
+        self._dst_fwrap = esmpy.Field(dst_mesh, name="dst", meshloc=esmpy.MeshLoc.ELEMENT, ndbounds=ndbounds)
 
     def process_ngfs_file(self, file_path: Path, resolution: float = 0.01) -> None:
         """Dynamically builds a mesh for NGFS points, regrids, and writes the output."""
@@ -450,17 +480,17 @@ class ChemRegridProcessor:
             # Create Dynamic Regridder
             regridder = esmpy.Regrid(
                 srcfield=src_field,
-                dstfield=self._dst_field,
+                dstfield=self._dst_fwrap,
                 regrid_method=esmpy.RegridMethod.CONSERVE,
                 unmapped_action=esmpy.UnmappedAction.IGNORE,
             )
 
             # Apply Regridding
-            self._dst_field.data.fill(0.0)
-            regridder(src_field, self._dst_field)
+            self._dst_fwrap.data.fill(0.0)
+            regridder(src_field, self._dst_fwrap)
 
             # Write to Output NetCDF
-            local_bounds = (self._dst_field.lower_bounds[0], self._dst_field.upper_bounds[0])
+            local_bounds = (self._dst_fwrap.lower_bounds[0], self._dst_fwrap.upper_bounds[0])
             reconciled_bounds = reconcile_bounds(local_bounds)
             dims = src_field.create_dimension_collection(reconciled_bounds)
 
@@ -478,9 +508,9 @@ class ChemRegridProcessor:
                 if src_field.name in ("FRP_MEAN", "FRE"):
                     area = np.asarray(ds.variables["areaCell"])
                     area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]]
-                    set_variable_data(var, dims, src_field.reshape_field_data(self._dst_field.data * area_subset), collective=True)
+                    set_variable_data(var, dims, src_field.reshape_field_data(self._dst_fwrap.data * area_subset), collective=True)
                 else:
-                    set_variable_data(var, dims, src_field.reshape_field_data(self._dst_field.data), collective=True)
+                    set_variable_data(var, dims, src_field.reshape_field_data(self._dst_fwrap.data), collective=True)
 
             # Clean up memory
             regridder.destroy()

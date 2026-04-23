@@ -2,7 +2,6 @@ from functools import cached_property
 from typing import Any
 
 import esmpy
-import numpy as np
 from pydantic import BaseModel
 
 from regrid_wrapper.esmpy.field_wrapper import Dimension, DimensionCollection
@@ -59,27 +58,16 @@ class SrcField(BaseModel):
 
     def create_dimension_collection(self, ncells_bounds: tuple[int, int]) -> DimensionCollection:
         """Creates a collection of dimensions based on the field's shape."""
+
+        ncells_dim = self.create_ncells_dimension(ncells_bounds)
         dims = []
         if self.level_out_size == 0:
             if self.time_size > 0:
                 dims.append(self.time_dimension)
-            dims.append(self.create_ncells_dimension(ncells_bounds))
+            dims.append(ncells_dim)
         else:
-            dims.append(self.create_ncells_dimension(ncells_bounds))
-            dims.append(self.nklevel_dimension)
             if self.time_size > 0:
                 dims.append(self.time_dimension)
+            dims.append(ncells_dim)
+            dims.append(self.nklevel_dimension)
         return DimensionCollection(value=tuple(dims))
-
-    def reshape_field_data(self, target: np.ndarray) -> np.ndarray:
-        """Reshapes the field data to match the expected output dimensions."""
-        if self.level_out_size == 0:
-            if self.time_size == 0:
-                return target.reshape(-1)
-            else:
-                return target.reshape(self.time_size, -1)
-        else:
-            if self.time_size == 0:
-                return target.reshape(-1, self.level_out_size)
-            else:
-                return target.reshape(-1, self.level_out_size, self.time_size)

@@ -17,6 +17,7 @@ from regrid_wrapper.esmpy.field_wrapper import (
     DimensionCollection,
     FieldWrapper,
     NcToField,
+    load_variable_data,
     open_nc,
     set_variable_data,
 )
@@ -114,17 +115,18 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
     def transform_regridded_data(
         self,
         src_field: SrcField,
-        dst_field_data: np.ndarray,
+        dst_field: FieldWrapper,
         ds: Any,
-        reconciled_bounds: tuple[int, int],
         dims: DimensionCollection,
     ) -> np.ndarray:
         if src_field.name in ("FRP_MEAN", "FRE"):
             # Multiply FRE/FRP by output area so it is back to W or J*s
-            area = np.asarray(ds.variables["areaCell"])
-            area_subset = area[reconciled_bounds[0] : reconciled_bounds[1]].reshape(dims.shape_local)
-            return dst_field_data * area_subset
-        return dst_field_data
+            area_dims = DimensionCollection(value=(dims.get("nCells"),))
+            area_subset = load_variable_data(ds.variables["areaCell"], area_dims)
+            area_subset = area_subset.reshape(dst_field.dims.shape_local)
+            dst_field_data = dst_field.data * area_subset
+            return dst_field_data
+        return dst_field.data
 
     def post_regrid_processing(
         self,
@@ -139,15 +141,13 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
                 src_fwrap_ttl = processor.create_src_field_wrapper(field_name="TPM")
                 src_fwrap_p25 = processor.create_src_field_wrapper(field_name="PM25")
 
-                dst_field_ttl = processor.get_dst_field()
+                dst_field_ttl = processor.get_dst_fwrap()
                 dst_field_ttl.data.fill(0.0)
-                regridder(src_fwrap_ttl.value, dst_field_ttl)
-                data1 = src_field.reshape_field_data(dst_field_ttl.data).copy()
+                regridder(src_fwrap_ttl.value, dst_field_ttl.value)
 
-                dst_field_p25 = processor.get_dst_field()
+                dst_field_p25 = processor.get_dst_fwrap()
                 dst_field_p25.data.fill(0.0)
-                regridder(src_fwrap_p25.value, dst_field_p25)
-                data2 = src_field.reshape_field_data(dst_field_p25.data)
+                regridder(src_fwrap_p25.value, dst_field_p25.value)
 
                 # use the same src_field metadata for PM10
                 var = ds.createVariable(
@@ -159,10 +159,10 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
                 for k, v in src_field.attrs.items():
                     setattr(var, k, v)
 
-                data3 = data1 - data2
+                data3 = dst_field_ttl.data - dst_field_p25.data
                 set_variable_data(
                     var,
-                    dims,
+                    dst_field_ttl.dims,
                     data3,
                     collective=True,
                 )

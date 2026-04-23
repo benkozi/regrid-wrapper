@@ -38,16 +38,14 @@ class PECM_DatasetRegridContext(AbstractDatasetRegridContext):
                 CR_LOGGER.info("renaming and combining tree fields")
 
                 src_fwrap_enl = processor.create_src_field_wrapper(field_name="ENL_POLL")
-                dst_field_enl = processor.get_dst_field()
+                dst_field_enl = processor.get_dst_fwrap()
                 dst_field_enl.data.fill(0.0)
-                regridder(src_fwrap_enl.value, dst_field_enl)
-                data_enl = src_field.reshape_field_data(dst_field_enl.data).copy()
+                regridder(src_fwrap_enl.value, dst_field_enl.value)
 
                 src_fwrap_dbl = processor.create_src_field_wrapper(field_name="DBL_POLL")
-                dst_field_dbl = processor.get_dst_field()
+                dst_field_dbl = processor.get_dst_fwrap()
                 dst_field_dbl.data.fill(0.0)
-                regridder(src_fwrap_dbl.value, dst_field_dbl)
-                data_dbl = src_field.reshape_field_data(dst_field_dbl.data)
+                regridder(src_fwrap_dbl.value, dst_field_dbl.value)
 
                 var = ds.createVariable(
                     "TREE_POLL",
@@ -59,8 +57,8 @@ class PECM_DatasetRegridContext(AbstractDatasetRegridContext):
                     setattr(var, k, v)
                 set_variable_data(
                     var,
-                    dims,
-                    data_enl + data_dbl,
+                    dst_field_enl.dims,
+                    dst_field_enl.data + dst_field_dbl.data,
                     collective=True,
                 )
             src_fwrap_enl.value.destroy()
