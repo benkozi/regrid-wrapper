@@ -85,12 +85,13 @@ mpirun -n 8 pytest -m mpi src/test
 
 To add a new dataset to the regridding pipeline, follow these steps:
 
-1.  **Update `DatasetName` Enum**: Add the new dataset key to the `DatasetName` enum in `src/regrid_wrapper/app/chem_regrid/dataset/model.py`.
+1.  **Update `DatasetName` Enum**: Add the new dataset key to the `DatasetName` enum in `src/regrid_wrapper/app/chem_regrid/dataset/config/model.py`.
 2.  **Add Configuration**: Add a new entry to `src/regrid_wrapper/app/chem_regrid/dataset/config/datasets.yml` following the schema described above.
 3.  **Create Regrid Context Subclass**: In `src/regrid_wrapper/app/chem_regrid/dataset/dataset_regrid_context.py`, create a new subclass of `AbstractDatasetRegridContext` (e.g., `MY_DATASET_DatasetRegridContext`).
     *   Implement `iter_file_pairs` to define how source and destination files are paired.
-    *   Override `update_src_field_wrapper`, `transform_regridded_data`, or `post_regrid_processing` if dataset-specific logic is needed.
-4.  **Register the Subclass**: Add the new context class to the `klasses` dictionary in the `get_regrid_context_class` factory function within `src/regrid_wrapper/app/chem_regrid/dataset/regrid_context.py`.
+    *   Override methods as needed for dataset-specific logic.
+4.  **Register the Subclass**: Add the new context class to the `klasses` dictionary in `regrid_wrapper.app.chem_regrid.dataset.dataset_regrid_context.get_regrid_context_class`.
+5. **Add Test**: Add a new test case for the dataset in `src/test/test_app/test_chem_regrid/conftest.py`.
 
 ## Dataset Configuration
 
