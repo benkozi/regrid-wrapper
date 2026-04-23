@@ -1,6 +1,5 @@
 # mypy: ignore-errors
 
-import glob
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Literal
@@ -17,6 +16,7 @@ from regrid_wrapper.app.chem_regrid.dataset.context.base import (
     AbstractDatasetRegridContext,
     InterpMethod,
 )
+from regrid_wrapper.app.chem_regrid.dataset.context.ngfs import run_ngfs_regridding
 from regrid_wrapper.app.chem_regrid.dataset.src_field import SrcField
 from regrid_wrapper.context.comm import reconcile_bounds
 from regrid_wrapper.esmpy.field_wrapper import (
@@ -377,32 +377,6 @@ def main(ctx: ChemRegridContext) -> None:
     )
 
     if ctx.dataset_name == "NGFS":
-        processor = ChemRegridProcessor(context=regrid_context)
-
-        for date_to_process in regrid_context.dates_needed:
-            # Construct the filename (Adjust the prefix 'ngfs_' if your files are named differently)
-            # print("GAF debug: attempting to read: " + input_dir + "/NGFS_v0.31_" + date_to_process + "_0p01.nc")
-            ngfs_paths = glob.glob(str(ctx.input_dir) + "/NGFS_v0.31_0p01_" + date_to_process + "0000.nc")
-
-            if not ngfs_paths:
-                print(f"ERROR: Missing NGFS file for {date_to_process}. Skipping.")
-                exit(1)
-                # TODO: perhaps add a helper similarly as I added for RAVE to search for the latest
-                # available file in case that the current datetime does not exist
-                continue
-
-            ngfs_path = Path(ngfs_paths[0])
-            new_dst_path = Path(str(ctx.output_dir) + "/" + ctx.mesh_name + "-NGFS-" + date_to_process + ".nc")
-            print(f"GAF reading NGFS file: {ngfs_path}")
-
-            # Update context paths for the current hour
-            processor.context.src_path = ngfs_path
-            processor.context.new_dst_path = new_dst_path
-
-            # Execute the dynamic regridding for this specific hour's fires
-            # Note that resolution is hard coded...
-            processor.process_ngfs_file(ngfs_path, resolution=0.01)
-
-        CR_LOGGER.info("NGFS success")
+        run_ngfs_regridding(regrid_context)
     else:
         run_regridding(regrid_context)
