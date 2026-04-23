@@ -36,14 +36,14 @@ def create_chem_regrid_context(test_context: ContextForTest) -> ChemRegridContex
 
     # Fields that can be None
     params = base_params.copy()
-    params["scrip_path"] = test_context.root_path / "scrip.nc" if test_context.use_scrip else None
+    params["input_mesh_path"] = test_context.root_path / "scrip.nc" if test_context.use_scrip else None
     params["dst_path"] = test_context.root_path / "dst.nc" if test_context.use_dst else None
 
     return ChemRegridContext.model_validate(params)
 
 
 @pytest.fixture(params=[True, False])
-def use_scrip_path(request: FixtureRequest) -> bool:
+def use_input_mesh_path(request: FixtureRequest) -> bool:
     return request.param
 
 
@@ -53,8 +53,8 @@ def use_dst_path(request: FixtureRequest) -> bool:
 
 
 @pytest.fixture()
-def context_for_test(use_scrip_path: bool, use_dst_path: bool, tmp_path_shared: Path) -> ContextForTest:
-    return ContextForTest(root_path=tmp_path_shared, use_scrip=use_scrip_path, use_dst=use_dst_path)
+def context_for_test(use_input_mesh_path: bool, use_dst_path: bool, tmp_path_shared: Path) -> ContextForTest:
+    return ContextForTest(root_path=tmp_path_shared, use_scrip=use_input_mesh_path, use_dst=use_dst_path)
 
 
 @pytest.fixture
@@ -69,9 +69,9 @@ def test_generate_chem_regrid_context(chem_regrid_context: ChemRegridContext, co
     assert isinstance(chem_regrid_context, ChemRegridContext)
 
     if context_for_test.use_scrip:
-        assert chem_regrid_context.scrip_path == context_for_test.root_path / "scrip.nc"
+        assert chem_regrid_context.input_mesh_path == context_for_test.root_path / "scrip.nc"
     else:
-        assert chem_regrid_context.scrip_path is None
+        assert chem_regrid_context.input_mesh_path is None
 
     if context_for_test.use_dst:
         assert chem_regrid_context.dst_path == context_for_test.root_path / "dst.nc"

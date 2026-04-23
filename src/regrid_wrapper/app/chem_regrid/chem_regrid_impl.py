@@ -106,10 +106,10 @@ class ChemRegridProcessor:
         if self._dst_mesh is None:
             CR_LOGGER.info("create destination mesh")
             # dst_mesh = esmpy.Mesh(
-            #     filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.SCRIP
+            #     filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.SCRIP
             # )
             self._dst_mesh = esmpy.Mesh(
-                filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology"
+                filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology"
             )
         dst_mesh = self._dst_mesh
 
@@ -331,15 +331,15 @@ class ChemRegridProcessor:
         CR_LOGGER.info("Initializing MPAS Destination Mesh (Once)")
         esmpy.Manager(debug=True)
 
-        # if not self.context.scrip_path.exists() and self.context.rank == 0:
+        # if not self.context.input_mesh_path.exists() and self.context.rank == 0:
         #     CR_LOGGER.info("writing mpas scrip grid")
         #     mpas_desc = MpasCellMeshDescriptor(
         #         str(self.context.dst_path), self.context.mesh_name + ".init"
         #     )
-        #     mpas_desc.to_scrip(str(self.context.scrip_path))
+        #     mpas_desc.to_scrip(str(self.context.input_mesh_path))
 
         CR_LOGGER.info("create destination mesh")
-        dst_mesh = esmpy.Mesh(filename=str(self.context.scrip_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology")
+        dst_mesh = esmpy.Mesh(filename=str(self.context.input_mesh_path), filetype=esmpy.FileFormat.UGRID, meshname="grid_topology")
 
         # Create destination field (using logic from your original initialize method)
         ndbounds = None
@@ -522,7 +522,7 @@ def main(ctx: ChemRegridContext) -> None:
         desc_stats_out=ctx.rw_desc_stats_out,
         weight_path=ctx.rw_weight_path,
         InterpMethod=ctx.rw_dataset.InterpMethod,
-        scrip_path=ctx.rw_scrip_path,
+        input_mesh_path=ctx.rw_input_mesh_path,
         mesh_name=ctx.mesh_name,
         field_names=ctx.rw_dataset.field_names,
         x_center=ctx.rw_dataset.x_center,

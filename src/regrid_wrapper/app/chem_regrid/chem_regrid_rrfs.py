@@ -26,12 +26,12 @@ def main() -> None:
         "ebb_dcycle": env.ebb_dcycle,
         "fcst_length": env.fcst_length,
         "mesh_name": env.mesh_name,
-        "scrip_path": None,
+        "input_mesh_path": None,
         "dst_path": None,
     }
 
     try:
-        data["scrip_path"] = sys.argv[7]  # Path to the input SCRIP/UGRID domain grid file
+        data["input_mesh_path"] = sys.argv[7]  # Path to the input domain grid file (UGRID)
         try:
             data["dst_path"] = sys.argv[8]  # Path to the destination grid (e.g., init.nc)
         except IndexError:

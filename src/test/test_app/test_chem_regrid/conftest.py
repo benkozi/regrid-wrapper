@@ -601,7 +601,7 @@ def chem_regrid_context(tmp_path_shared: Path, dataset_test_ctx: DatasetTestCont
         weight_dir=dataset_test_ctx.weight_dir,
         cycle=cycle,
         mesh_name="test_mesh",
-        scrip_path=dataset_test_ctx.ugrid_path,
+        input_mesh_path=dataset_test_ctx.ugrid_path,
         dst_path=dst_path,
         ebb_dcycle=ebb_dcycle,
         fcst_length=24,

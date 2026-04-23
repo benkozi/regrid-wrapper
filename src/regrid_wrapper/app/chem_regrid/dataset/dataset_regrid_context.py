@@ -55,7 +55,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     desc_stats_out: Path
     weight_path: Path
     InterpMethod: InterpMethod
-    scrip_path: Path
+    input_mesh_path: Path
     mesh_name: str
     field_names: tuple
     x_center: str

@@ -18,17 +18,17 @@ class ChemRegridContext(RwBaseModel):
     weight_dir: Path
     cycle: str = Field(pattern=r"^\d{10}$")  # Validates YYYYMMDDHH format
     mesh_name: str
-    scrip_path: Path | None
+    input_mesh_path: Path | None
     dst_path: Path | None
     ebb_dcycle: int
     fcst_length: int
     datasets_yml_path: Path = Path(__file__).parent / "dataset" / "config" / "datasets.yml"
 
     @cached_property
-    def rw_scrip_path(self) -> Path:
-        if self.scrip_path is None:
+    def rw_input_mesh_path(self) -> Path:
+        if self.input_mesh_path is None:
             return self.workdir / f"mpas_{self.dataset_name.value}-{self.mesh_name}_scrip.nc"
-        return self.scrip_path
+        return self.input_mesh_path
 
     @cached_property
     def rw_dst_path(self) -> Path:
