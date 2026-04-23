@@ -79,6 +79,8 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     # InterpMask: float
     write_desc_stats: bool = False
     var_names_to_copy_to_output_file: tuple[str, ...] = ("latCell", "lonCell", "xtime")
+    time_format: str = "%Y%m%d%H"
+    search_time_format: str = "%Y%m%d%H"
 
     rank: int = COMM.rank
 
@@ -168,6 +170,36 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
         exclude = ("coordinates", "valid_range")
         return {ii: getattr(src, ii) for ii in src.ncattrs() if not ii.startswith("_") and ii not in exclude}
 
+    def find_latest_src_file(self, target_time_str: str, max_lookback_hours: int = 24) -> list[str]:
+        """Finds the latest available source file within a lookback window."""
+        target_time = datetime.strptime(target_time_str, self.time_format)
+
+        for h in range(max_lookback_hours + 1):
+            if self.ebb_dcycle == -1 or self.ebb_dcycle == 2:
+                this_time = target_time - timedelta(hours=h)
+            elif self.ebb_dcycle == 1:
+                this_time = target_time + timedelta(hours=h)
+            else:
+                CR_LOGGER.warning("unrecognized ebb_dcycle, reverting to same-day, ebb_dcycle = 1")
+                this_time = target_time + timedelta(hours=h)
+
+            search_path = self._get_src_search_path(this_time)
+            paths = glob.glob(search_path)
+            if paths:
+                if h > 0:
+                    msg = (
+                        f"Missing {self.dataset_name} file for {target_time_str}, using "
+                        f"{this_time.strftime(self.search_time_format)} instead"
+                    )
+                    CR_LOGGER.warning(msg)
+                return paths
+        # nothing found within lookback window
+        return []
+
+    def _get_src_search_path(self, this_time: datetime) -> str:
+        """Returns the glob pattern for searching source files."""
+        raise NotImplementedError
+
     def transform_regridded_data(
         self,
         src_field: SrcField,
@@ -188,41 +220,6 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     ) -> None:
         """Hook for dataset-specific operations after a field has been regridded and written."""
         pass
-
-
-# Try to find the latest RAVE file available up to max_lookback_hours before target_time_str
-# to avoid setting zeroes when a particular hour file is missing.
-def find_latest_src_file(
-    input_dir: Path, target_time_str: str, ebb_dcycle: int, dataset_name: DatasetName, max_lookback_hours: int = 24
-) -> list[str]:
-    """Finds the latest available source file within a lookback window."""
-    fmt = "%Y%m%d%H"  # RAVE
-    fmt2 = "%Y%j%H"  # GOES
-    target_time = datetime.strptime(target_time_str, fmt)
-
-    input_dir_str = str(input_dir)
-
-    for h in range(max_lookback_hours + 1):
-        if ebb_dcycle == -1 or ebb_dcycle == 2:
-            this_time = target_time - timedelta(hours=h)
-        elif ebb_dcycle == 1:
-            this_time = target_time + timedelta(hours=h)
-        else:
-            CR_LOGGER.warning("unrecognized ebb_dcycle, reverting to same-day, ebb_dcycle = 1")
-            this_time = target_time + timedelta(hours=h)
-
-        if dataset_name == "RAVE":
-            this_str = this_time.strftime(fmt)
-            paths = glob.glob(input_dir_str + "/RAVE-HrlyEmiss-3km_v2r0_blend_s" + this_str + "*")
-        elif dataset_name == "GOES":
-            this_str = this_time.strftime(fmt2)
-            paths = glob.glob(input_dir_str + "/OR_ABI-L2-AODC-M6_G18_s" + this_str + "*")
-        if paths:
-            if h > 0:
-                CR_LOGGER.warning(f"Missing {dataset_name} file for {target_time_str}, using {this_str} instead")
-            return paths
-    # nothing found within lookback window
-    return []
 
 
 class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
@@ -281,12 +278,14 @@ class RAVE_DatasetRegridContext(AbstractDatasetRegridContext):
 
         src_data[:] = np.where(np.isnan(src_data), 0.0, src_data)
 
+    def _get_src_search_path(self, this_time: datetime) -> str:
+        this_str = this_time.strftime(self.search_time_format)
+        return str(self.input_dir / ("RAVE-HrlyEmiss-3km_v2r0_blend_s" + this_str + "*"))
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for date_to_process in self.dates_needed:
             CR_LOGGER.info(f"RAVE processing {date_to_process=}")
-            src_paths = find_latest_src_file(
-                self.input_dir, date_to_process, self.ebb_dcycle, self.dataset_name, max_lookback_hours=24
-            )
+            src_paths = self.find_latest_src_file(date_to_process, max_lookback_hours=24)
             if not src_paths:
                 CR_LOGGER.warn(f"No matching files found for {date_to_process} (even after lookback).")
                 continue
@@ -420,9 +419,13 @@ class GRA2PES_DatasetRegridContext(AbstractDatasetRegridContext):
 class FMC_DatasetRegridContext(AbstractDatasetRegridContext):
     """Regrid context for FMC (Fuel Moisture Content) data."""
 
+    def _get_src_search_path(self, this_time: datetime) -> str:
+        this_str = this_time.strftime(self.search_time_format)
+        return str(self.input_dir / ("fmc_" + this_str + ".nc"))
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         for date_to_process in self.dates_needed:
-            src_paths = glob.glob(str(self.input_dir / ("fmc_" + date_to_process + ".nc")))
+            src_paths = self.find_latest_src_file(date_to_process)
             src_path = Path(src_paths[0])
             new_dst_path = self.output_dir / ("fmc_" + date_to_process + "_" + self.mesh_name + ".nc")
             yield RegridFilePair(src_path=src_path, dst_path=new_dst_path)
@@ -591,6 +594,8 @@ class FENGSHA_2D_Time_DatasetRegridContext(AbstractDatasetRegridContext):
 class GOES_DatasetRegridContext(AbstractDatasetRegridContext):
     """Regrid context for GOES (Geostationary Operational Environmental Satellite) AOD data."""
 
+    search_time_format: str = "%Y%j%H"
+
     def get_src_grid_path(self) -> Path:
         return self.workdir / "goes19_abi_conus_interpolated_lat_lon.nc"
 
@@ -598,9 +603,13 @@ class GOES_DatasetRegridContext(AbstractDatasetRegridContext):
     def _get_nc_attrs_(src: HasNcAttrsType) -> dict[str, Any]:
         return {}
 
+    def _get_src_search_path(self, this_time: datetime) -> str:
+        this_str = this_time.strftime(self.search_time_format)
+        return str(self.input_dir / ("OR_ABI-L2-AODC-M6_G18_s" + this_str + "*"))
+
     def iter_file_pairs(self) -> Iterator[RegridFilePair]:
         date_to_process = self.dates_needed[0]
-        src_paths = find_latest_src_file(self.input_dir, date_to_process, -1, self.dataset_name, max_lookback_hours=2)
+        src_paths = self.find_latest_src_file(date_to_process, max_lookback_hours=2)
         files_to_cat = src_paths
         CR_LOGGER.info(f"will cat files: {files_to_cat=}")
         if self.rank == 0:
