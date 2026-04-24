@@ -81,6 +81,12 @@ cd /opt/project && \
 mpirun -n 8 pytest -m mpi src/test
 ```
 
+It is recommended to run `pre-commit` hooks when developing:
+
+```shell
+cd /opt/project && pre-commit run --all-files
+```
+
 # Adding a New Dataset
 
 To add a new dataset to the regridding pipeline, follow these steps:

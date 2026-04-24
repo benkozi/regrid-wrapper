@@ -8,7 +8,7 @@ from typing import Any, Iterator, Union
 
 import esmpy
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from regrid_wrapper.app.chem_regrid import CR_LOGGER
 from regrid_wrapper.app.chem_regrid.dataset.src_field import SrcField
@@ -249,7 +249,7 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
                 if self.level_out_name is not None:
                     dst_nc.createDimension(self.level_out_name, self.level_out_size)
                 dst_nc.createDimension("StrLen", 64)
-                if self.time_size > 1:
+                if self.time_size is not None and self.time_size > 1:
                     dst_nc.createDimension("Time", self.time_size)
                 elif self.time_size == 1:
                     if "Time" not in dst_nc.dimensions:
@@ -263,3 +263,13 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
                 with open_nc(self.dst_path, mode="r", parallel=False) as src_nc:
                     for varname in self.var_names_to_copy_to_output_file:
                         copy_nc_variable(src_nc, dst_nc, varname, copy_data=True)
+
+    @model_validator(mode="after")
+    def _validate_model(self) -> "AbstractDatasetRegridContext":
+        level_values = [self.level_out_name, self.level_out_size]
+        if any(level_values) and not all(level_values):
+            raise ValueError("level_out_name and level_out_size must be specified together")
+        time_values = [self.time_name, self.time_size]
+        if any(time_values) and not all(time_values):
+            raise ValueError("time_name and time_size must be specified together")
+        return self

@@ -85,7 +85,7 @@ class ChemRegridProcessor:
         )
         dims = [cells_dim]
         ndbounds = []
-        if self.context.level_out_size > 0:
+        if self.context.level_out_size is not None and self.context.level_out_size > 0:
             if self.context.level_out_name is None:
                 raise ValueError("level_out_name must be specified if level_out_size > 0")
             level_dim = Dimension(
@@ -98,7 +98,7 @@ class ChemRegridProcessor:
             )
             dims.append(level_dim)
             ndbounds.append(self.context.level_out_size)
-        if self.context.time_size > 0:
+        if self.context.time_size is not None and self.context.time_size > 0:
             ndbounds.append(self.context.time_size)
             time_dim = Dimension(
                 name=("Time",),

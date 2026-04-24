@@ -102,7 +102,7 @@ def process_ngfs_file(
                 raise ValueError("level_out_name must be set for NGFS regridding")
             dst_nc.createDimension(ctx.level_out_name, ctx.level_out_size)
             dst_nc.createDimension("StrLen", 64)
-            if ctx.time_size > 1:
+            if ctx.time_size is not None and ctx.time_size > 1:
                 dst_nc.createDimension("Time", ctx.time_size)
             elif ctx.time_size == 1:
                 dst_nc.createDimension("Time")
