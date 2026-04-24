@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 from pathlib import Path
 from typing import Iterable, Literal
 
@@ -76,7 +74,7 @@ class ChemRegridProcessor:
     def _create_dst_fwrap_(self, dst_mesh: esmpy.Mesh) -> FieldWrapper:
         CR_LOGGER.info("create destination field")
 
-        local_bounds = reconcile_bounds((0, self._dst_mesh.size_owned[1]))
+        local_bounds = reconcile_bounds((0, self.get_dst_mesh().size_owned[1]))
         cells_dim = Dimension(
             name=("nCells",),
             size=self.context.num_cells,
@@ -88,6 +86,8 @@ class ChemRegridProcessor:
         dims = [cells_dim]
         ndbounds = []
         if self.context.level_out_size > 0:
+            if self.context.level_out_name is None:
+                raise ValueError("level_out_name must be specified if level_out_size > 0")
             level_dim = Dimension(
                 name=self.context.level_out_name,
                 size=self.context.level_out_size,
@@ -100,18 +100,15 @@ class ChemRegridProcessor:
             ndbounds.append(self.context.level_out_size)
         if self.context.time_size > 0:
             ndbounds.append(self.context.time_size)
-            time_dim = (
-                Dimension(
-                    name=("Time",),
-                    size=self.context.time_size,
-                    staggerloc=esmpy.StaggerLoc.CENTER,
-                    coordinate_type="time",
-                    lower=0,
-                    upper=self.context.time_size,
-                )
-                if self.context.time_size > 0
-                else None
+            time_dim = Dimension(
+                name=("Time",),
+                size=self.context.time_size,
+                staggerloc=esmpy.StaggerLoc.CENTER,
+                coordinate_type="time",
+                lower=0,
+                upper=self.context.time_size,
             )
+
             dims.append(time_dim)
         kwargs = {}
         if ndbounds:
@@ -127,7 +124,7 @@ class ChemRegridProcessor:
             CR_LOGGER.info("create regridder from file")
             regridder = esmpy.RegridFromFile(
                 srcfield=src_fwrap.value,
-                dstfield=self._dst_fwrap.value,
+                dstfield=self.get_dst_fwrap().value,
                 filename=str(self.context.weight_path),
             )
         else:
@@ -143,7 +140,7 @@ class ChemRegridProcessor:
             CR_LOGGER.info(f"using {regrid_method} interp")
             regridder = esmpy.Regrid(
                 srcfield=src_fwrap.value,
-                dstfield=self._dst_fwrap.value,
+                dstfield=self.get_dst_fwrap().value,
                 regrid_method=regrid_method,
                 unmapped_action=esmpy.UnmappedAction.IGNORE,
                 ignore_degenerate=True,
@@ -218,9 +215,9 @@ class ChemRegridProcessor:
 
     def finalize(self) -> None:
         CR_LOGGER.info("finalizing")
-        self._regridder.destroy()
-        self._dst_fwrap.value.destroy()
-        self._src_gwrap.value.destroy()
+        self.get_regridder().destroy()
+        self.get_dst_fwrap().value.destroy()
+        self.get_src_gwrap().value.destroy()
         # TODO: There could be an option to destroy the destination mesh when finalizing. However,
         #  it is more efficient to leave it since the destination is not variable at this point.
         # self._dst_mesh.destroy()
@@ -289,6 +286,11 @@ class ChemRegridProcessor:
         if self._regridder is None:
             raise ValueError
         return self._regridder
+
+    def get_dst_mesh(self) -> esmpy.Mesh:
+        if self._dst_mesh is None:
+            raise ValueError
+        return self._dst_mesh
 
 
 def run_regridding(ctx: AbstractDatasetRegridContext) -> None:

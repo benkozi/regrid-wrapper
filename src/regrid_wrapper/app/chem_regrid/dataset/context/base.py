@@ -91,9 +91,9 @@ class AbstractDatasetRegridContext(ABC, BaseModel):
     level_in_name: str | None
     # level_in_size: int
     level_out_name: str | None
-    level_out_size: int
+    level_out_size: int | None
     time_name: str | None
-    time_size: int
+    time_size: int | None
     cycle: str
     ebb_dcycle: int
     input_dir: Path
