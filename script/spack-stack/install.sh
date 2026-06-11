@@ -8,17 +8,17 @@ source ./env.sh
 
 # clone spack-stack --------------------------------------------------------------------------------
 
-cd ${sandbox}
-rm -rf ${spack_stack_dirname} || "cannot remove spack-stack"
-git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
-pushd ${spack_stack_dirname}
-git checkout 37c009d
-git submodule update --init --recursive
-popd
-pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
-mv mirrors.yaml no.mirrors.yaml
-popd
-exit 0
+#cd ${sandbox}
+#rm -rf ${spack_stack_dirname} || "cannot remove spack-stack"
+#git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
+#pushd ${spack_stack_dirname}
+#git checkout 37c009d
+#git submodule update --init --recursive
+#popd
+#pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
+#mv mirrors.yaml no.mirrors.yaml
+#popd
+
 # build env ----------------------------------------------------------------------------------------
 
 cp ${upstream_env}/site/packages.yaml ${sandbox}/${spack_stack_dirname}/configs/sites/tier1/${site}/packages.yaml
