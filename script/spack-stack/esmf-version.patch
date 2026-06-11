@@ -1,0 +1,12 @@
+diff --git a/repos/spack_repo/builtin/packages/esmf/package.py b/repos/spack_repo/builtin/packages/esmf/package.py
+index e8ff31ed11..769eb67e73 100644
+--- a/repos/spack_repo/builtin/packages/esmf/package.py
++++ b/repos/spack_repo/builtin/packages/esmf/package.py
+@@ -32,7 +32,7 @@ class Esmf(MakefilePackage, PythonExtension):
+     version("develop", branch="develop")
+     # generate chksum with 'spack checksum esmf@x.y.z'
+     # Todo: replace commit with hash once tagged
+-    version("8.9.1", commit="6a091126030012504e2d42a21eb8764066f0bb6a")
++    version("8.9.1", commit="bd03a249df907464fdad91b7c43985dedbc472c7")
+     version("8.9.0", sha256="586e0101d76ff9842d9ad43567fae50317ee794d80293430d9f1847dec0eefa5")
+     version("8.8.1", sha256="b0acb59d4f000bfbdfddc121a24819bd2

@@ -19,6 +19,10 @@ source ./env.sh
 #mv mirrors.yaml no.mirrors.yaml
 #popd
 
+# patch esmf ---------------------------------------------------------------------------------------
+
+#cdf /scratch3/NCEPDEV/stmp/Benjamin.Koziol/sandbox/spack-stack-v3/repos/builtin
+
 # build env ----------------------------------------------------------------------------------------
 
 cp ${upstream_env}/site/packages.yaml ${sandbox}/${spack_stack_dirname}/configs/sites/tier1/${site}/packages.yaml
