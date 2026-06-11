@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# git pull && time bash run-platform-tests.sh 2>&1 | tee out.run-platform-tests.sh
+# git pull && time bash run-platform-tests.sh 2>&1 | tee out.run-platform-tests.$(date +%Y%m%d-%H%M%S)
 
 set -eu
 source ./env-run-platform-tests.sh
