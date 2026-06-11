@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# git pull && time bash install.sh 2>&1 | tee out.install.sh
+# git pull && time bash install.sh 2>&1 | tee out.install.$(date +%Y%m%d-%H%M%S)
 
 set -ue
 
@@ -10,17 +10,14 @@ source ./env.sh
 
 cd ${sandbox}
 rm -rf ${spack_stack_dirname} || "cannot remove spack-stack"
-git clone --depth 1 ${spack_stack_branch} --recurse-submodules https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
+git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
+pushd ${spack_stack_dirname}
+git checkout f499eb7a5cddf7763883cb42031784f2b2f3cd34
+git submodule update --init --recursive
+popd
 pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
 mv mirrors.yaml no.mirrors.yaml
 popd
-
-# checkout specific hash ---------------------------------------------------------------------------
-
-#pushd ${sandbox}/${spack_stack_dirname}/spack
-#git fetch
-#git checkout 324bf79 -- var/spack/repos/builtin/packages/py-netcdf4/package.py
-#popd
 
 # build env ----------------------------------------------------------------------------------------
 
