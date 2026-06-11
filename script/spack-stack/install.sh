@@ -12,7 +12,7 @@ cd ${sandbox}
 rm -rf ${spack_stack_dirname} || "cannot remove spack-stack"
 git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
 pushd ${spack_stack_dirname}
-git checkout 22215daa032b05571e2c064efe5762c4edf8479a
+git checkout 49dc4f5c646ce0a03a75eda0c8b72ad0957dc8bd
 git submodule update --init --recursive
 popd
 pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
