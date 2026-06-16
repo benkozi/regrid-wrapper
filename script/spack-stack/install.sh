@@ -23,7 +23,7 @@ cd ${sandbox}
 
 # patch esmf ---------------------------------------------------------------------------------------
 
-pushd ${sandbox}/spack-stack/repos/builtin
+pushd ${sandbox}/repos/builtin
 git apply ${_cwd}/esmf-version.patch
 popd
 
