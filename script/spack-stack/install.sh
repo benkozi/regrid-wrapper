@@ -8,20 +8,20 @@ source ./env.sh
 
 # clone spack-stack --------------------------------------------------------------------------------
 
-#cd ${sandbox}
+cd ${sandbox}
 #rm -rf ${spack_stack_dirname} || "cannot remove spack-stack"
-#git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
-#pushd ${spack_stack_dirname}
-#git checkout 37c009d
-#git submodule update --init --recursive
-#popd
-#pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
-#mv mirrors.yaml no.mirrors.yaml
-#popd
+git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
+pushd ${spack_stack_dirname}
+git checkout 37c009d # version 2.1.1
+git submodule update --init --recursive
+popd
+pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
+mv mirrors.yaml no.mirrors.yaml
+popd
 
 # patch esmf ---------------------------------------------------------------------------------------
 
-#cdf /scratch3/NCEPDEV/stmp/Benjamin.Koziol/sandbox/spack-stack-v3/repos/builtin
+git apply ./esmf-version.patch
 
 # build env ----------------------------------------------------------------------------------------
 
@@ -30,9 +30,9 @@ cp ${upstream_env}/site/packages.yaml ${sandbox}/${spack_stack_dirname}/configs/
 cd ${sandbox}/${spack_stack_dirname}
 . ./setup.sh
 
-env_to_remove=${sandbox}/${spack_stack_dirname}/envs/${env_name}
-echo "env_to_remove=${env_to_remove}"
-rm -rf ${env_to_remove} || echo "nothing to remove"
+#env_to_remove=${sandbox}/${spack_stack_dirname}/envs/${env_name}
+#echo "env_to_remove=${env_to_remove}"
+#rm -rf ${env_to_remove} || echo "nothing to remove"
 spack stack create env --name ${env_name} --template empty --site ${site} --compiler oneapi \
     ${upstream}
 
@@ -54,5 +54,5 @@ spack add \
 spack concretize --force --fresh
 spack clean -a
 spack install --verbose --fail-fast
-spack module lmod refresh --upstream-modules
+spack module lmod refresh --upstream-modules -y
 spack stack setup-meta-modules

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 env_name=mpas-aerosols
-spack_stack_dirname=spack-stack-v3
+spack_stack_dirname=spack-stack-v4
 
 # gaea-c6 ==========================================================================================
 
