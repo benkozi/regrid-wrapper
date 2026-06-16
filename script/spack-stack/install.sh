@@ -11,15 +11,15 @@ _cwd=$(readlink -f .)
 # clone spack-stack --------------------------------------------------------------------------------
 
 cd ${sandbox}
-##rm -rf ${spack_stack_dirname} || "cannot remove spack-stack"
-#git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
-#pushd ${spack_stack_dirname}
-#git checkout 37c009d # version 2.1.1
-#git submodule update --init --recursive
-#popd
-#pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
-#mv mirrors.yaml no.mirrors.yaml
-#popd
+#rm -rf ${spack_stack_dirname} || "cannot remove spack-stack"
+git clone ${spack_stack_branch} https://github.com/JCSDA/spack-stack ${spack_stack_dirname}
+pushd ${spack_stack_dirname}
+git checkout 37c009d # version 2.1.1
+git submodule update --init --recursive
+popd
+pushd ./${spack_stack_dirname}/configs/sites/tier1/${site}
+mv mirrors.yaml no.mirrors.yaml
+popd
 
 # patch esmf ---------------------------------------------------------------------------------------
 
